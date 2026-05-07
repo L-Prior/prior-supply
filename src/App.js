@@ -2,10 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from './supabase'
 import './index.css'
 
-const BRANDS = ['Nike', 'Adidas', 'UGG', 'ASICS', 'Vans', 'New Balance', 'Puma', 'Reebok', 'Pokémon', 'Lego', 'Other']
-const PLATFORMS = ['SNKRS', 'Nike', 'Adidas', 'JD', 'ASOS', 'eBay', 'Vinted', 'StockX', 'GOAT', 'Offspring', 'Other', 'IRL']
-const SELLING_PLATFORMS = ['eBay', 'StockX', 'GOAT', 'Vinted', 'Depop', 'Instagram', 'Discord', 'In Person', 'Other']
-
 const EMPTY_FORM = {
   brand: '', style: '', colourway: '', sku: '', size: '',
   purchase_platform: '', selling_platform: '', purchase_price: '', notes: ''
@@ -278,10 +274,7 @@ export default function App() {
             <div className="form-grid">
               <div className="form-group">
                 <label className="form-label">Brand *</label>
-                <select className="form-input" value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}>
-                  <option value="">Select brand</option>
-                  {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
+                <input className="form-input" placeholder="e.g. Nike" value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label className="form-label">Style</label>
@@ -305,17 +298,11 @@ export default function App() {
               </div>
               <div className="form-group">
                 <label className="form-label">Purchase platform</label>
-                <select className="form-input" value={form.purchase_platform} onChange={e => setForm(f => ({ ...f, purchase_platform: e.target.value }))}>
-                  <option value="">Select platform</option>
-                  {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <input className="form-input" placeholder="e.g. JD, SNKRS, eBay" value={form.purchase_platform} onChange={e => setForm(f => ({ ...f, purchase_platform: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label className="form-label">Selling platform</label>
-                <select className="form-input" value={form.selling_platform} onChange={e => setForm(f => ({ ...f, selling_platform: e.target.value }))}>
-                  <option value="">Select platform</option>
-                  {SELLING_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <input className="form-input" placeholder="e.g. eBay, StockX, Vinted" value={form.selling_platform} onChange={e => setForm(f => ({ ...f, selling_platform: e.target.value }))} />
               </div>
               <div className="form-group full">
                 <label className="form-label">Notes</label>
