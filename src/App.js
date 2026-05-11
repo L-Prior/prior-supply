@@ -1,24 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from './supabase'
 import './index.css'
-
+ 
+const CATEGORIES = ['Sneakers', 'Pokémon', 'Lego', 'Clothing', 'Accessories', 'Electronics', 'Miscellaneous']
+ 
 const EMPTY_FORM = {
-  brand: '', style: '', colourway: '', sku: '', size: '',
-  purchase_platform: '', selling_platform: '', purchase_price: '', notes: ''
+  category: '', brand: '', style: '', colourway: '', sku: '', size: '',
+  purchase_platform: '', selling_platform: '', purchase_price: '', purchase_date: '', notes: ''
 }
-
+ 
 function fmt(n) {
   if (n == null || n === '') return '—'
   return '£' + Number(n).toFixed(2)
 }
-
+ 
 function plColor(pl) {
   if (pl == null) return ''
   if (pl > 0) return 'td-pos'
   if (pl < 0) return 'td-neg'
   return ''
 }
-
+ 
 export default function App() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -30,41 +32,55 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [filterBrand, setFilterBrand] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
   const [sortCol, setSortCol] = useState('created_at')
   const [sortDir, setSortDir] = useState('desc')
   const [saving, setSaving] = useState(false)
-
+  const [saveError, setSaveError] = useState('')
+ 
   useEffect(() => { fetchItems() }, [])
-
+ 
   async function fetchItems() {
     setLoading(true)
-    const { data } = await supabase.from('stock').select('*').order('created_at', { ascending: false })
+    const { data, error } = await supabase.from('stock').select('*').order('created_at', { ascending: false })
+    if (error) console.error('Fetch error:', error)
     setItems(data || [])
     setLoading(false)
   }
-
+ 
   async function saveItem() {
     if (!form.brand || !form.purchase_price) return
     setSaving(true)
-    const payload = { ...form, purchase_price: parseFloat(form.purchase_price) || 0 }
+    setSaveError('')
+    const payload = {
+      ...form,
+      purchase_price: parseFloat(form.purchase_price) || 0,
+      purchase_date: form.purchase_date || null
+    }
+    let error
     if (editItem) {
-      await supabase.from('stock').update(payload).eq('id', editItem.id)
+      ({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
     } else {
-      await supabase.from('stock').insert([{ ...payload, status: 'in_stock' }])
+      ({ error } = await supabase.from('stock').insert([{ ...payload, status: 'in_stock' }]))
     }
     setSaving(false)
+    if (error) {
+      console.error('Save error:', error)
+      setSaveError(error.message)
+      return
+    }
     setShowAdd(false)
     setEditItem(null)
     setForm(EMPTY_FORM)
     fetchItems()
   }
-
+ 
   async function deleteItem(id) {
     if (!window.confirm('Delete this item?')) return
     await supabase.from('stock').delete().eq('id', id)
     fetchItems()
   }
-
+ 
   async function markSold() {
     if (!salePrice || !sellItem) return
     setSaving(true)
@@ -78,27 +94,29 @@ export default function App() {
     setSalePrice('')
     fetchItems()
   }
-
+ 
   function openEdit(item) {
     setForm({
+      category: item.category || '',
       brand: item.brand || '', style: item.style || '', colourway: item.colourway || '',
       sku: item.sku || '', size: item.size || '', purchase_platform: item.purchase_platform || '',
-      selling_platform: item.selling_platform || '', purchase_price: item.purchase_price || '', notes: item.notes || ''
+      selling_platform: item.selling_platform || '', purchase_price: item.purchase_price || '',
+      purchase_date: item.purchase_date || '', notes: item.notes || ''
     })
     setEditItem(item)
     setShowAdd(true)
   }
-
+ 
   function handleSort(col) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
   }
-
+ 
   function sortArrow(col) {
     if (sortCol !== col) return ' ↕'
     return sortDir === 'asc' ? ' ↑' : ' ↓'
   }
-
+ 
   const filtered = useMemo(() => {
     let res = [...items]
     if (search) {
@@ -112,6 +130,7 @@ export default function App() {
     }
     if (filterBrand) res = res.filter(i => i.brand === filterBrand)
     if (filterStatus) res = res.filter(i => i.status === filterStatus)
+    if (filterCategory) res = res.filter(i => i.category === filterCategory)
     res.sort((a, b) => {
       let va = a[sortCol], vb = b[sortCol]
       if (va == null) va = ''
@@ -123,30 +142,29 @@ export default function App() {
       return 0
     })
     return res
-  }, [items, search, filterBrand, filterStatus, sortCol, sortDir])
-
+  }, [items, search, filterBrand, filterStatus, filterCategory, sortCol, sortDir])
+ 
   const stats = useMemo(() => {
     const inStock = items.filter(i => i.status === 'in_stock')
     const sold = items.filter(i => i.status === 'sold')
-    const totalCost = items.reduce((s, i) => s + (i.purchase_price || 0), 0)
     const stockValue = inStock.reduce((s, i) => s + (i.purchase_price || 0), 0)
     const revenue = sold.reduce((s, i) => s + (i.sale_price || 0), 0)
     const soldCost = sold.reduce((s, i) => s + (i.purchase_price || 0), 0)
     const pl = revenue - soldCost
-    return { total: items.length, inStock: inStock.length, sold: sold.length, totalCost, stockValue, revenue, pl }
+    return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl }
   }, [items])
-
+ 
   const plSell = sellItem ? (parseFloat(salePrice) || 0) - (sellItem.purchase_price || 0) : 0
-
+ 
   return (
     <div className="app">
       <div className="topbar">
         <div className="topbar-brand">Prior Supply <span>stock tracker</span></div>
         <div className="topbar-actions">
-          <button className="btn primary" onClick={() => { setForm(EMPTY_FORM); setEditItem(null); setShowAdd(true) }}>+ Add item</button>
+          <button className="btn primary" onClick={() => { setForm(EMPTY_FORM); setEditItem(null); setSaveError(''); setShowAdd(true) }}>+ Add item</button>
         </div>
       </div>
-
+ 
       <div className="main">
         {/* Stats */}
         <div className="stats-bar">
@@ -177,7 +195,7 @@ export default function App() {
             </div>
           </div>
         </div>
-
+ 
         {/* Filters */}
         <div className="filters">
           <input
@@ -187,6 +205,10 @@ export default function App() {
             onChange={e => setSearch(e.target.value)}
             style={{ flex: 1, minWidth: 180 }}
           />
+          <select className="filter-select" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+            <option value="">All categories</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
           <select className="filter-select" value={filterBrand} onChange={e => setFilterBrand(e.target.value)}>
             <option value="">All brands</option>
             {[...new Set(items.map(i => i.brand).filter(Boolean))].sort().map(b => (
@@ -198,12 +220,12 @@ export default function App() {
             <option value="in_stock">In stock</option>
             <option value="sold">Sold</option>
           </select>
-          {(search || filterBrand || filterStatus) && (
-            <button className="btn sm" onClick={() => { setSearch(''); setFilterBrand(''); setFilterStatus('') }}>Clear</button>
+          {(search || filterBrand || filterStatus || filterCategory) && (
+            <button className="btn sm" onClick={() => { setSearch(''); setFilterBrand(''); setFilterStatus(''); setFilterCategory('') }}>Clear</button>
           )}
           <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 4 }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
         </div>
-
+ 
         {/* Table */}
         {loading ? (
           <div className="loading">Loading stock...</div>
@@ -218,11 +240,13 @@ export default function App() {
             <table>
               <thead>
                 <tr>
+                  <th onClick={() => handleSort('category')}>Category{sortArrow('category')}</th>
                   <th onClick={() => handleSort('brand')}>Brand{sortArrow('brand')}</th>
                   <th onClick={() => handleSort('style')}>Style{sortArrow('style')}</th>
                   <th onClick={() => handleSort('colourway')}>Colourway{sortArrow('colourway')}</th>
                   <th onClick={() => handleSort('size')}>Size{sortArrow('size')}</th>
                   <th onClick={() => handleSort('sku')}>SKU{sortArrow('sku')}</th>
+                  <th onClick={() => handleSort('purchase_date')}>Purchased{sortArrow('purchase_date')}</th>
                   <th onClick={() => handleSort('purchase_price')}>Cost{sortArrow('purchase_price')}</th>
                   <th onClick={() => handleSort('sale_price')}>Sale{sortArrow('sale_price')}</th>
                   <th onClick={() => handleSort('status')}>P&amp;L{sortArrow('status')}</th>
@@ -237,11 +261,13 @@ export default function App() {
                     : null
                   return (
                     <tr key={item.id}>
+                      <td className="td-muted">{item.category || '—'}</td>
                       <td style={{ fontWeight: 500 }}>{item.brand || '—'}</td>
                       <td>{item.style || '—'}</td>
                       <td className="td-muted">{item.colourway || '—'}</td>
                       <td className="td-muted">{item.size || '—'}</td>
                       <td className="td-muted">{item.sku || '—'}</td>
+                      <td className="td-muted">{item.purchase_date || '—'}</td>
                       <td>{fmt(item.purchase_price)}</td>
                       <td>{item.sale_price ? fmt(item.sale_price) : <span className="td-muted">—</span>}</td>
                       <td className={plColor(pl)}>
@@ -265,13 +291,20 @@ export default function App() {
           </div>
         )}
       </div>
-
+ 
       {/* Add / Edit Modal */}
       {showAdd && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
           <div className="modal">
             <div className="modal-title">{editItem ? 'Edit item' : 'Add new item'}</div>
             <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Category</label>
+                <select className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                  <option value="">Select category</option>
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
               <div className="form-group">
                 <label className="form-label">Brand *</label>
                 <input className="form-input" placeholder="e.g. Nike" value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} />
@@ -297,6 +330,10 @@ export default function App() {
                 <input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.purchase_price} onChange={e => setForm(f => ({ ...f, purchase_price: e.target.value }))} />
               </div>
               <div className="form-group">
+                <label className="form-label">Purchase date</label>
+                <input className="form-input" type="date" value={form.purchase_date} onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))} />
+              </div>
+              <div className="form-group">
                 <label className="form-label">Purchase platform</label>
                 <input className="form-input" placeholder="e.g. JD, SNKRS, eBay" value={form.purchase_platform} onChange={e => setForm(f => ({ ...f, purchase_platform: e.target.value }))} />
               </div>
@@ -309,8 +346,13 @@ export default function App() {
                 <input className="form-input" placeholder="e.g. Used, missing box..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
             </div>
+            {saveError && (
+              <div style={{ color: 'var(--neg, #f87171)', fontSize: 13, marginTop: 8 }}>
+                Error: {saveError}
+              </div>
+            )}
             <div className="form-actions">
-              <button className="btn" onClick={() => { setShowAdd(false); setEditItem(null); setForm(EMPTY_FORM) }}>Cancel</button>
+              <button className="btn" onClick={() => { setShowAdd(false); setEditItem(null); setForm(EMPTY_FORM); setSaveError('') }}>Cancel</button>
               <button className="btn primary" onClick={saveItem} disabled={saving}>
                 {saving ? 'Saving...' : editItem ? 'Save changes' : 'Add item'}
               </button>
@@ -318,7 +360,7 @@ export default function App() {
           </div>
         </div>
       )}
-
+ 
       {/* Sell Modal */}
       {sellItem && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setSellItem(null)}>
@@ -362,3 +404,4 @@ export default function App() {
     </div>
   )
 }
+ 
