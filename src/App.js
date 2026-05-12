@@ -1,26 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from './supabase'
 import './index.css'
- 
+
 const CATEGORIES = ['Sneakers', 'Pokémon', 'Lego', 'Clothing', 'Accessories', 'Electronics', 'Miscellaneous']
- 
+
 const EMPTY_FORM = {
   category: '', brand: '', style: '', colourway: '', sku: '', size: '',
-  purchase_platform: '', selling_platform: '', purchase_price: '', purchase_date: '', notes: ''
+  purchase_platform: '', purchase_price: '', purchase_date: '', notes: ''
 }
- 
+
 function fmt(n) {
   if (n == null || n === '') return '—'
   return '£' + Number(n).toFixed(2)
 }
- 
+
 function plColor(pl) {
   if (pl == null) return ''
   if (pl > 0) return 'td-pos'
   if (pl < 0) return 'td-neg'
   return ''
 }
- 
+
 export default function App() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -28,6 +28,7 @@ export default function App() {
   const [editItem, setEditItem] = useState(null)
   const [sellItem, setSellItem] = useState(null)
   const [salePrice, setSalePrice] = useState('')
+  const [sellingPlatform, setSellingPlatform] = useState('')
   const [form, setForm] = useState(EMPTY_FORM)
   const [search, setSearch] = useState('')
   const [filterBrand, setFilterBrand] = useState('')
@@ -37,9 +38,9 @@ export default function App() {
   const [sortDir, setSortDir] = useState('desc')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
- 
+
   useEffect(() => { fetchItems() }, [])
- 
+
   async function fetchItems() {
     setLoading(true)
     const { data, error } = await supabase.from('stock').select('*').order('created_at', { ascending: false })
@@ -47,7 +48,7 @@ export default function App() {
     setItems(data || [])
     setLoading(false)
   }
- 
+
   async function saveItem() {
     if (!form.brand || !form.purchase_price) return
     setSaving(true)
@@ -74,49 +75,51 @@ export default function App() {
     setForm(EMPTY_FORM)
     fetchItems()
   }
- 
+
   async function deleteItem(id) {
     if (!window.confirm('Delete this item?')) return
     await supabase.from('stock').delete().eq('id', id)
     fetchItems()
   }
- 
+
   async function markSold() {
     if (!salePrice || !sellItem) return
     setSaving(true)
     await supabase.from('stock').update({
       status: 'sold',
       sale_price: parseFloat(salePrice),
+      selling_platform: sellingPlatform,
       sold_at: new Date().toISOString()
     }).eq('id', sellItem.id)
     setSaving(false)
     setSellItem(null)
     setSalePrice('')
+    setSellingPlatform('')
     fetchItems()
   }
- 
+
   function openEdit(item) {
     setForm({
       category: item.category || '',
       brand: item.brand || '', style: item.style || '', colourway: item.colourway || '',
       sku: item.sku || '', size: item.size || '', purchase_platform: item.purchase_platform || '',
-      selling_platform: item.selling_platform || '', purchase_price: item.purchase_price || '',
+      purchase_price: item.purchase_price || '',
       purchase_date: item.purchase_date || '', notes: item.notes || ''
     })
     setEditItem(item)
     setShowAdd(true)
   }
- 
+
   function handleSort(col) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
   }
- 
+
   function sortArrow(col) {
     if (sortCol !== col) return ' ↕'
     return sortDir === 'asc' ? ' ↑' : ' ↓'
   }
- 
+
   const filtered = useMemo(() => {
     let res = [...items]
     if (search) {
@@ -143,7 +146,7 @@ export default function App() {
     })
     return res
   }, [items, search, filterBrand, filterStatus, filterCategory, sortCol, sortDir])
- 
+
   const stats = useMemo(() => {
     const inStock = items.filter(i => i.status === 'in_stock')
     const sold = items.filter(i => i.status === 'sold')
@@ -153,9 +156,9 @@ export default function App() {
     const pl = revenue - soldCost
     return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl }
   }, [items])
- 
+
   const plSell = sellItem ? (parseFloat(salePrice) || 0) - (sellItem.purchase_price || 0) : 0
- 
+
   return (
     <div className="app">
       <div className="topbar">
@@ -164,7 +167,7 @@ export default function App() {
           <button className="btn primary" onClick={() => { setForm(EMPTY_FORM); setEditItem(null); setSaveError(''); setShowAdd(true) }}>+ Add item</button>
         </div>
       </div>
- 
+
       <div className="main">
         {/* Stats */}
         <div className="stats-bar">
@@ -195,7 +198,7 @@ export default function App() {
             </div>
           </div>
         </div>
- 
+
         {/* Filters */}
         <div className="filters">
           <input
@@ -225,7 +228,7 @@ export default function App() {
           )}
           <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 4 }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
         </div>
- 
+
         {/* Table */}
         {loading ? (
           <div className="loading">Loading stock...</div>
@@ -249,6 +252,7 @@ export default function App() {
                   <th onClick={() => handleSort('purchase_date')}>Purchased{sortArrow('purchase_date')}</th>
                   <th onClick={() => handleSort('purchase_price')}>Cost{sortArrow('purchase_price')}</th>
                   <th onClick={() => handleSort('sale_price')}>Sale{sortArrow('sale_price')}</th>
+                  <th onClick={() => handleSort('selling_platform')}>Sold via{sortArrow('selling_platform')}</th>
                   <th onClick={() => handleSort('status')}>P&amp;L{sortArrow('status')}</th>
                   <th onClick={() => handleSort('status')}>Status{sortArrow('status')}</th>
                   <th>Actions</th>
@@ -270,6 +274,7 @@ export default function App() {
                       <td className="td-muted">{item.purchase_date || '—'}</td>
                       <td>{fmt(item.purchase_price)}</td>
                       <td>{item.sale_price ? fmt(item.sale_price) : <span className="td-muted">—</span>}</td>
+                      <td className="td-muted">{item.selling_platform || '—'}</td>
                       <td className={plColor(pl)}>
                         {pl != null ? (pl >= 0 ? '+' : '') + fmt(pl) : <span className="td-muted">—</span>}
                       </td>
@@ -277,7 +282,7 @@ export default function App() {
                       <td>
                         <div style={{ display: 'flex', gap: 5 }}>
                           {item.status === 'in_stock' && (
-                            <button className="btn sm success" onClick={() => { setSellItem(item); setSalePrice('') }}>Sell</button>
+                            <button className="btn sm success" onClick={() => { setSellItem(item); setSalePrice(''); setSellingPlatform('') }}>Sell</button>
                           )}
                           <button className="btn sm" onClick={() => openEdit(item)}>Edit</button>
                           <button className="btn sm danger" onClick={() => deleteItem(item.id)}>Del</button>
@@ -291,7 +296,7 @@ export default function App() {
           </div>
         )}
       </div>
- 
+
       {/* Add / Edit Modal */}
       {showAdd && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
@@ -337,10 +342,6 @@ export default function App() {
                 <label className="form-label">Purchase platform</label>
                 <input className="form-input" placeholder="e.g. JD, SNKRS, eBay" value={form.purchase_platform} onChange={e => setForm(f => ({ ...f, purchase_platform: e.target.value }))} />
               </div>
-              <div className="form-group">
-                <label className="form-label">Selling platform</label>
-                <input className="form-input" placeholder="e.g. eBay, StockX, Vinted" value={form.selling_platform} onChange={e => setForm(f => ({ ...f, selling_platform: e.target.value }))} />
-              </div>
               <div className="form-group full">
                 <label className="form-label">Notes</label>
                 <input className="form-input" placeholder="e.g. Used, missing box..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
@@ -360,7 +361,7 @@ export default function App() {
           </div>
         </div>
       )}
- 
+
       {/* Sell Modal */}
       {sellItem && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setSellItem(null)}>
@@ -384,6 +385,15 @@ export default function App() {
                 autoFocus
               />
             </div>
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <label className="form-label">Selling platform</label>
+              <input
+                className="form-input"
+                placeholder="e.g. eBay, StockX, Vinted"
+                value={sellingPlatform}
+                onChange={e => setSellingPlatform(e.target.value)}
+              />
+            </div>
             {salePrice && (
               <div className="pl-preview">
                 <span style={{ color: 'var(--muted)' }}>P&L</span>
@@ -404,4 +414,3 @@ export default function App() {
     </div>
   )
 }
- 
