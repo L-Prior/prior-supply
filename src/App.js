@@ -7,7 +7,6 @@ import {
 import './index.css'
 
 const CATEGORIES = ['Sneakers', 'Pokémon', 'Lego', 'Clothing', 'Accessories', 'Electronics', 'Miscellaneous']
-const USERNAME = 'Luke'
 
 const EMPTY_FORM = {
   category: '', brand: '', style: '', colourway: '', sku: '', size: '',
@@ -30,20 +29,17 @@ function plColor(pl) {
   if (pl < 0) return 'td-neg'
   return ''
 }
-
 function getMonthKey(dateStr) {
   if (!dateStr) return null
   const d = new Date(dateStr)
   if (isNaN(d)) return null
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
-
 function getMonthLabel(key) {
   const [year, month] = key.split('-')
   const d = new Date(parseInt(year), parseInt(month) - 1)
   return d.toLocaleString('default', { month: 'short', year: '2-digit' })
 }
-
 function getLast(n) {
   const months = []
   const now = new Date()
@@ -55,7 +51,85 @@ function getLast(n) {
   return months
 }
 
+// ─── Auth Pages ───────────────────────────────────────────────────────────────
+
+function AuthPage({ onAuth }) {
+  const [mode, setMode] = useState('login') // 'login' | 'signup'
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError(''); setSuccess('')
+    if (mode === 'signup' && password !== confirm) {
+      setError('Passwords do not match'); return
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters'); return
+    }
+    setLoading(true)
+    if (mode === 'login') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setError(error.message)
+      else onAuth()
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password })
+      if (error) setError(error.message)
+      else setSuccess('Account created! Check your email to confirm your account, then log in.')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-brand">
+          <span className="brand-mark" />
+          StockTrack
+        </div>
+        <h2 className="auth-title">{mode === 'login' ? 'Sign in to your account' : 'Create your account'}</h2>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input className="form-input" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input className="form-input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+          </div>
+          {mode === 'signup' && (
+            <div className="form-group">
+              <label className="form-label">Confirm password</label>
+              <input className="form-input" type="password" placeholder="••••••••" value={confirm} onChange={e => setConfirm(e.target.value)} required />
+            </div>
+          )}
+          {error && <div className="auth-error">{error}</div>}
+          {success && <div className="auth-success">{success}</div>}
+          <button className="btn primary auth-btn" type="submit" disabled={loading}>
+            {loading ? (mode === 'login' ? 'Signing in...' : 'Creating account...') : (mode === 'login' ? 'Sign in' : 'Create account')}
+          </button>
+        </form>
+        <div className="auth-switch">
+          {mode === 'login' ? (
+            <>Don't have an account? <button className="auth-link" onClick={() => { setMode('signup'); setError(''); setSuccess('') }}>Sign up</button></>
+          ) : (
+            <>Already have an account? <button className="auth-link" onClick={() => { setMode('login'); setError(''); setSuccess('') }}>Sign in</button></>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+
 export default function App() {
+  const [session, setSession] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [page, setPage] = useState('home')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +149,20 @@ export default function App() {
   const [saveError, setSaveError] = useState('')
   const [chartMonths, setChartMonths] = useState(6)
 
-  useEffect(() => { fetchItems() }, [])
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (session) fetchItems()
+  }, [session])
 
   async function fetchItems() {
     setLoading(true)
@@ -85,11 +172,16 @@ export default function App() {
     setLoading(false)
   }
 
+  async function signOut() {
+    await supabase.auth.signOut()
+    setItems([])
+    setPage('home')
+  }
+
   async function saveItem() {
     if (!form.brand || !form.purchase_price) return
-    setSaving(true)
-    setSaveError('')
-    const payload = { ...form, purchase_price: parseFloat(form.purchase_price) || 0, purchase_date: form.purchase_date || null }
+    setSaving(true); setSaveError('')
+    const payload = { ...form, purchase_price: parseFloat(form.purchase_price) || 0, purchase_date: form.purchase_date || null, user_id: session.user.id }
     let error
     if (editItem) {
       ({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
@@ -131,13 +223,11 @@ export default function App() {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
   }
-
   function sortArrow(col) {
     if (sortCol !== col) return ' ↕'
     return sortDir === 'asc' ? ' ↑' : ' ↓'
   }
 
-  // Derived stats
   const stats = useMemo(() => {
     const inStock = items.filter(i => i.status === 'in_stock')
     const sold = items.filter(i => i.status === 'sold')
@@ -152,10 +242,8 @@ export default function App() {
     return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl, monthPL }
   }, [items])
 
-  // Chart data
   const plChartData = useMemo(() => {
-    const months = getLast(chartMonths)
-    return months.map(({ key, label }) => {
+    return getLast(chartMonths).map(({ key, label }) => {
       const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
       const pl = sold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0)), 0)
       const revenue = sold.reduce((s, i) => s + (i.sale_price || 0), 0)
@@ -166,11 +254,7 @@ export default function App() {
 
   const categoryData = useMemo(() => {
     const map = {}
-    items.forEach(i => {
-      const cat = i.category || 'Other'
-      if (!map[cat]) map[cat] = 0
-      map[cat]++
-    })
+    items.forEach(i => { const cat = i.category || 'Other'; if (!map[cat]) map[cat] = 0; map[cat]++ })
     return Object.entries(map).map(([name, value]) => ({ name, value }))
   }, [items])
 
@@ -181,15 +265,11 @@ export default function App() {
       if (!map[b]) map[b] = 0
       map[b] += (i.sale_price || 0) - (i.purchase_price || 0)
     })
-    return Object.entries(map)
-      .map(([brand, pl]) => ({ brand, pl: parseFloat(pl.toFixed(2)) }))
-      .sort((a, b) => b.pl - a.pl)
-      .slice(0, 8)
+    return Object.entries(map).map(([brand, pl]) => ({ brand, pl: parseFloat(pl.toFixed(2)) })).sort((a, b) => b.pl - a.pl).slice(0, 8)
   }, [items])
 
   const avgPLData = useMemo(() => {
-    const months = getLast(6)
-    return months.map(({ key, label }) => {
+    return getLast(6).map(({ key, label }) => {
       const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
       const avg = sold.length ? sold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0)), 0) / sold.length : 0
       return { label, avg: parseFloat(avg.toFixed(2)) }
@@ -204,9 +284,7 @@ export default function App() {
       map[cat].total++
       if (i.status === 'sold') map[cat].sold++
     })
-    return Object.entries(map).map(([cat, { total, sold }]) => ({
-      cat, rate: parseFloat(((sold / total) * 100).toFixed(1))
-    }))
+    return Object.entries(map).map(([cat, { total, sold }]) => ({ cat, rate: parseFloat(((sold / total) * 100).toFixed(1)) }))
   }, [items])
 
   const bestWorst = useMemo(() => {
@@ -243,85 +321,61 @@ export default function App() {
   }, [items, search, filterBrand, filterStatus, filterCategory, sortCol, sortDir])
 
   const plSell = sellItem ? (parseFloat(salePrice) || 0) - (sellItem.purchase_price || 0) : 0
+  const username = session?.user?.email?.split('@')[0] || 'there'
 
-  const navItems = [
-    { id: 'home', label: 'Home' },
-    { id: 'stock', label: 'Stock' },
-    { id: 'metrics', label: 'Metrics' },
-  ]
+  if (authLoading) return <div className="auth-loading">Loading...</div>
+  if (!session) return <AuthPage onAuth={() => fetchItems()} />
 
   return (
     <div className="app">
-      {/* Topbar */}
       <div className="topbar">
         <div className="topbar-brand">
           <span className="brand-mark" />
           StockTrack
         </div>
         <nav className="topbar-nav">
-          {navItems.map(n => (
-            <button key={n.id} className={`nav-btn ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}>
-              {n.label}
-            </button>
+          {[{ id: 'home', label: 'Home' }, { id: 'stock', label: 'Stock' }, { id: 'metrics', label: 'Metrics' }].map(n => (
+            <button key={n.id} className={`nav-btn ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}>{n.label}</button>
           ))}
         </nav>
         <div className="topbar-actions">
           {page === 'stock' && (
             <button className="btn primary" onClick={() => { setForm(EMPTY_FORM); setEditItem(null); setSaveError(''); setShowAdd(true) }}>+ Add item</button>
           )}
+          <div className="user-pill">
+            <span className="user-email">{session.user.email}</span>
+            <button className="btn sm" onClick={signOut}>Sign out</button>
+          </div>
         </div>
       </div>
 
       <div className="main">
 
-        {/* HOME PAGE */}
+        {/* HOME */}
         {page === 'home' && (
           <div>
             <div className="page-header">
-              <h1 className="page-title">Welcome back, {USERNAME} 👋</h1>
+              <h1 className="page-title">Welcome back, {username} 👋</h1>
               <p className="page-subtitle">Here's how your stock is performing</p>
             </div>
-
             <div className="stats-bar">
-              <div className="stat-card">
-                <div className="stat-label">Items in stock</div>
-                <div className="stat-value amber">{stats.inStock}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Stock value</div>
-                <div className="stat-value">{fmt(stats.stockValue)}</div>
-              </div>
+              <div className="stat-card"><div className="stat-label">Items in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
+              <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
               <div className="stat-card">
                 <div className="stat-label">This month's profit</div>
-                <div className={`stat-value ${stats.monthPL > 0 ? 'pos' : stats.monthPL < 0 ? 'neg' : ''}`}>
-                  {stats.monthPL >= 0 ? '+' : ''}{fmt(stats.monthPL)}
-                </div>
+                <div className={`stat-value ${stats.monthPL > 0 ? 'pos' : stats.monthPL < 0 ? 'neg' : ''}`}>{stats.monthPL >= 0 ? '+' : ''}{fmt(stats.monthPL)}</div>
               </div>
               <div className="stat-card">
                 <div className="stat-label">All-time P&L</div>
-                <div className={`stat-value ${stats.pl > 0 ? 'pos' : stats.pl < 0 ? 'neg' : ''}`}>
-                  {stats.pl >= 0 ? '+' : ''}{fmt(stats.pl)}
-                </div>
+                <div className={`stat-value ${stats.pl > 0 ? 'pos' : stats.pl < 0 ? 'neg' : ''}`}>{stats.pl >= 0 ? '+' : ''}{fmt(stats.pl)}</div>
               </div>
-              <div className="stat-card">
-                <div className="stat-label">Total sold</div>
-                <div className="stat-value">{stats.sold}</div>
-              </div>
+              <div className="stat-card"><div className="stat-label">Total sold</div><div className="stat-value">{stats.sold}</div></div>
             </div>
-
-            {/* P&L Chart */}
             <div className="chart-card">
               <div className="chart-header">
-                <div>
-                  <div className="chart-title">Monthly Profit & Loss</div>
-                  <div className="chart-subtitle">Net profit per month</div>
-                </div>
+                <div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div>
                 <div className="chart-controls">
-                  {[3, 6, 12].map(m => (
-                    <button key={m} className={`chart-btn ${chartMonths === m ? 'active' : ''}`} onClick={() => setChartMonths(m)}>
-                      {m}M
-                    </button>
-                  ))}
+                  {[3, 6, 12].map(m => <button key={m} className={`chart-btn ${chartMonths === m ? 'active' : ''}`} onClick={() => setChartMonths(m)}>{m}M</button>)}
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={280}>
@@ -337,43 +391,18 @@ export default function App() {
           </div>
         )}
 
-        {/* STOCK PAGE */}
+        {/* STOCK */}
         {page === 'stock' && (
           <div>
-            <div className="page-header">
-              <h1 className="page-title">Stock</h1>
-              <p className="page-subtitle">Manage your inventory</p>
-            </div>
-
+            <div className="page-header"><h1 className="page-title">Stock</h1><p className="page-subtitle">Manage your inventory</p></div>
             <div className="stats-bar" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
-              <div className="stat-card">
-                <div className="stat-label">Total items</div>
-                <div className="stat-value">{stats.total}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">In stock</div>
-                <div className="stat-value amber">{stats.inStock}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Stock value</div>
-                <div className="stat-value">{fmt(stats.stockValue)}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Items sold</div>
-                <div className="stat-value">{stats.sold}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Revenue</div>
-                <div className="stat-value">{fmt(stats.revenue)}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Net P&L</div>
-                <div className={`stat-value ${stats.pl > 0 ? 'pos' : stats.pl < 0 ? 'neg' : ''}`}>
-                  {stats.pl >= 0 ? '+' : ''}{fmt(stats.pl)}
-                </div>
-              </div>
+              <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{stats.total}</div></div>
+              <div className="stat-card"><div className="stat-label">In stock</div><div className="stat-value amber">{stats.inStock}</div></div>
+              <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
+              <div className="stat-card"><div className="stat-label">Items sold</div><div className="stat-value">{stats.sold}</div></div>
+              <div className="stat-card"><div className="stat-label">Revenue</div><div className="stat-value">{fmt(stats.revenue)}</div></div>
+              <div className="stat-card"><div className="stat-label">Net P&L</div><div className={`stat-value ${stats.pl > 0 ? 'pos' : stats.pl < 0 ? 'neg' : ''}`}>{stats.pl >= 0 ? '+' : ''}{fmt(stats.pl)}</div></div>
             </div>
-
             <div className="filters">
               <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
               <select className="filter-select" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
@@ -389,15 +418,10 @@ export default function App() {
                 <option value="in_stock">In stock</option>
                 <option value="sold">Sold</option>
               </select>
-              {(search || filterBrand || filterStatus || filterCategory) && (
-                <button className="btn sm" onClick={() => { setSearch(''); setFilterBrand(''); setFilterStatus(''); setFilterCategory('') }}>Clear</button>
-              )}
+              {(search || filterBrand || filterStatus || filterCategory) && <button className="btn sm" onClick={() => { setSearch(''); setFilterBrand(''); setFilterStatus(''); setFilterCategory('') }}>Clear</button>}
               <span style={{ color: 'var(--muted)', fontSize: 12 }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
             </div>
-
-            {loading ? (
-              <div className="loading">Loading stock...</div>
-            ) : filtered.length === 0 ? (
+            {loading ? <div className="loading">Loading stock...</div> : filtered.length === 0 ? (
               <div className="empty">
                 <div className="empty-icon">📦</div>
                 <div className="empty-title">{items.length === 0 ? 'No stock yet' : 'No results'}</div>
@@ -457,27 +481,15 @@ export default function App() {
           </div>
         )}
 
-        {/* METRICS PAGE */}
+        {/* METRICS */}
         {page === 'metrics' && (
           <div>
-            <div className="page-header">
-              <h1 className="page-title">Metrics</h1>
-              <p className="page-subtitle">Deep dive into your performance</p>
-            </div>
-
+            <div className="page-header"><h1 className="page-title">Metrics</h1><p className="page-subtitle">Deep dive into your performance</p></div>
             <div className="metrics-grid">
-              {/* P&L by month */}
               <div className="chart-card full">
                 <div className="chart-header">
-                  <div>
-                    <div className="chart-title">Monthly Profit & Loss</div>
-                    <div className="chart-subtitle">Net profit per month</div>
-                  </div>
-                  <div className="chart-controls">
-                    {[3, 6, 12].map(m => (
-                      <button key={m} className={`chart-btn ${chartMonths === m ? 'active' : ''}`} onClick={() => setChartMonths(m)}>{m}M</button>
-                    ))}
-                  </div>
+                  <div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div>
+                  <div className="chart-controls">{[3, 6, 12].map(m => <button key={m} className={`chart-btn ${chartMonths === m ? 'active' : ''}`} onClick={() => setChartMonths(m)}>{m}M</button>)}</div>
                 </div>
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={plChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -489,15 +501,8 @@ export default function App() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Revenue vs Cost */}
               <div className="chart-card full">
-                <div className="chart-header">
-                  <div>
-                    <div className="chart-title">Revenue vs Cost</div>
-                    <div className="chart-subtitle">Monthly comparison</div>
-                  </div>
-                </div>
+                <div className="chart-header"><div><div className="chart-title">Revenue vs Cost</div><div className="chart-subtitle">Monthly comparison</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={plChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false} />
@@ -510,15 +515,8 @@ export default function App() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Stock by category donut */}
               <div className="chart-card half">
-                <div className="chart-header">
-                  <div>
-                    <div className="chart-title">Stock by Category</div>
-                    <div className="chart-subtitle">All items</div>
-                  </div>
-                </div>
+                <div className="chart-header"><div><div className="chart-title">Stock by Category</div><div className="chart-subtitle">All items</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={3}>
@@ -529,15 +527,8 @@ export default function App() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Sell-through by category */}
               <div className="chart-card half">
-                <div className="chart-header">
-                  <div>
-                    <div className="chart-title">Sell-Through Rate</div>
-                    <div className="chart-subtitle">% sold per category</div>
-                  </div>
-                </div>
+                <div className="chart-header"><div><div className="chart-title">Sell-Through Rate</div><div className="chart-subtitle">% sold per category</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={sellThroughData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false} />
@@ -548,15 +539,8 @@ export default function App() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Top brands by profit */}
               <div className="chart-card half">
-                <div className="chart-header">
-                  <div>
-                    <div className="chart-title">Top Brands by Profit</div>
-                    <div className="chart-subtitle">All-time</div>
-                  </div>
-                </div>
+                <div className="chart-header"><div><div className="chart-title">Top Brands by Profit</div><div className="chart-subtitle">All-time</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={brandData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false} />
@@ -567,15 +551,8 @@ export default function App() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Avg profit per sale */}
               <div className="chart-card half">
-                <div className="chart-header">
-                  <div>
-                    <div className="chart-title">Avg Profit per Sale</div>
-                    <div className="chart-subtitle">Last 6 months</div>
-                  </div>
-                </div>
+                <div className="chart-header"><div><div className="chart-title">Avg Profit per Sale</div><div className="chart-subtitle">Last 6 months</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
                   <LineChart data={avgPLData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false} />
@@ -586,25 +563,15 @@ export default function App() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Best & Worst performers */}
               <div className="chart-card full">
-                <div className="chart-header">
-                  <div>
-                    <div className="chart-title">Best & Worst Performers</div>
-                    <div className="chart-subtitle">Top and bottom 5 sold items by profit</div>
-                  </div>
-                </div>
+                <div className="chart-header"><div><div className="chart-title">Best & Worst Performers</div><div className="chart-subtitle">Top and bottom 5 sold items by profit</div></div></div>
                 <div className="two-col">
                   <div>
                     <div className="perf-label green">🏆 Best performers</div>
                     {bestWorst.best.length === 0 ? <div className="td-muted" style={{fontSize:13}}>No sold items yet</div> : bestWorst.best.map((item, i) => (
                       <div key={item.id} className="perf-row">
                         <div className="perf-rank">{i + 1}</div>
-                        <div className="perf-info">
-                          <div className="perf-name">{item.brand} {item.style}</div>
-                          <div className="perf-sub">{item.colourway} {item.size ? `· UK ${item.size}` : ''}</div>
-                        </div>
+                        <div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size ? ` · UK ${item.size}` : ''}</div></div>
                         <div className="perf-pl pos">+{fmt(item.pl)}</div>
                       </div>
                     ))}
@@ -614,10 +581,7 @@ export default function App() {
                     {bestWorst.worst.length === 0 ? <div className="td-muted" style={{fontSize:13}}>No sold items yet</div> : bestWorst.worst.map((item, i) => (
                       <div key={item.id} className="perf-row">
                         <div className="perf-rank">{i + 1}</div>
-                        <div className="perf-info">
-                          <div className="perf-name">{item.brand} {item.style}</div>
-                          <div className="perf-sub">{item.colourway} {item.size ? `· UK ${item.size}` : ''}</div>
-                        </div>
+                        <div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size ? ` · UK ${item.size}` : ''}</div></div>
                         <div className={`perf-pl ${item.pl >= 0 ? 'pos' : 'neg'}`}>{item.pl >= 0 ? '+' : ''}{fmt(item.pl)}</div>
                       </div>
                     ))}
