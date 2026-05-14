@@ -849,7 +849,10 @@ tbody td {
   gap: 8px;
   padding: 10px 16px;
   border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+}
+
+.item-card-stat {
+  text-align: center;
 }
 
 .item-card-stat-label {
