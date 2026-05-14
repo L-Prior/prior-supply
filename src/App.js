@@ -436,7 +436,7 @@ export default function App() {
                           </div>
                         </div>
                         <div className="item-card-stat">
-                          <div className="item-card-stat-label">Total cost</div>
+                          <div className="item-card-stat-label">Cost</div>
                           <div className="item-card-stat-value">{fmt(totalCost)}</div>
                           {!isSingle && inStockUnits.length>0 && <div className="item-card-stat-avg">avg {fmt(avgCost)}</div>}
                         </div>
@@ -448,7 +448,7 @@ export default function App() {
                         </div>
                         <div className="item-card-stat">
                           <div className="item-card-stat-label">Sold</div>
-                          <div className="item-card-stat-value">{soldUnits.length}/{batch.units.length}</div>
+                          <div className="item-card-stat-value">{batch.units.length > 1 ? `${soldUnits.length}/${batch.units.length}` : (soldUnits.length ? '✓' : '—')}</div>
                         </div>
                       </div>
 
