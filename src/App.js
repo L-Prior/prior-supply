@@ -474,6 +474,7 @@ export default function App() {
                             ) : <span className="td-muted">—</span>}
                           </td>
                           <td>
+                            <div style={{ display: 'flex', gap: 5 }}>
                               {item.status === 'in_stock' && <button className="btn sm success" onClick={() => { setSellItem(item); setSalePrice(''); setSellingPlatform('') }}>Sell</button>}
                               <button className="btn sm" onClick={() => openEdit(item)}>Edit</button>
                               <button className="btn sm danger" onClick={() => deleteItem(item.id)}>Del</button>
