@@ -418,21 +418,13 @@ export default function App() {
                   const isSingle = batch.units.length===1
 
                   return (
-                    <div key={batch.key} className="item-card" onClick={!isSingle ? ()=>setBatchModal(batch) : undefined} style={!isSingle?{cursor:'pointer'}:{}}>
+                    <div key={batch.key} className="item-card" onClick={()=>setBatchModal(batch)} style={{cursor:'pointer'}}>
                       <div className="item-card-header">
                         <div className="item-card-category">{batch.category||'Uncategorised'}</div>
                         <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
                       </div>
                       <div className="item-card-body">
-                        <div className="item-card-brand">
-                          {batch.brand||'—'}
-                          {batch.notes && (
-                            <span className="note-icon" style={{marginLeft:6,fontSize:13}}>
-                              📝
-                              <span className="tooltip">{batch.notes}</span>
-                            </span>
-                          )}
-                        </div>
+                        <div className="item-card-brand">{batch.brand||'—'}</div>
                         <div className="item-card-style">{[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
                       </div>
 
@@ -458,12 +450,6 @@ export default function App() {
                           <div className="item-card-stat-label">Sold</div>
                           <div className="item-card-stat-value">{batch.units.length > 1 ? `${soldUnits.length}/${batch.units.length}` : (soldUnits.length ? '✓' : '—')}</div>
                         </div>
-                      </div>
-
-                      <div className="item-card-meta">
-                        {batch.sku&&<span className="item-card-meta-tag">SKU: {batch.sku}</span>}
-                        {batch.purchase_date&&<span className="item-card-meta-tag">Bought: {batch.purchase_date}</span>}
-                        {batch.purchase_platform&&<span className="item-card-meta-tag">From: {batch.purchase_platform}</span>}
                       </div>
 
                       <div className="item-card-actions" onClick={e=>e.stopPropagation()}>
@@ -665,12 +651,26 @@ export default function App() {
         </div>
       )}
 
-      {/* Batch Modal */}
+      {/* Batch / Detail Modal */}
       {batchModal && (
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setBatchModal(null)}>
-          <div className="modal" style={{maxWidth:560}}>
+          <div className="modal" style={{maxWidth:580}}>
             <div className="modal-title">{batchModal.brand} {batchModal.style}</div>
             {batchModal.colourway && <div style={{fontSize:13,color:'var(--muted)',marginTop:-12,marginBottom:16}}>{batchModal.colourway}</div>}
+
+            {/* Detail info */}
+            <div className="detail-tags">
+              {batchModal.category && <span className="detail-tag"><span className="detail-tag-label">Category</span>{batchModal.category}</span>}
+              {batchModal.sku && <span className="detail-tag"><span className="detail-tag-label">SKU</span>{batchModal.sku}</span>}
+              {batchModal.purchase_date && <span className="detail-tag"><span className="detail-tag-label">Purchased</span>{batchModal.purchase_date}</span>}
+              {batchModal.purchase_platform && <span className="detail-tag"><span className="detail-tag-label">From</span>{batchModal.purchase_platform}</span>}
+            </div>
+            {batchModal.notes && (
+              <div className="detail-notes">📝 {batchModal.notes}</div>
+            )}
+
+            {/* Units */}
+            <div className="detail-units-title">Units</div>
             <div className="batch-units">
               {batchModal.units.map(unit=>{
                 const pl = unit.status==='sold'&&unit.sale_price!=null ? unit.sale_price-(unit.purchase_price||0) : null
@@ -683,7 +683,7 @@ export default function App() {
                     <div className="batch-unit-right">
                       {unit.status==='sold' ? (
                         <div className="batch-unit-sold">
-                          <span className="badge sold">Sold</span>
+                          <span className="badge sold">Sold {unit.selling_platform ? `via ${unit.selling_platform}` : ''}</span>
                           <span className={`batch-unit-pl ${plColor(pl)}`}>{pl!=null?(pl>=0?'+':'')+fmt(pl):'—'}</span>
                         </div>
                       ) : (
@@ -699,6 +699,9 @@ export default function App() {
               })}
             </div>
             <div className="form-actions" style={{marginTop:16}}>
+              {batchModal.units.every(u=>u.status==='sold') || batchModal.units.length > 1 ? null : (
+                <button className="btn danger" onClick={()=>deleteBatch(batchModal.key)}>Delete all</button>
+              )}
               <button className="btn" onClick={()=>setBatchModal(null)}>Close</button>
             </div>
           </div>
