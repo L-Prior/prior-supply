@@ -7,13 +7,14 @@ import {
 import './index.css'
 
 const CATEGORIES = ['Sneakers', 'Pokémon', 'Lego', 'Clothing', 'Accessories', 'Electronics', 'Miscellaneous']
-
-const EMPTY_FORM = {
-  category: '', brand: '', style: '', colourway: '', sku: '', size: '',
-  purchase_platform: '', purchase_price: '', purchase_date: '', notes: ''
-}
-
 const COLORS = ['#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0','#f59e0b','#3b82f6']
+
+const EMPTY_UNIT = { size: '', purchase_price: '' }
+const EMPTY_FORM = {
+  category: '', brand: '', style: '', colourway: '', sku: '',
+  purchase_platform: '', purchase_date: '', notes: '',
+  units: [{ ...EMPTY_UNIT }]
+}
 
 function fmt(n) {
   if (n == null || n === '') return '—'
@@ -51,10 +52,9 @@ function getLast(n) {
   return months
 }
 
-// ─── Auth Pages ───────────────────────────────────────────────────────────────
-
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 function AuthPage({ onAuth }) {
-  const [mode, setMode] = useState('login') // 'login' | 'signup'
+  const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -65,12 +65,8 @@ function AuthPage({ onAuth }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setError(''); setSuccess('')
-    if (mode === 'signup' && password !== confirm) {
-      setError('Passwords do not match'); return
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters'); return
-    }
+    if (mode === 'signup' && password !== confirm) { setError('Passwords do not match'); return }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return }
     setLoading(true)
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -79,7 +75,7 @@ function AuthPage({ onAuth }) {
     } else {
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) setError(error.message)
-      else setSuccess('Account created! Check your email to confirm your account, then log in.')
+      else setSuccess('Account created! Check your email to confirm, then log in.')
     }
     setLoading(false)
   }
@@ -87,10 +83,7 @@ function AuthPage({ onAuth }) {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="auth-brand">
-          <span className="brand-mark" />
-          StockTrack
-        </div>
+        <div className="auth-brand"><span className="brand-mark" />StockTrack</div>
         <h2 className="auth-title">{mode === 'login' ? 'Sign in to your account' : 'Create your account'}</h2>
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
@@ -114,11 +107,10 @@ function AuthPage({ onAuth }) {
           </button>
         </form>
         <div className="auth-switch">
-          {mode === 'login' ? (
-            <>Don't have an account? <button className="auth-link" onClick={() => { setMode('signup'); setError(''); setSuccess('') }}>Sign up</button></>
-          ) : (
-            <>Already have an account? <button className="auth-link" onClick={() => { setMode('login'); setError(''); setSuccess('') }}>Sign in</button></>
-          )}
+          {mode === 'login'
+            ? <>Don't have an account? <button className="auth-link" onClick={() => { setMode('signup'); setError(''); setSuccess('') }}>Sign up</button></>
+            : <>Already have an account? <button className="auth-link" onClick={() => { setMode('login'); setError(''); setSuccess('') }}>Sign in</button></>
+          }
         </div>
       </div>
     </div>
@@ -126,7 +118,6 @@ function AuthPage({ onAuth }) {
 }
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
-
 export default function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -135,6 +126,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editItem, setEditItem] = useState(null)
+  const [batchModal, setBatchModal] = useState(null)
   const [sellItem, setSellItem] = useState(null)
   const [salePrice, setSalePrice] = useState('')
   const [sellingPlatform, setSellingPlatform] = useState('')
@@ -143,60 +135,79 @@ export default function App() {
   const [filterBrand, setFilterBrand] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
-  const [sortCol, setSortCol] = useState('created_at')
-  const [sortDir, setSortDir] = useState('desc')
+  const [sortBy, setSortBy] = useState('created_at')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [chartMonths, setChartMonths] = useState(6)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setAuthLoading(false)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
+    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setAuthLoading(false) })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
 
-  useEffect(() => {
-    if (session) fetchItems()
-  }, [session])
+  useEffect(() => { if (session) fetchItems() }, [session])
 
   async function fetchItems() {
     setLoading(true)
     const { data, error } = await supabase.from('stock').select('*').order('created_at', { ascending: false })
-    if (error) console.error('Fetch error:', error)
+    if (error) console.error(error)
     setItems(data || [])
     setLoading(false)
   }
 
-  async function signOut() {
-    await supabase.auth.signOut()
-    setItems([])
-    setPage('home')
+  async function signOut() { await supabase.auth.signOut(); setItems([]); setPage('home') }
+
+  function updateUnit(i, field, value) {
+    setForm(f => { const units = [...f.units]; units[i] = { ...units[i], [field]: value }; return { ...f, units } })
   }
+  function addUnit() { setForm(f => ({ ...f, units: [...f.units, { ...EMPTY_UNIT }] })) }
+  function removeUnit(i) { setForm(f => ({ ...f, units: f.units.filter((_, idx) => idx !== i) })) }
 
   async function saveItem() {
-    if (!form.brand || !form.purchase_price) return
+    if (!form.brand || !form.purchase_price && form.units.some(u => !u.purchase_price)) return
     setSaving(true); setSaveError('')
-    const payload = { ...form, purchase_price: parseFloat(form.purchase_price) || 0, purchase_date: form.purchase_date || null, user_id: session.user.id }
+    const batchId = editItem?.batch_id || crypto.randomUUID()
+    const base = {
+      category: form.category, brand: form.brand, style: form.style,
+      colourway: form.colourway, sku: form.sku, purchase_platform: form.purchase_platform,
+      purchase_date: form.purchase_date || null, notes: form.notes,
+      batch_id: batchId, user_id: session.user.id, status: 'in_stock'
+    }
     let error
     if (editItem) {
-      ({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
+      // Single item edit
+      const payload = { ...base, purchase_price: parseFloat(form.units[0]?.purchase_price) || 0, size: form.units[0]?.size || '' }
+      ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
     } else {
-      ({ error } = await supabase.from('stock').insert([{ ...payload, status: 'in_stock' }]))
+      const rows = form.units.map(u => ({ ...base, size: u.size, purchase_price: parseFloat(u.purchase_price) || 0 }))
+      ;({ error } = await supabase.from('stock').insert(rows))
     }
     setSaving(false)
     if (error) { setSaveError(error.message); return }
     setShowAdd(false); setEditItem(null); setForm(EMPTY_FORM); fetchItems()
   }
 
+  function openEdit(item) {
+    setForm({
+      category: item.category || '', brand: item.brand || '', style: item.style || '',
+      colourway: item.colourway || '', sku: item.sku || '',
+      purchase_platform: item.purchase_platform || '', purchase_date: item.purchase_date || '',
+      notes: item.notes || '', units: [{ size: item.size || '', purchase_price: item.purchase_price || '' }]
+    })
+    setEditItem(item); setShowAdd(true)
+  }
+
   async function deleteItem(id) {
     if (!window.confirm('Delete this item?')) return
     await supabase.from('stock').delete().eq('id', id)
-    fetchItems()
+    fetchItems(); if (batchModal) setBatchModal(prev => ({ ...prev, units: prev.units.filter(u => u.id !== id) }))
+  }
+
+  async function deleteBatch(batchId) {
+    if (!window.confirm('Delete all units in this batch?')) return
+    await supabase.from('stock').delete().eq('batch_id', batchId)
+    fetchItems(); setBatchModal(null)
   }
 
   async function markSold() {
@@ -206,27 +217,40 @@ export default function App() {
       status: 'sold', sale_price: parseFloat(salePrice),
       selling_platform: sellingPlatform, sold_at: new Date().toISOString()
     }).eq('id', sellItem.id)
-    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); fetchItems()
+    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform('')
+    fetchItems()
+    if (batchModal) {
+      const updated = batchModal.units.map(u => u.id === sellItem.id ? { ...u, status: 'sold', sale_price: parseFloat(salePrice), selling_platform: sellingPlatform } : u)
+      setBatchModal({ ...batchModal, units: updated })
+    }
   }
 
-  function openEdit(item) {
-    setForm({
-      category: item.category || '', brand: item.brand || '', style: item.style || '',
-      colourway: item.colourway || '', sku: item.sku || '', size: item.size || '',
-      purchase_platform: item.purchase_platform || '', purchase_price: item.purchase_price || '',
-      purchase_date: item.purchase_date || '', notes: item.notes || ''
+  // Group items into batches
+  const batches = useMemo(() => {
+    const map = {}
+    items.forEach(item => {
+      const key = item.batch_id || item.id
+      if (!map[key]) map[key] = { key, units: [], brand: item.brand, style: item.style, colourway: item.colourway, category: item.category, sku: item.sku, purchase_platform: item.purchase_platform, purchase_date: item.purchase_date, notes: item.notes, created_at: item.created_at }
+      map[key].units.push(item)
     })
-    setEditItem(item); setShowAdd(true)
-  }
+    return Object.values(map).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }, [items])
 
-  function handleSort(col) {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortCol(col); setSortDir('asc') }
-  }
-  function sortArrow(col) {
-    if (sortCol !== col) return ' ↕'
-    return sortDir === 'asc' ? ' ↑' : ' ↓'
-  }
+  const filteredBatches = useMemo(() => {
+    return batches.filter(b => {
+      const q = search.toLowerCase()
+      if (search && ![(b.brand||''),(b.style||''),(b.colourway||''),(b.sku||'')].some(v => v.toLowerCase().includes(q))) return false
+      if (filterBrand && b.brand !== filterBrand) return false
+      if (filterCategory && b.category !== filterCategory) return false
+      if (filterStatus) {
+        const inStock = b.units.some(u => u.status === 'in_stock')
+        const allSold = b.units.every(u => u.status === 'sold')
+        if (filterStatus === 'in_stock' && !inStock) return false
+        if (filterStatus === 'sold' && !allSold) return false
+      }
+      return true
+    })
+  }, [batches, search, filterBrand, filterCategory, filterStatus])
 
   const stats = useMemo(() => {
     const inStock = items.filter(i => i.status === 'in_stock')
@@ -242,85 +266,46 @@ export default function App() {
     return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl, monthPL }
   }, [items])
 
-  const plChartData = useMemo(() => {
-    return getLast(chartMonths).map(({ key, label }) => {
-      const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
-      const pl = sold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0)), 0)
-      const revenue = sold.reduce((s, i) => s + (i.sale_price || 0), 0)
-      const cost = sold.reduce((s, i) => s + (i.purchase_price || 0), 0)
-      return { label, pl: parseFloat(pl.toFixed(2)), revenue: parseFloat(revenue.toFixed(2)), cost: parseFloat(cost.toFixed(2)) }
-    })
-  }, [items, chartMonths])
+  const plChartData = useMemo(() => getLast(chartMonths).map(({ key, label }) => {
+    const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
+    return {
+      label,
+      pl: parseFloat(sold.reduce((s, i) => s + ((i.sale_price||0)-(i.purchase_price||0)), 0).toFixed(2)),
+      revenue: parseFloat(sold.reduce((s, i) => s + (i.sale_price||0), 0).toFixed(2)),
+      cost: parseFloat(sold.reduce((s, i) => s + (i.purchase_price||0), 0).toFixed(2))
+    }
+  }), [items, chartMonths])
 
   const categoryData = useMemo(() => {
     const map = {}
-    items.forEach(i => { const cat = i.category || 'Other'; if (!map[cat]) map[cat] = 0; map[cat]++ })
-    return Object.entries(map).map(([name, value]) => ({ name, value }))
+    items.forEach(i => { const cat = i.category||'Other'; if(!map[cat]) map[cat]=0; map[cat]++ })
+    return Object.entries(map).map(([name,value])=>({name,value}))
   }, [items])
 
   const brandData = useMemo(() => {
     const map = {}
-    items.filter(i => i.status === 'sold').forEach(i => {
-      const b = i.brand || 'Unknown'
-      if (!map[b]) map[b] = 0
-      map[b] += (i.sale_price || 0) - (i.purchase_price || 0)
-    })
-    return Object.entries(map).map(([brand, pl]) => ({ brand, pl: parseFloat(pl.toFixed(2)) })).sort((a, b) => b.pl - a.pl).slice(0, 8)
+    items.filter(i=>i.status==='sold').forEach(i => { const b=i.brand||'Unknown'; if(!map[b])map[b]=0; map[b]+=(i.sale_price||0)-(i.purchase_price||0) })
+    return Object.entries(map).map(([brand,pl])=>({brand,pl:parseFloat(pl.toFixed(2))})).sort((a,b)=>b.pl-a.pl).slice(0,8)
   }, [items])
 
-  const avgPLData = useMemo(() => {
-    return getLast(6).map(({ key, label }) => {
-      const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
-      const avg = sold.length ? sold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0)), 0) / sold.length : 0
-      return { label, avg: parseFloat(avg.toFixed(2)) }
-    })
-  }, [items])
+  const avgPLData = useMemo(() => getLast(6).map(({ key, label }) => {
+    const sold = items.filter(i=>i.status==='sold'&&getMonthKey(i.sold_at)===key)
+    const avg = sold.length ? sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)),0)/sold.length : 0
+    return { label, avg: parseFloat(avg.toFixed(2)) }
+  }), [items])
 
   const sellThroughData = useMemo(() => {
     const map = {}
-    items.forEach(i => {
-      const cat = i.category || 'Other'
-      if (!map[cat]) map[cat] = { total: 0, sold: 0 }
-      map[cat].total++
-      if (i.status === 'sold') map[cat].sold++
-    })
-    return Object.entries(map).map(([cat, { total, sold }]) => ({ cat, rate: parseFloat(((sold / total) * 100).toFixed(1)) }))
+    items.forEach(i => { const cat=i.category||'Other'; if(!map[cat])map[cat]={total:0,sold:0}; map[cat].total++; if(i.status==='sold')map[cat].sold++ })
+    return Object.entries(map).map(([cat,{total,sold}])=>({cat,rate:parseFloat(((sold/total)*100).toFixed(1))}))
   }, [items])
 
   const bestWorst = useMemo(() => {
-    const sold = items.filter(i => i.status === 'sold' && i.sale_price != null)
-      .map(i => ({ ...i, pl: (i.sale_price || 0) - (i.purchase_price || 0) }))
-      .sort((a, b) => b.pl - a.pl)
-    return { best: sold.slice(0, 5), worst: sold.slice(-5).reverse() }
+    const sold = items.filter(i=>i.status==='sold'&&i.sale_price!=null).map(i=>({...i,pl:(i.sale_price||0)-(i.purchase_price||0)})).sort((a,b)=>b.pl-a.pl)
+    return { best: sold.slice(0,5), worst: sold.slice(-5).reverse() }
   }, [items])
 
-  const filtered = useMemo(() => {
-    let res = [...items]
-    if (search) {
-      const q = search.toLowerCase()
-      res = res.filter(i =>
-        (i.brand||'').toLowerCase().includes(q) ||
-        (i.style||'').toLowerCase().includes(q) ||
-        (i.colourway||'').toLowerCase().includes(q) ||
-        (i.sku||'').toLowerCase().includes(q)
-      )
-    }
-    if (filterBrand) res = res.filter(i => i.brand === filterBrand)
-    if (filterStatus) res = res.filter(i => i.status === filterStatus)
-    if (filterCategory) res = res.filter(i => i.category === filterCategory)
-    res.sort((a, b) => {
-      let va = a[sortCol], vb = b[sortCol]
-      if (va == null) va = ''; if (vb == null) vb = ''
-      if (typeof va === 'string') va = va.toLowerCase()
-      if (typeof vb === 'string') vb = vb.toLowerCase()
-      if (va < vb) return sortDir === 'asc' ? -1 : 1
-      if (va > vb) return sortDir === 'asc' ? 1 : -1
-      return 0
-    })
-    return res
-  }, [items, search, filterBrand, filterStatus, filterCategory, sortCol, sortDir])
-
-  const plSell = sellItem ? (parseFloat(salePrice) || 0) - (sellItem.purchase_price || 0) : 0
+  const plSell = sellItem ? (parseFloat(salePrice)||0)-(sellItem.purchase_price||0) : 0
   const username = session?.user?.email?.split('@')[0] || 'there'
 
   if (authLoading) return <div className="auth-loading">Loading...</div>
@@ -329,19 +314,14 @@ export default function App() {
   return (
     <div className="app">
       <div className="topbar">
-        <div className="topbar-brand">
-          <span className="brand-mark" />
-          StockTrack
-        </div>
+        <div className="topbar-brand"><span className="brand-mark" />StockTrack</div>
         <nav className="topbar-nav">
-          {[{ id: 'home', label: 'Home' }, { id: 'stock', label: 'Stock' }, { id: 'metrics', label: 'Metrics' }].map(n => (
-            <button key={n.id} className={`nav-btn ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}>{n.label}</button>
+          {[{id:'home',label:'Home'},{id:'stock',label:'Stock'},{id:'metrics',label:'Metrics'}].map(n=>(
+            <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>{n.label}</button>
           ))}
         </nav>
         <div className="topbar-actions">
-          {page === 'stock' && (
-            <button className="btn primary" onClick={() => { setForm(EMPTY_FORM); setEditItem(null); setSaveError(''); setShowAdd(true) }}>+ Add item</button>
-          )}
+          {page==='stock' && <button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>}
           <div className="user-pill">
             <span className="user-email">{session.user.email}</span>
             <button className="btn sm" onClick={signOut}>Sign out</button>
@@ -352,39 +332,37 @@ export default function App() {
       <div className="main">
 
         {/* HOME */}
-        {page === 'home' && (
+        {page==='home' && (
           <div>
             <div className="page-header">
               <h1 className="page-title">Welcome back, {username} 👋</h1>
               <p className="page-subtitle">Here's how your stock is performing</p>
             </div>
             <div className="stats-bar">
-              <div className="stat-card"><div className="stat-label">Items in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
+              <div className="stat-card"><div className="stat-label">Units in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
               <div className="stat-card">
                 <div className="stat-label">This month's profit</div>
-                <div className={`stat-value ${stats.monthPL > 0 ? 'pos' : stats.monthPL < 0 ? 'neg' : ''}`}>{stats.monthPL >= 0 ? '+' : ''}{fmt(stats.monthPL)}</div>
+                <div className={`stat-value ${stats.monthPL>0?'pos':stats.monthPL<0?'neg':''}`}>{stats.monthPL>=0?'+':''}{fmt(stats.monthPL)}</div>
               </div>
               <div className="stat-card">
                 <div className="stat-label">All-time P&L</div>
-                <div className={`stat-value ${stats.pl > 0 ? 'pos' : stats.pl < 0 ? 'neg' : ''}`}>{stats.pl >= 0 ? '+' : ''}{fmt(stats.pl)}</div>
+                <div className={`stat-value ${stats.pl>0?'pos':stats.pl<0?'neg':''}`}>{stats.pl>=0?'+':''}{fmt(stats.pl)}</div>
               </div>
               <div className="stat-card"><div className="stat-label">Total sold</div><div className="stat-value">{stats.sold}</div></div>
             </div>
             <div className="chart-card">
               <div className="chart-header">
                 <div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div>
-                <div className="chart-controls">
-                  {[3, 6, 12].map(m => <button key={m} className={`chart-btn ${chartMonths === m ? 'active' : ''}`} onClick={() => setChartMonths(m)}>{m}M</button>)}
-                </div>
+                <div className="chart-controls">{[3,6,12].map(m=><button key={m} className={`chart-btn ${chartMonths===m?'active':''}`} onClick={()=>setChartMonths(m)}>{m}M</button>)}</div>
               </div>
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={plChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={fmtShort} tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ borderRadius: 8, border: '1px solid #e3e8ef', boxShadow: '0 4px 6px rgba(0,0,0,0.07)' }} />
-                  <Bar dataKey="pl" name="P&L" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                <BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/>
+                  <XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                  <YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                  <Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef',boxShadow:'0 4px 6px rgba(0,0,0,0.07)'}}/>
+                  <Bar dataKey="pl" name="P&L" fill="#16a34a" radius={[4,4,0,0]}/>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -392,90 +370,109 @@ export default function App() {
         )}
 
         {/* STOCK */}
-        {page === 'stock' && (
+        {page==='stock' && (
           <div>
             <div className="page-header"><h1 className="page-title">Stock</h1><p className="page-subtitle">Manage your inventory</p></div>
-            <div className="stats-bar" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
-              <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{stats.total}</div></div>
+            <div className="stats-bar" style={{gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))'}}>
+              <div className="stat-card"><div className="stat-label">Total units</div><div className="stat-value">{stats.total}</div></div>
               <div className="stat-card"><div className="stat-label">In stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
-              <div className="stat-card"><div className="stat-label">Items sold</div><div className="stat-value">{stats.sold}</div></div>
+              <div className="stat-card"><div className="stat-label">Units sold</div><div className="stat-value">{stats.sold}</div></div>
               <div className="stat-card"><div className="stat-label">Revenue</div><div className="stat-value">{fmt(stats.revenue)}</div></div>
-              <div className="stat-card"><div className="stat-label">Net P&L</div><div className={`stat-value ${stats.pl > 0 ? 'pos' : stats.pl < 0 ? 'neg' : ''}`}>{stats.pl >= 0 ? '+' : ''}{fmt(stats.pl)}</div></div>
+              <div className="stat-card"><div className="stat-label">Net P&L</div><div className={`stat-value ${stats.pl>0?'pos':stats.pl<0?'neg':''}`}>{stats.pl>=0?'+':''}{fmt(stats.pl)}</div></div>
             </div>
             <div className="filters">
-              <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
-              <select className="filter-select" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+              <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180}}/>
+              <select className="filter-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}>
                 <option value="">All categories</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
-              <select className="filter-select" value={filterBrand} onChange={e => setFilterBrand(e.target.value)}>
+              <select className="filter-select" value={filterBrand} onChange={e=>setFilterBrand(e.target.value)}>
                 <option value="">All brands</option>
-                {[...new Set(items.map(i => i.brand).filter(Boolean))].sort().map(b => <option key={b} value={b}>{b}</option>)}
+                {[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=><option key={b} value={b}>{b}</option>)}
               </select>
-              <select className="filter-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
                 <option value="">All statuses</option>
                 <option value="in_stock">In stock</option>
                 <option value="sold">Sold</option>
               </select>
-              {(search || filterBrand || filterStatus || filterCategory) && <button className="btn sm" onClick={() => { setSearch(''); setFilterBrand(''); setFilterStatus(''); setFilterCategory('') }}>Clear</button>}
-              <span style={{ color: 'var(--muted)', fontSize: 12 }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
+              {(search||filterBrand||filterStatus||filterCategory)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('')}}>Clear</button>}
+              <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
             </div>
-            {loading ? <div className="loading">Loading stock...</div> : filtered.length === 0 ? (
+
+            {loading ? <div className="loading">Loading stock...</div> : filteredBatches.length===0 ? (
               <div className="empty">
                 <div className="empty-icon">📦</div>
-                <div className="empty-title">{items.length === 0 ? 'No stock yet' : 'No results'}</div>
-                <div style={{ marginTop: 6 }}>{items.length === 0 ? 'Add your first item to get started' : 'Try adjusting your filters'}</div>
+                <div className="empty-title">{items.length===0?'No stock yet':'No results'}</div>
+                <div style={{marginTop:6}}>{items.length===0?'Add your first item to get started':'Try adjusting your filters'}</div>
               </div>
             ) : (
               <div className="card-grid">
-                {filtered.map(item => {
-                  const pl = item.status === 'sold' && item.sale_price != null ? item.sale_price - (item.purchase_price || 0) : null
+                {filteredBatches.map(batch => {
+                  const inStockUnits = batch.units.filter(u=>u.status==='in_stock')
+                  const soldUnits = batch.units.filter(u=>u.status==='sold')
+                  const totalCost = inStockUnits.reduce((s,u)=>s+(u.purchase_price||0),0)
+                  const avgCost = inStockUnits.length ? totalCost/inStockUnits.length : 0
+                  const totalPL = soldUnits.reduce((s,u)=>s+((u.sale_price||0)-(u.purchase_price||0)),0)
+                  const allSold = inStockUnits.length===0
+                  const isSingle = batch.units.length===1
+
                   return (
-                    <div key={item.id} className="item-card">
+                    <div key={batch.key} className="item-card" onClick={!isSingle ? ()=>setBatchModal(batch) : undefined} style={!isSingle?{cursor:'pointer'}:{}}>
                       <div className="item-card-header">
                         <div className="item-card-info">
-                          <div className="item-card-category">{item.category || 'Uncategorised'}</div>
-                          <div className="item-card-brand">{item.brand || '—'}</div>
-                          <div className="item-card-style">{[item.style, item.colourway].filter(Boolean).join(' — ') || '—'}</div>
+                          <div className="item-card-category">{batch.category||'Uncategorised'}</div>
+                          <div className="item-card-brand">{batch.brand||'—'}</div>
+                          <div className="item-card-style">{[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
                         </div>
-                        <span className={`badge ${item.status}`}>{item.status === 'in_stock' ? 'In stock' : 'Sold'}</span>
+                        <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
                       </div>
+
                       <div className="item-card-stats">
                         <div className="item-card-stat">
                           <div className="item-card-stat-label">Size</div>
-                          <div className="item-card-stat-value">{item.size ? `UK ${item.size}` : '—'}</div>
+                          <div className="item-card-stat-value">
+                            {isSingle ? (batch.units[0].size ? `UK ${batch.units[0].size}` : '—') : `${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`}
+                          </div>
                         </div>
                         <div className="item-card-stat">
-                          <div className="item-card-stat-label">Cost</div>
-                          <div className="item-card-stat-value">{fmt(item.purchase_price)}</div>
-                        </div>
-                        <div className="item-card-stat">
-                          <div className="item-card-stat-label">Sale</div>
-                          <div className="item-card-stat-value">{item.sale_price ? fmt(item.sale_price) : '—'}</div>
+                          <div className="item-card-stat-label">Total cost</div>
+                          <div className="item-card-stat-value">{fmt(totalCost)}</div>
+                          {!isSingle && inStockUnits.length>0 && <div className="item-card-stat-avg">avg {fmt(avgCost)}</div>}
                         </div>
                         <div className="item-card-stat">
                           <div className="item-card-stat-label">P&L</div>
-                          <div className={`item-card-stat-value ${plColor(pl)}`}>{pl != null ? (pl >= 0 ? '+' : '') + fmt(pl) : '—'}</div>
+                          <div className={`item-card-stat-value ${plColor(soldUnits.length?totalPL:null)}`}>
+                            {soldUnits.length ? (totalPL>=0?'+':'')+fmt(totalPL) : '—'}
+                          </div>
+                        </div>
+                        <div className="item-card-stat">
+                          <div className="item-card-stat-label">Sold</div>
+                          <div className="item-card-stat-value">{soldUnits.length}/{batch.units.length}</div>
                         </div>
                       </div>
-                      {(item.sku || item.purchase_date || item.purchase_platform || item.selling_platform || item.notes) && (
+
+                      {(batch.sku||batch.purchase_date||batch.purchase_platform||batch.notes) && (
                         <div className="item-card-meta">
-                          {item.sku && <span className="item-card-meta-tag">SKU: {item.sku}</span>}
-                          {item.purchase_date && <span className="item-card-meta-tag">Bought: {item.purchase_date}</span>}
-                          {item.purchase_platform && <span className="item-card-meta-tag">From: {item.purchase_platform}</span>}
-                          {item.selling_platform && <span className="item-card-meta-tag">Sold via: {item.selling_platform}</span>}
-                          {item.notes && (
-                            <span className="note-icon item-card-meta-tag">
-                              📝 {item.notes.length > 30 ? item.notes.slice(0, 30) + '...' : item.notes}
-                            </span>
-                          )}
+                          {batch.sku&&<span className="item-card-meta-tag">SKU: {batch.sku}</span>}
+                          {batch.purchase_date&&<span className="item-card-meta-tag">Bought: {batch.purchase_date}</span>}
+                          {batch.purchase_platform&&<span className="item-card-meta-tag">From: {batch.purchase_platform}</span>}
+                          {batch.notes&&<span className="item-card-meta-tag">📝 {batch.notes.length>30?batch.notes.slice(0,30)+'...':batch.notes}</span>}
                         </div>
                       )}
-                      <div className="item-card-actions">
-                        {item.status === 'in_stock' && <button className="btn sm success" onClick={() => { setSellItem(item); setSalePrice(''); setSellingPlatform('') }}>Sell</button>}
-                        <button className="btn sm" onClick={() => openEdit(item)}>Edit</button>
-                        <button className="btn sm danger" onClick={() => deleteItem(item.id)}>Del</button>
+
+                      <div className="item-card-actions" onClick={e=>e.stopPropagation()}>
+                        {isSingle && batch.units[0].status==='in_stock' && (
+                          <button className="btn sm success" style={{flex:1}} onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>
+                        )}
+                        {!isSingle && !allSold && (
+                          <button className="btn sm success" style={{flex:1}} onClick={()=>setBatchModal(batch)}>View units</button>
+                        )}
+                        {isSingle && <button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
+                        {isSingle
+                          ? <button className="btn sm danger" onClick={()=>deleteItem(batch.units[0].id)}>Del</button>
+                          : <button className="btn sm danger" onClick={()=>deleteBatch(batch.key)}>Del all</button>
+                        }
                       </div>
                     </div>
                   )
@@ -486,36 +483,36 @@ export default function App() {
         )}
 
         {/* METRICS */}
-        {page === 'metrics' && (
+        {page==='metrics' && (
           <div>
             <div className="page-header"><h1 className="page-title">Metrics</h1><p className="page-subtitle">Deep dive into your performance</p></div>
             <div className="metrics-grid">
               <div className="chart-card full">
                 <div className="chart-header">
                   <div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div>
-                  <div className="chart-controls">{[3, 6, 12].map(m => <button key={m} className={`chart-btn ${chartMonths === m ? 'active' : ''}`} onClick={() => setChartMonths(m)}>{m}M</button>)}</div>
+                  <div className="chart-controls">{[3,6,12].map(m=><button key={m} className={`chart-btn ${chartMonths===m?'active':''}`} onClick={()=>setChartMonths(m)}>{m}M</button>)}</div>
                 </div>
                 <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={plChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtShort} tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(v) => fmt(v)} contentStyle={{ borderRadius: 8, border: '1px solid #e3e8ef' }} />
-                    <Bar dataKey="pl" name="P&L" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                  <BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/>
+                    <XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                    <YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                    <Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/>
+                    <Bar dataKey="pl" name="P&L" fill="#16a34a" radius={[4,4,0,0]}/>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="chart-card full">
                 <div className="chart-header"><div><div className="chart-title">Revenue vs Cost</div><div className="chart-subtitle">Monthly comparison</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={plChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtShort} tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(v) => fmt(v)} contentStyle={{ borderRadius: 8, border: '1px solid #e3e8ef' }} />
-                    <Legend />
-                    <Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="cost" name="Cost" fill="#e3e8ef" radius={[4, 4, 0, 0]} />
+                  <BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/>
+                    <XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                    <YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                    <Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/>
+                    <Legend/>
+                    <Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4,4,0,0]}/>
+                    <Bar dataKey="cost" name="Cost" fill="#e3e8ef" radius={[4,4,0,0]}/>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -524,46 +521,46 @@ export default function App() {
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={3}>
-                      {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      {categoryData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
                     </Pie>
-                    <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e3e8ef' }} />
-                    <Legend />
+                    <Tooltip contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/>
+                    <Legend/>
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="chart-card half">
                 <div className="chart-header"><div><div className="chart-title">Sell-Through Rate</div><div className="chart-subtitle">% sold per category</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={sellThroughData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false} />
-                    <XAxis type="number" domain={[0, 100]} tickFormatter={v => v + '%'} tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="cat" tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} width={80} />
-                    <Tooltip formatter={v => v + '%'} contentStyle={{ borderRadius: 8, border: '1px solid #e3e8ef' }} />
-                    <Bar dataKey="rate" name="Sell-through %" fill="#22c55e" radius={[0, 4, 4, 0]} />
+                  <BarChart data={sellThroughData} layout="vertical" margin={{top:10,right:20,left:10,bottom:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false}/>
+                    <XAxis type="number" domain={[0,100]} tickFormatter={v=>v+'%'} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                    <YAxis type="category" dataKey="cat" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} width={80}/>
+                    <Tooltip formatter={v=>v+'%'} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/>
+                    <Bar dataKey="rate" name="Sell-through %" fill="#22c55e" radius={[0,4,4,0]}/>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="chart-card half">
                 <div className="chart-header"><div><div className="chart-title">Top Brands by Profit</div><div className="chart-subtitle">All-time</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={brandData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false} />
-                    <XAxis type="number" tickFormatter={fmtShort} tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="brand" tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} width={70} />
-                    <Tooltip formatter={v => fmt(v)} contentStyle={{ borderRadius: 8, border: '1px solid #e3e8ef' }} />
-                    <Bar dataKey="pl" name="Profit" fill="#16a34a" radius={[0, 4, 4, 0]} />
+                  <BarChart data={brandData} layout="vertical" margin={{top:10,right:20,left:10,bottom:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false}/>
+                    <XAxis type="number" tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                    <YAxis type="category" dataKey="brand" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} width={70}/>
+                    <Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/>
+                    <Bar dataKey="pl" name="Profit" fill="#16a34a" radius={[0,4,4,0]}/>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="chart-card half">
                 <div className="chart-header"><div><div className="chart-title">Avg Profit per Sale</div><div className="chart-subtitle">Last 6 months</div></div></div>
                 <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={avgPLData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtShort} tick={{ fontSize: 12, fill: '#8792a2' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={v => fmt(v)} contentStyle={{ borderRadius: 8, border: '1px solid #e3e8ef' }} />
-                    <Line type="monotone" dataKey="avg" name="Avg P&L" stroke="#16a34a" strokeWidth={2} dot={{ fill: '#16a34a', r: 4 }} />
+                  <LineChart data={avgPLData} margin={{top:10,right:20,left:0,bottom:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/>
+                    <XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                    <YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                    <Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/>
+                    <Line type="monotone" dataKey="avg" name="Avg P&L" stroke="#16a34a" strokeWidth={2} dot={{fill:'#16a34a',r:4}}/>
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -572,21 +569,21 @@ export default function App() {
                 <div className="two-col">
                   <div>
                     <div className="perf-label green">🏆 Best performers</div>
-                    {bestWorst.best.length === 0 ? <div className="td-muted" style={{fontSize:13}}>No sold items yet</div> : bestWorst.best.map((item, i) => (
+                    {bestWorst.best.length===0?<div className="td-muted" style={{fontSize:13}}>No sold items yet</div>:bestWorst.best.map((item,i)=>(
                       <div key={item.id} className="perf-row">
-                        <div className="perf-rank">{i + 1}</div>
-                        <div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size ? ` · UK ${item.size}` : ''}</div></div>
+                        <div className="perf-rank">{i+1}</div>
+                        <div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div></div>
                         <div className="perf-pl pos">+{fmt(item.pl)}</div>
                       </div>
                     ))}
                   </div>
                   <div>
                     <div className="perf-label red">📉 Worst performers</div>
-                    {bestWorst.worst.length === 0 ? <div className="td-muted" style={{fontSize:13}}>No sold items yet</div> : bestWorst.worst.map((item, i) => (
+                    {bestWorst.worst.length===0?<div className="td-muted" style={{fontSize:13}}>No sold items yet</div>:bestWorst.worst.map((item,i)=>(
                       <div key={item.id} className="perf-row">
-                        <div className="perf-rank">{i + 1}</div>
-                        <div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size ? ` · UK ${item.size}` : ''}</div></div>
-                        <div className={`perf-pl ${item.pl >= 0 ? 'pos' : 'neg'}`}>{item.pl >= 0 ? '+' : ''}{fmt(item.pl)}</div>
+                        <div className="perf-rank">{i+1}</div>
+                        <div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div></div>
+                        <div className={`perf-pl ${item.pl>=0?'pos':'neg'}`}>{item.pl>=0?'+':''}{fmt(item.pl)}</div>
                       </div>
                     ))}
                   </div>
@@ -599,58 +596,105 @@ export default function App() {
 
       {/* Add / Edit Modal */}
       {showAdd && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAdd(false)}>
           <div className="modal">
-            <div className="modal-title">{editItem ? 'Edit item' : 'Add new item'}</div>
+            <div className="modal-title">{editItem?'Edit item':'Add new item'}</div>
             <div className="form-grid">
               <div className="form-group">
                 <label className="form-label">Category</label>
-                <select className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                <select className="form-input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
                   <option value="">Select category</option>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Brand *</label>
-                <input className="form-input" placeholder="e.g. Nike" value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} />
+                <input className="form-input" placeholder="e.g. Nike" value={form.brand} onChange={e=>setForm(f=>({...f,brand:e.target.value}))}/>
               </div>
               <div className="form-group">
                 <label className="form-label">Style</label>
-                <input className="form-input" placeholder="e.g. Air Max 95" value={form.style} onChange={e => setForm(f => ({ ...f, style: e.target.value }))} />
+                <input className="form-input" placeholder="e.g. Air Max 95" value={form.style} onChange={e=>setForm(f=>({...f,style:e.target.value}))}/>
               </div>
               <div className="form-group">
                 <label className="form-label">Colourway</label>
-                <input className="form-input" placeholder="e.g. Pure Money" value={form.colourway} onChange={e => setForm(f => ({ ...f, colourway: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Size (UK)</label>
-                <input className="form-input" placeholder="e.g. 9" value={form.size} onChange={e => setForm(f => ({ ...f, size: e.target.value }))} />
+                <input className="form-input" placeholder="e.g. Pure Money" value={form.colourway} onChange={e=>setForm(f=>({...f,colourway:e.target.value}))}/>
               </div>
               <div className="form-group">
                 <label className="form-label">SKU</label>
-                <input className="form-input" placeholder="e.g. 308497-100" value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Purchase price (£) *</label>
-                <input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.purchase_price} onChange={e => setForm(f => ({ ...f, purchase_price: e.target.value }))} />
+                <input className="form-input" placeholder="e.g. 308497-100" value={form.sku} onChange={e=>setForm(f=>({...f,sku:e.target.value}))}/>
               </div>
               <div className="form-group">
                 <label className="form-label">Purchase date</label>
-                <input className="form-input" type="date" value={form.purchase_date} onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))} />
+                <input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/>
               </div>
               <div className="form-group full">
                 <label className="form-label">Purchase platform</label>
-                <input className="form-input" placeholder="e.g. JD, SNKRS, eBay" value={form.purchase_platform} onChange={e => setForm(f => ({ ...f, purchase_platform: e.target.value }))} />
+                <input className="form-input" placeholder="e.g. JD, SNKRS, eBay" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/>
               </div>
               <div className="form-group full">
                 <label className="form-label">Notes</label>
-                <input className="form-input" placeholder="e.g. Used, missing box..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+                <input className="form-input" placeholder="e.g. Used, missing box..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/>
               </div>
             </div>
-            {saveError && <div style={{ color: '#e53e3e', fontSize: 13, marginTop: 8 }}>Error: {saveError}</div>}
+
+            <div className="units-section">
+              <div className="units-header">
+                <span className="form-label">Sizes & prices *</span>
+                {!editItem && <button className="btn sm" onClick={addUnit}>+ Add size</button>}
+              </div>
+              {form.units.map((unit,i)=>(
+                <div key={i} className="unit-row">
+                  <input className="form-input" placeholder="Size (UK)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/>
+                  <input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>
+                  {form.units.length>1 && <button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
+                </div>
+              ))}
+            </div>
+
+            {saveError && <div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {saveError}</div>}
             <div className="form-actions">
-              <button className="btn" onClick={() => { setShowAdd(false); setEditItem(null); setForm(EMPTY_FORM); setSaveError('') }}>Cancel</button>
-              <button className="btn primary" onClick={saveItem} disabled={saving}>{saving ? 'Saving...' : editItem ? 'Save changes' : 'Add item'}</button>
+              <button className="btn" onClick={()=>{setShowAdd(false);setEditItem(null);setForm(EMPTY_FORM);setSaveError('')}}>Cancel</button>
+              <button className="btn primary" onClick={saveItem} disabled={saving}>{saving?'Saving...':editItem?'Save changes':'Add item'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Modal */}
+      {batchModal && (
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setBatchModal(null)}>
+          <div className="modal" style={{maxWidth:560}}>
+            <div className="modal-title">{batchModal.brand} {batchModal.style}</div>
+            {batchModal.colourway && <div style={{fontSize:13,color:'var(--muted)',marginTop:-12,marginBottom:16}}>{batchModal.colourway}</div>}
+            <div className="batch-units">
+              {batchModal.units.map(unit=>{
+                const pl = unit.status==='sold'&&unit.sale_price!=null ? unit.sale_price-(unit.purchase_price||0) : null
+                return (
+                  <div key={unit.id} className={`batch-unit-row ${unit.status==='sold'?'sold':''}`}>
+                    <div className="batch-unit-info">
+                      <div className="batch-unit-size">{unit.size?`UK ${unit.size}`:'No size'}</div>
+                      <div className="batch-unit-cost">{fmt(unit.purchase_price)}</div>
+                    </div>
+                    <div className="batch-unit-right">
+                      {unit.status==='sold' ? (
+                        <div className="batch-unit-sold">
+                          <span className="badge sold">Sold</span>
+                          <span className={`batch-unit-pl ${plColor(pl)}`}>{pl!=null?(pl>=0?'+':'')+fmt(pl):'—'}</span>
+                        </div>
+                      ) : (
+                        <div style={{display:'flex',gap:6}}>
+                          <button className="btn sm success" onClick={()=>{setSellItem(unit);setSalePrice('');setSellingPlatform('')}}>Sell</button>
+                          <button className="btn sm" onClick={()=>{openEdit(unit);setBatchModal(null)}}>Edit</button>
+                          <button className="btn sm danger" onClick={()=>deleteItem(unit.id)}>Del</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="form-actions" style={{marginTop:16}}>
+              <button className="btn" onClick={()=>setBatchModal(null)}>Close</button>
             </div>
           </div>
         </div>
@@ -658,32 +702,32 @@ export default function App() {
 
       {/* Sell Modal */}
       {sellItem && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setSellItem(null)}>
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setSellItem(null)}>
           <div className="modal">
             <div className="modal-title">Mark as sold</div>
             <div className="sell-info">
               <strong>{sellItem.brand} {sellItem.style}</strong>
-              {sellItem.colourway && ` — ${sellItem.colourway}`}
-              {sellItem.size && ` · Size ${sellItem.size}`}
-              <div style={{ marginTop: 4 }}>Cost price: <strong>{fmt(sellItem.purchase_price)}</strong></div>
+              {sellItem.colourway&&` — ${sellItem.colourway}`}
+              {sellItem.size&&` · Size ${sellItem.size}`}
+              <div style={{marginTop:4}}>Cost price: <strong>{fmt(sellItem.purchase_price)}</strong></div>
             </div>
             <div className="form-group">
               <label className="form-label">Sale price (£)</label>
-              <input className="form-input" type="number" step="0.01" placeholder="0.00" value={salePrice} onChange={e => setSalePrice(e.target.value)} autoFocus />
+              <input className="form-input" type="number" step="0.01" placeholder="0.00" value={salePrice} onChange={e=>setSalePrice(e.target.value)} autoFocus/>
             </div>
-            <div className="form-group" style={{ marginTop: 12 }}>
+            <div className="form-group" style={{marginTop:12}}>
               <label className="form-label">Selling platform</label>
-              <input className="form-input" placeholder="e.g. eBay, StockX, Vinted" value={sellingPlatform} onChange={e => setSellingPlatform(e.target.value)} />
+              <input className="form-input" placeholder="e.g. eBay, StockX, Vinted" value={sellingPlatform} onChange={e=>setSellingPlatform(e.target.value)}/>
             </div>
             {salePrice && (
               <div className="pl-preview">
-                <span style={{ color: 'var(--muted)' }}>P&L</span>
-                <span className={plColor(plSell)} style={{ fontWeight: 600 }}>{plSell >= 0 ? '+' : ''}{fmt(plSell)}</span>
+                <span style={{color:'var(--muted)'}}>P&L</span>
+                <span className={plColor(plSell)} style={{fontWeight:600}}>{plSell>=0?'+':''}{fmt(plSell)}</span>
               </div>
             )}
-            <div className="form-actions" style={{ marginTop: 16 }}>
-              <button className="btn" onClick={() => setSellItem(null)}>Cancel</button>
-              <button className="btn primary" onClick={markSold} disabled={saving || !salePrice}>{saving ? 'Saving...' : 'Confirm sale'}</button>
+            <div className="form-actions" style={{marginTop:16}}>
+              <button className="btn" onClick={()=>setSellItem(null)}>Cancel</button>
+              <button className="btn primary" onClick={markSold} disabled={saving||!salePrice}>{saving?'Saving...':'Confirm sale'}</button>
             </div>
           </div>
         </div>
