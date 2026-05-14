@@ -420,12 +420,12 @@ export default function App() {
                   return (
                     <div key={batch.key} className="item-card" onClick={!isSingle ? ()=>setBatchModal(batch) : undefined} style={!isSingle?{cursor:'pointer'}:{}}>
                       <div className="item-card-header">
-                        <div className="item-card-info">
-                          <div className="item-card-category">{batch.category||'Uncategorised'}</div>
-                          <div className="item-card-brand">{batch.brand||'—'}</div>
-                          <div className="item-card-style">{[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
-                        </div>
-                        <span className={`badge ${allSold?'sold':'in_stock'}`} style={{flexShrink:0}}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                        <div className="item-card-category">{batch.category||'Uncategorised'}</div>
+                        <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                      </div>
+                      <div className="item-card-body">
+                        <div className="item-card-brand">{batch.brand||'—'}</div>
+                        <div className="item-card-style">{[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
                       </div>
 
                       <div className="item-card-stats">
