@@ -425,7 +425,7 @@ export default function App() {
                           <div className="item-card-brand">{batch.brand||'—'}</div>
                           <div className="item-card-style">{[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
                         </div>
-                        <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                        <span className={`badge ${allSold?'sold':'in_stock'}`} style={{flexShrink:0}}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
                       </div>
 
                       <div className="item-card-stats">
