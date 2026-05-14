@@ -252,6 +252,11 @@ tbody td {
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.td-nowrap {
+  white-space: nowrap;
 }
 .badge.in_stock {
   background: var(--green-bg);
@@ -643,4 +648,36 @@ tbody td {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Notes tooltip */
+.note-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.note-icon .tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--surface);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  max-width: 220px;
+  z-index: 999;
+  box-shadow: var(--shadow);
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.note-icon:hover .tooltip {
+  display: block;
 }

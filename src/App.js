@@ -444,6 +444,7 @@ export default function App() {
                       <th onClick={() => handleSort('selling_platform')}>Sold via{sortArrow('selling_platform')}</th>
                       <th onClick={() => handleSort('status')}>P&amp;L{sortArrow('status')}</th>
                       <th onClick={() => handleSort('status')}>Status{sortArrow('status')}</th>
+                      <th>Notes</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -457,15 +458,22 @@ export default function App() {
                           <td>{item.style || '—'}</td>
                           <td className="td-muted">{item.colourway || '—'}</td>
                           <td className="td-muted">{item.size || '—'}</td>
-                          <td className="td-muted">{item.sku || '—'}</td>
-                          <td className="td-muted">{item.purchase_date || '—'}</td>
+                          <td className="td-muted td-nowrap">{item.sku || '—'}</td>
+                          <td className="td-muted td-nowrap">{item.purchase_date || '—'}</td>
                           <td>{fmt(item.purchase_price)}</td>
                           <td>{item.sale_price ? fmt(item.sale_price) : <span className="td-muted">—</span>}</td>
                           <td className="td-muted">{item.selling_platform || '—'}</td>
                           <td className={plColor(pl)}>{pl != null ? (pl >= 0 ? '+' : '') + fmt(pl) : <span className="td-muted">—</span>}</td>
-                          <td><span className={`badge ${item.status}`}>{item.status === 'in_stock' ? 'In stock' : 'Sold'}</span></td>
+                          <td className="td-nowrap"><span className={`badge ${item.status}`}>{item.status === 'in_stock' ? 'In stock' : 'Sold'}</span></td>
                           <td>
-                            <div style={{ display: 'flex', gap: 5 }}>
+                            {item.notes ? (
+                              <span className="note-icon">
+                                📝
+                                <span className="tooltip">{item.notes}</span>
+                              </span>
+                            ) : <span className="td-muted">—</span>}
+                          </td>
+                          <td>
                               {item.status === 'in_stock' && <button className="btn sm success" onClick={() => { setSellItem(item); setSalePrice(''); setSellingPlatform('') }}>Sell</button>}
                               <button className="btn sm" onClick={() => openEdit(item)}>Edit</button>
                               <button className="btn sm danger" onClick={() => deleteItem(item.id)}>Del</button>
