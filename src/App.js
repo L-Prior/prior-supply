@@ -424,7 +424,15 @@ export default function App() {
                         <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
                       </div>
                       <div className="item-card-body">
-                        <div className="item-card-brand">{batch.brand||'—'}</div>
+                        <div className="item-card-brand">
+                          {batch.brand||'—'}
+                          {batch.notes && (
+                            <span className="note-icon" style={{marginLeft:6,fontSize:13}}>
+                              📝
+                              <span className="tooltip">{batch.notes}</span>
+                            </span>
+                          )}
+                        </div>
                         <div className="item-card-style">{[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
                       </div>
 
@@ -452,14 +460,11 @@ export default function App() {
                         </div>
                       </div>
 
-                      {(batch.sku||batch.purchase_date||batch.purchase_platform||batch.notes) && (
-                        <div className="item-card-meta">
-                          {batch.sku&&<span className="item-card-meta-tag">SKU: {batch.sku}</span>}
-                          {batch.purchase_date&&<span className="item-card-meta-tag">Bought: {batch.purchase_date}</span>}
-                          {batch.purchase_platform&&<span className="item-card-meta-tag">From: {batch.purchase_platform}</span>}
-                          {batch.notes&&<span className="item-card-meta-tag">📝 {batch.notes.length>30?batch.notes.slice(0,30)+'...':batch.notes}</span>}
-                        </div>
-                      )}
+                      <div className="item-card-meta">
+                        {batch.sku&&<span className="item-card-meta-tag">SKU: {batch.sku}</span>}
+                        {batch.purchase_date&&<span className="item-card-meta-tag">Bought: {batch.purchase_date}</span>}
+                        {batch.purchase_platform&&<span className="item-card-meta-tag">From: {batch.purchase_platform}</span>}
+                      </div>
 
                       <div className="item-card-actions" onClick={e=>e.stopPropagation()}>
                         {isSingle && batch.units[0].status==='in_stock' && (
