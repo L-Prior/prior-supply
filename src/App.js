@@ -428,63 +428,58 @@ export default function App() {
                 <div style={{ marginTop: 6 }}>{items.length === 0 ? 'Add your first item to get started' : 'Try adjusting your filters'}</div>
               </div>
             ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th onClick={() => handleSort('category')}>Category{sortArrow('category')}</th>
-                      <th onClick={() => handleSort('brand')}>Brand{sortArrow('brand')}</th>
-                      <th onClick={() => handleSort('style')}>Style{sortArrow('style')}</th>
-                      <th onClick={() => handleSort('colourway')}>Colourway{sortArrow('colourway')}</th>
-                      <th onClick={() => handleSort('size')}>Size{sortArrow('size')}</th>
-                      <th onClick={() => handleSort('sku')}>SKU{sortArrow('sku')}</th>
-                      <th onClick={() => handleSort('purchase_date')}>Purchased{sortArrow('purchase_date')}</th>
-                      <th onClick={() => handleSort('purchase_price')}>Cost{sortArrow('purchase_price')}</th>
-                      <th onClick={() => handleSort('sale_price')}>Sale{sortArrow('sale_price')}</th>
-                      <th onClick={() => handleSort('selling_platform')}>Sold via{sortArrow('selling_platform')}</th>
-                      <th onClick={() => handleSort('status')}>P&amp;L{sortArrow('status')}</th>
-                      <th onClick={() => handleSort('status')}>Status{sortArrow('status')}</th>
-                      <th>Notes</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map(item => {
-                      const pl = item.status === 'sold' && item.sale_price != null ? item.sale_price - (item.purchase_price || 0) : null
-                      return (
-                        <tr key={item.id}>
-                          <td className="td-muted">{item.category || '—'}</td>
-                          <td style={{ fontWeight: 500 }}>{item.brand || '—'}</td>
-                          <td>{item.style || '—'}</td>
-                          <td className="td-muted">{item.colourway || '—'}</td>
-                          <td className="td-muted">{item.size || '—'}</td>
-                          <td className="td-muted td-nowrap">{item.sku || '—'}</td>
-                          <td className="td-muted td-nowrap">{item.purchase_date || '—'}</td>
-                          <td>{fmt(item.purchase_price)}</td>
-                          <td>{item.sale_price ? fmt(item.sale_price) : <span className="td-muted">—</span>}</td>
-                          <td className="td-muted">{item.selling_platform || '—'}</td>
-                          <td className={plColor(pl)}>{pl != null ? (pl >= 0 ? '+' : '') + fmt(pl) : <span className="td-muted">—</span>}</td>
-                          <td className="td-nowrap"><span className={`badge ${item.status}`}>{item.status === 'in_stock' ? 'In stock' : 'Sold'}</span></td>
-                          <td>
-                            {item.notes ? (
-                              <span className="note-icon">
-                                📝
-                                <span className="tooltip">{item.notes}</span>
-                              </span>
-                            ) : <span className="td-muted">—</span>}
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: 5 }}>
-                              {item.status === 'in_stock' && <button className="btn sm success" onClick={() => { setSellItem(item); setSalePrice(''); setSellingPlatform('') }}>Sell</button>}
-                              <button className="btn sm" onClick={() => openEdit(item)}>Edit</button>
-                              <button className="btn sm danger" onClick={() => deleteItem(item.id)}>Del</button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <div className="card-grid">
+                {filtered.map(item => {
+                  const pl = item.status === 'sold' && item.sale_price != null ? item.sale_price - (item.purchase_price || 0) : null
+                  return (
+                    <div key={item.id} className="item-card">
+                      <div className="item-card-header">
+                        <div className="item-card-info">
+                          <div className="item-card-category">{item.category || 'Uncategorised'}</div>
+                          <div className="item-card-brand">{item.brand || '—'}</div>
+                          <div className="item-card-style">{[item.style, item.colourway].filter(Boolean).join(' — ') || '—'}</div>
+                        </div>
+                        <span className={`badge ${item.status}`}>{item.status === 'in_stock' ? 'In stock' : 'Sold'}</span>
+                      </div>
+                      <div className="item-card-stats">
+                        <div className="item-card-stat">
+                          <div className="item-card-stat-label">Size</div>
+                          <div className="item-card-stat-value">{item.size ? `UK ${item.size}` : '—'}</div>
+                        </div>
+                        <div className="item-card-stat">
+                          <div className="item-card-stat-label">Cost</div>
+                          <div className="item-card-stat-value">{fmt(item.purchase_price)}</div>
+                        </div>
+                        <div className="item-card-stat">
+                          <div className="item-card-stat-label">Sale</div>
+                          <div className="item-card-stat-value">{item.sale_price ? fmt(item.sale_price) : '—'}</div>
+                        </div>
+                        <div className="item-card-stat">
+                          <div className="item-card-stat-label">P&L</div>
+                          <div className={`item-card-stat-value ${plColor(pl)}`}>{pl != null ? (pl >= 0 ? '+' : '') + fmt(pl) : '—'}</div>
+                        </div>
+                      </div>
+                      {(item.sku || item.purchase_date || item.purchase_platform || item.selling_platform || item.notes) && (
+                        <div className="item-card-meta">
+                          {item.sku && <span className="item-card-meta-tag">SKU: {item.sku}</span>}
+                          {item.purchase_date && <span className="item-card-meta-tag">Bought: {item.purchase_date}</span>}
+                          {item.purchase_platform && <span className="item-card-meta-tag">From: {item.purchase_platform}</span>}
+                          {item.selling_platform && <span className="item-card-meta-tag">Sold via: {item.selling_platform}</span>}
+                          {item.notes && (
+                            <span className="note-icon item-card-meta-tag">
+                              📝 {item.notes.length > 30 ? item.notes.slice(0, 30) + '...' : item.notes}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <div className="item-card-actions">
+                        {item.status === 'in_stock' && <button className="btn sm success" onClick={() => { setSellItem(item); setSalePrice(''); setSellingPlatform('') }}>Sell</button>}
+                        <button className="btn sm" onClick={() => openEdit(item)}>Edit</button>
+                        <button className="btn sm danger" onClick={() => deleteItem(item.id)}>Del</button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
