@@ -1027,3 +1027,29 @@ tbody td {
   letter-spacing: 0.05em;
   margin-bottom: 8px;
 }
+
+/* Type toggle */
+.type-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  width: fit-content;
+}
+
+.type-btn {
+  padding: 7px 20px;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-right: 1px solid var(--border2);
+}
+.type-btn:last-child { border-right: none; }
+.type-btn:hover { background: var(--surface2); color: var(--text2); }
+.type-btn.active { background: var(--accent); color: #fff; }

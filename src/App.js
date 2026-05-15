@@ -6,14 +6,290 @@ import {
 } from 'recharts'
 import './index.css'
 
-const CATEGORIES = ['Sneakers', 'Pokémon', 'Lego', 'Clothing', 'Accessories', 'Electronics', 'Miscellaneous']
+const CATEGORIES = ['Sneakers', 'Pokémon', 'Lego', 'Clothing', 'Miscellaneous']
 const COLORS = ['#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0','#f59e0b','#3b82f6']
+const POKEMON_TYPES = ['Booster Box', 'Elite Trainer Box', 'Pack', 'Bundle', 'Other']
+const CONDITIONS = ['Mint', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played']
+const GRADING_COMPANIES = ['PSA', 'BGS', 'CGC', 'ACE']
 
 const EMPTY_UNIT = { size: '', purchase_price: '' }
 const EMPTY_FORM = {
-  category: '', brand: '', style: '', colourway: '', sku: '',
+  category: '', pokemon_type: '',
+  // Sneakers
+  brand: '', style: '', colourway: '', sku: '',
+  // Pokemon
+  card_name: '', set_name: '', card_number: '', condition: '', graded: false, grading_company: '', grade: '', product_name: '', pokemon_sealed_type: '', quantity: '',
+  // Lego
+  lego_set_name: '', set_number: '', theme: '', lego_condition: '',
+  // Clothing
+  clothing_brand: '', item: '', clothing_size: '', colour: '',
+  // Misc
+  item_name: '', description: '',
+  // Common
   purchase_platform: '', purchase_date: '', notes: '',
   units: [{ ...EMPTY_UNIT }]
+}
+
+// Dynamic form fields by category
+function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit }) {
+  const cat = form.category
+
+  const common = (
+    <>
+      <div className="form-group">
+        <label className="form-label">Purchase date</label>
+        <input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/>
+      </div>
+      <div className="form-group full">
+        <label className="form-label">Purchase platform</label>
+        <input className="form-input" placeholder="e.g. JD, eBay, Game" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/>
+      </div>
+      <div className="form-group full">
+        <label className="form-label">Notes</label>
+        <input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/>
+      </div>
+    </>
+  )
+
+  if (cat === 'Sneakers') return (
+    <>
+      <div className="form-group">
+        <label className="form-label">Brand *</label>
+        <input className="form-input" placeholder="e.g. Nike" value={form.brand} onChange={e=>setForm(f=>({...f,brand:e.target.value}))}/>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Style</label>
+        <input className="form-input" placeholder="e.g. Air Max 95" value={form.style} onChange={e=>setForm(f=>({...f,style:e.target.value}))}/>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Colourway</label>
+        <input className="form-input" placeholder="e.g. Pure Money" value={form.colourway} onChange={e=>setForm(f=>({...f,colourway:e.target.value}))}/>
+      </div>
+      <div className="form-group">
+        <label className="form-label">SKU</label>
+        <input className="form-input" placeholder="e.g. 308497-100" value={form.sku} onChange={e=>setForm(f=>({...f,sku:e.target.value}))}/>
+      </div>
+      {common}
+      <div className="form-group full" style={{gridColumn:'1/-1'}}>
+        <div className="units-section">
+          <div className="units-header">
+            <span className="form-label">Sizes & prices *</span>
+            {!editItem && <button className="btn sm" onClick={addUnit}>+ Add size</button>}
+          </div>
+          {form.units.map((unit,i)=>(
+            <div key={i} className="unit-row">
+              <input className="form-input" placeholder="Size (UK)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/>
+              <input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>
+              {form.units.length>1 && <button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+
+  if (cat === 'Pokémon') return (
+    <>
+      <div className="form-group full">
+        <label className="form-label">Type *</label>
+        <div className="type-toggle">
+          <button className={`type-btn ${form.pokemon_type==='singles'?'active':''}`} onClick={()=>setForm(f=>({...f,pokemon_type:'singles'}))}>Singles</button>
+          <button className={`type-btn ${form.pokemon_type==='sealed'?'active':''}`} onClick={()=>setForm(f=>({...f,pokemon_type:'sealed'}))}>Sealed</button>
+        </div>
+      </div>
+
+      {form.pokemon_type === 'singles' && <>
+        <div className="form-group">
+          <label className="form-label">Card name *</label>
+          <input className="form-input" placeholder="e.g. Charizard" value={form.card_name} onChange={e=>setForm(f=>({...f,card_name:e.target.value}))}/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Set</label>
+          <input className="form-input" placeholder="e.g. Base Set" value={form.set_name} onChange={e=>setForm(f=>({...f,set_name:e.target.value}))}/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Card number</label>
+          <input className="form-input" placeholder="e.g. 004/102" value={form.card_number} onChange={e=>setForm(f=>({...f,card_number:e.target.value}))}/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Condition</label>
+          <select className="form-input" value={form.condition} onChange={e=>setForm(f=>({...f,condition:e.target.value}))}>
+            <option value="">Select condition</option>
+            {CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="form-group full">
+          <label className="form-label">Graded?</label>
+          <div className="type-toggle">
+            <button className={`type-btn ${!form.graded?'active':''}`} onClick={()=>setForm(f=>({...f,graded:false,grading_company:'',grade:''}))}>No</button>
+            <button className={`type-btn ${form.graded?'active':''}`} onClick={()=>setForm(f=>({...f,graded:true}))}>Yes</button>
+          </div>
+        </div>
+        {form.graded && <>
+          <div className="form-group">
+            <label className="form-label">Grading company</label>
+            <select className="form-input" value={form.grading_company} onChange={e=>setForm(f=>({...f,grading_company:e.target.value}))}>
+              <option value="">Select</option>
+              {GRADING_COMPANIES.map(g=><option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Grade</label>
+            <input className="form-input" placeholder="e.g. 9, 10, 9.5" value={form.grade} onChange={e=>setForm(f=>({...f,grade:e.target.value}))}/>
+          </div>
+        </>}
+        <div className="form-group">
+          <label className="form-label">Purchase price (£) *</label>
+          <input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.units[0]?.purchase_price||''} onChange={e=>updateUnit(0,'purchase_price',e.target.value)}/>
+        </div>
+        {common}
+      </>}
+
+      {form.pokemon_type === 'sealed' && <>
+        <div className="form-group">
+          <label className="form-label">Product name *</label>
+          <input className="form-input" placeholder="e.g. Scarlet & Violet ETB" value={form.product_name} onChange={e=>setForm(f=>({...f,product_name:e.target.value}))}/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Set</label>
+          <input className="form-input" placeholder="e.g. Scarlet & Violet" value={form.set_name} onChange={e=>setForm(f=>({...f,set_name:e.target.value}))}/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Product type</label>
+          <select className="form-input" value={form.pokemon_sealed_type} onChange={e=>setForm(f=>({...f,pokemon_sealed_type:e.target.value}))}>
+            <option value="">Select type</option>
+            {POKEMON_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Quantity</label>
+          <input className="form-input" type="number" placeholder="1" value={form.quantity} onChange={e=>setForm(f=>({...f,quantity:e.target.value}))}/>
+        </div>
+        {common}
+        <div className="form-group full" style={{gridColumn:'1/-1'}}>
+          <div className="units-section">
+            <div className="units-header">
+              <span className="form-label">Units & prices *</span>
+              {!editItem && <button className="btn sm" onClick={addUnit}>+ Add unit</button>}
+            </div>
+            {form.units.map((unit,i)=>(
+              <div key={i} className="unit-row">
+                <input className="form-input" placeholder="Description (optional)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:2}}/>
+                <input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>
+                {form.units.length>1 && <button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </>}
+    </>
+  )
+
+  if (cat === 'Lego') return (
+    <>
+      <div className="form-group">
+        <label className="form-label">Set name *</label>
+        <input className="form-input" placeholder="e.g. Millennium Falcon" value={form.lego_set_name} onChange={e=>setForm(f=>({...f,lego_set_name:e.target.value}))}/>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Set number</label>
+        <input className="form-input" placeholder="e.g. 75192" value={form.set_number} onChange={e=>setForm(f=>({...f,set_number:e.target.value}))}/>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Theme</label>
+        <input className="form-input" placeholder="e.g. Star Wars" value={form.theme} onChange={e=>setForm(f=>({...f,theme:e.target.value}))}/>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Condition</label>
+        <select className="form-input" value={form.lego_condition} onChange={e=>setForm(f=>({...f,lego_condition:e.target.value}))}>
+          <option value="">Select</option>
+          <option value="Sealed">Sealed</option>
+          <option value="Open/Complete">Open/Complete</option>
+          <option value="Open/Incomplete">Open/Incomplete</option>
+        </select>
+      </div>
+      {common}
+      <div className="form-group full" style={{gridColumn:'1/-1'}}>
+        <div className="units-section">
+          <div className="units-header">
+            <span className="form-label">Units & prices *</span>
+            {!editItem && <button className="btn sm" onClick={addUnit}>+ Add unit</button>}
+          </div>
+          {form.units.map((unit,i)=>(
+            <div key={i} className="unit-row">
+              <input className="form-input" placeholder="Description (optional)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:2}}/>
+              <input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>
+              {form.units.length>1 && <button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+
+  if (cat === 'Clothing') return (
+    <>
+      <div className="form-group">
+        <label className="form-label">Brand *</label>
+        <input className="form-input" placeholder="e.g. Supreme" value={form.clothing_brand} onChange={e=>setForm(f=>({...f,clothing_brand:e.target.value}))}/>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Item</label>
+        <input className="form-input" placeholder="e.g. Box Logo Hoodie" value={form.item} onChange={e=>setForm(f=>({...f,item:e.target.value}))}/>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Colour</label>
+        <input className="form-input" placeholder="e.g. Black" value={form.colour} onChange={e=>setForm(f=>({...f,colour:e.target.value}))}/>
+      </div>
+      {common}
+      <div className="form-group full" style={{gridColumn:'1/-1'}}>
+        <div className="units-section">
+          <div className="units-header">
+            <span className="form-label">Sizes & prices *</span>
+            {!editItem && <button className="btn sm" onClick={addUnit}>+ Add size</button>}
+          </div>
+          {form.units.map((unit,i)=>(
+            <div key={i} className="unit-row">
+              <input className="form-input" placeholder="Size (e.g. M, L, XL)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/>
+              <input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>
+              {form.units.length>1 && <button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+
+  if (cat === 'Miscellaneous') return (
+    <>
+      <div className="form-group">
+        <label className="form-label">Item name *</label>
+        <input className="form-input" placeholder="e.g. Vintage Camera" value={form.item_name} onChange={e=>setForm(f=>({...f,item_name:e.target.value}))}/>
+      </div>
+      <div className="form-group full">
+        <label className="form-label">Description</label>
+        <input className="form-input" placeholder="Brief description..." value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/>
+      </div>
+      {common}
+      <div className="form-group full" style={{gridColumn:'1/-1'}}>
+        <div className="units-section">
+          <div className="units-header">
+            <span className="form-label">Units & prices *</span>
+            {!editItem && <button className="btn sm" onClick={addUnit}>+ Add unit</button>}
+          </div>
+          {form.units.map((unit,i)=>(
+            <div key={i} className="unit-row">
+              <input className="form-input" placeholder="Description (optional)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:2}}/>
+              <input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>
+              {form.units.length>1 && <button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+
+  return null
 }
 
 function fmt(n) {
@@ -165,18 +441,56 @@ export default function App() {
   function removeUnit(i) { setForm(f => ({ ...f, units: f.units.filter((_, idx) => idx !== i) })) }
 
   async function saveItem() {
-    if (!form.brand || !form.purchase_price && form.units.some(u => !u.purchase_price)) return
     setSaving(true); setSaveError('')
     const batchId = editItem?.batch_id || crypto.randomUUID()
+
+    // Build display name fields based on category
+    let brand = '', style = '', colourway = '', sku = ''
+    if (form.category === 'Sneakers') {
+      brand = form.brand; style = form.style; colourway = form.colourway; sku = form.sku
+    } else if (form.category === 'Pokémon') {
+      brand = 'Pokémon'
+      style = form.pokemon_type === 'singles' ? form.card_name : form.product_name
+      colourway = form.set_name
+      sku = form.card_number
+    } else if (form.category === 'Lego') {
+      brand = 'Lego'; style = form.lego_set_name; colourway = form.theme; sku = form.set_number
+    } else if (form.category === 'Clothing') {
+      brand = form.clothing_brand; style = form.item; colourway = form.colour
+    } else if (form.category === 'Miscellaneous') {
+      brand = form.item_name; style = form.description
+    }
+
     const base = {
-      category: form.category, brand: form.brand, style: form.style,
-      colourway: form.colourway, sku: form.sku, purchase_platform: form.purchase_platform,
-      purchase_date: form.purchase_date || null, notes: form.notes,
+      category: form.category, brand, style, colourway, sku,
+      purchase_platform: form.purchase_platform,
+      purchase_date: form.purchase_date || null,
+      notes: form.notes,
+      // Extra pokemon fields
+      pokemon_type: form.pokemon_type || null,
+      card_name: form.card_name || null,
+      set_name: form.set_name || null,
+      card_number: form.card_number || null,
+      condition: form.condition || null,
+      graded: form.graded || false,
+      grading_company: form.grading_company || null,
+      grade: form.grade || null,
+      product_name: form.product_name || null,
+      pokemon_sealed_type: form.pokemon_sealed_type || null,
+      lego_set_name: form.lego_set_name || null,
+      set_number: form.set_number || null,
+      theme: form.theme || null,
+      lego_condition: form.lego_condition || null,
+      clothing_brand: form.clothing_brand || null,
+      item: form.item || null,
+      clothing_size: form.clothing_size || null,
+      colour: form.colour || null,
+      item_name: form.item_name || null,
+      description: form.description || null,
       batch_id: batchId, user_id: session.user.id, status: 'in_stock'
     }
     let error
     if (editItem) {
-      // Single item edit
       const payload = { ...base, purchase_price: parseFloat(form.units[0]?.purchase_price) || 0, size: form.units[0]?.size || '' }
       ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
     } else {
@@ -190,8 +504,19 @@ export default function App() {
 
   function openEdit(item) {
     setForm({
-      category: item.category || '', brand: item.brand || '', style: item.style || '',
-      colourway: item.colourway || '', sku: item.sku || '',
+      ...EMPTY_FORM,
+      category: item.category || '',
+      pokemon_type: item.pokemon_type || '',
+      brand: item.brand || '', style: item.style || '', colourway: item.colourway || '', sku: item.sku || '',
+      card_name: item.card_name || '', set_name: item.set_name || '', card_number: item.card_number || '',
+      condition: item.condition || '', graded: item.graded || false,
+      grading_company: item.grading_company || '', grade: item.grade || '',
+      product_name: item.product_name || '', pokemon_sealed_type: item.pokemon_sealed_type || '',
+      lego_set_name: item.lego_set_name || '', set_number: item.set_number || '',
+      theme: item.theme || '', lego_condition: item.lego_condition || '',
+      clothing_brand: item.clothing_brand || '', item: item.item || '',
+      clothing_size: item.clothing_size || '', colour: item.colour || '',
+      item_name: item.item_name || '', description: item.description || '',
       purchase_platform: item.purchase_platform || '', purchase_date: item.purchase_date || '',
       notes: item.notes || '', units: [{ size: item.size || '', purchase_price: item.purchase_price || '' }]
     })
@@ -591,61 +916,31 @@ export default function App() {
           <div className="modal">
             <div className="modal-title">{editItem?'Edit item':'Add new item'}</div>
             <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Category</label>
-                <select className="form-input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
+              <div className="form-group full">
+                <label className="form-label">Category *</label>
+                <select className="form-input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value,pokemon_type:'',units:[{...EMPTY_UNIT}]}))}>
                   <option value="">Select category</option>
                   {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="form-group">
-                <label className="form-label">Brand *</label>
-                <input className="form-input" placeholder="e.g. Nike" value={form.brand} onChange={e=>setForm(f=>({...f,brand:e.target.value}))}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Style</label>
-                <input className="form-input" placeholder="e.g. Air Max 95" value={form.style} onChange={e=>setForm(f=>({...f,style:e.target.value}))}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Colourway</label>
-                <input className="form-input" placeholder="e.g. Pure Money" value={form.colourway} onChange={e=>setForm(f=>({...f,colourway:e.target.value}))}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">SKU</label>
-                <input className="form-input" placeholder="e.g. 308497-100" value={form.sku} onChange={e=>setForm(f=>({...f,sku:e.target.value}))}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Purchase date</label>
-                <input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/>
-              </div>
-              <div className="form-group full">
-                <label className="form-label">Purchase platform</label>
-                <input className="form-input" placeholder="e.g. JD, SNKRS, eBay" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/>
-              </div>
-              <div className="form-group full">
-                <label className="form-label">Notes</label>
-                <input className="form-input" placeholder="e.g. Used, missing box..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/>
-              </div>
+              {form.category && (
+                <CategoryForm
+                  form={form}
+                  setForm={setForm}
+                  editItem={editItem}
+                  updateUnit={updateUnit}
+                  addUnit={addUnit}
+                  removeUnit={removeUnit}
+                />
+              )}
             </div>
-
-            <div className="units-section">
-              <div className="units-header">
-                <span className="form-label">Sizes & prices *</span>
-                {!editItem && <button className="btn sm" onClick={addUnit}>+ Add size</button>}
-              </div>
-              {form.units.map((unit,i)=>(
-                <div key={i} className="unit-row">
-                  <input className="form-input" placeholder="Size (UK)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/>
-                  <input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>
-                  {form.units.length>1 && <button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
-                </div>
-              ))}
-            </div>
-
+            {!form.category && (
+              <div style={{color:'var(--muted)',fontSize:13,textAlign:'center',padding:'16px 0'}}>Select a category to continue</div>
+            )}
             {saveError && <div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {saveError}</div>}
             <div className="form-actions">
               <button className="btn" onClick={()=>{setShowAdd(false);setEditItem(null);setForm(EMPTY_FORM);setSaveError('')}}>Cancel</button>
-              <button className="btn primary" onClick={saveItem} disabled={saving}>{saving?'Saving...':editItem?'Save changes':'Add item'}</button>
+              <button className="btn primary" onClick={saveItem} disabled={saving||!form.category}>{saving?'Saving...':editItem?'Save changes':'Add item'}</button>
             </div>
           </div>
         </div>
