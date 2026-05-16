@@ -402,7 +402,7 @@ export default function Dashboard({ session }) {
       <div className="topbar">
         <div className="topbar-brand"><span className="brand-mark" />StockTrack</div>
         <nav className="topbar-nav">
-          {[{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaks'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'}].map(n=>(
+          {[{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'}].map(n=>(
             <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>{n.label}</button>
           ))}
         </nav>
@@ -535,7 +535,7 @@ export default function Dashboard({ session }) {
 
         {page==='breaks'&&(
           <div>
-            <div className="page-header"><h1 className="page-title">Breaks</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div>
+            <div className="page-header"><h1 className="page-title">Breaker</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div>
             <div className="stats-bar">
               <div className="stat-card"><div className="stat-label">Total entries</div><div className="stat-value">{breakStats.total}</div></div>
               <div className="stat-card"><div className="stat-label">Active / Upcoming</div><div className="stat-value amber">{breakStats.active}</div></div>
