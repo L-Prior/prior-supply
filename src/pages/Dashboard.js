@@ -307,17 +307,108 @@ export default function Dashboard({ session }) {
   const plSell = sellItem ? (parseFloat(salePrice)||0)-(sellItem.purchase_price||0) : 0
   const username = session?.user?.email?.split('@')[0] || 'there'
 
+  // Breaks
+  const [breaks, setBreaks] = useState([])
+  const [breaksLoading, setBreaksLoading] = useState(false)
+  const [showBreakForm, setShowBreakForm] = useState(false)
+  const [editBreak, setEditBreak] = useState(null)
+  const [breakForm, setBreakForm] = useState({
+    type: 'break', name: '', cost: '', spots_total: '', spots_sold: '', spot_price: '',
+    packs_total: '', packs_sold: '', pack_price: '',
+    first_card_date: '', last_card_date: '', first_stream_date: '', last_stream_date: '',
+    break_date: '', status: 'upcoming', notes: ''
+  })
+  const EMPTY_BREAK = {
+    type: 'break', name: '', cost: '', spots_total: '', spots_sold: '', spot_price: '',
+    packs_total: '', packs_sold: '', pack_price: '',
+    first_card_date: '', last_card_date: '', first_stream_date: '', last_stream_date: '',
+    break_date: '', status: 'upcoming', notes: ''
+  }
+
+  useEffect(() => { if (session && page === 'breaks') fetchBreaks() }, [page])
+
+  async function fetchBreaks() {
+    setBreaksLoading(true)
+    const { data } = await supabase.from('breaks').select('*').order('created_at', { ascending: false })
+    setBreaks(data || [])
+    setBreaksLoading(false)
+  }
+
+  async function saveBreak() {
+    setSaving(true)
+    const payload = {
+      ...breakForm,
+      cost: parseFloat(breakForm.cost) || 0,
+      spots_total: parseInt(breakForm.spots_total) || null,
+      spots_sold: parseInt(breakForm.spots_sold) || null,
+      spot_price: parseFloat(breakForm.spot_price) || null,
+      packs_total: parseInt(breakForm.packs_total) || null,
+      packs_sold: parseInt(breakForm.packs_sold) || null,
+      pack_price: parseFloat(breakForm.pack_price) || null,
+      first_card_date: breakForm.first_card_date || null,
+      last_card_date: breakForm.last_card_date || null,
+      first_stream_date: breakForm.first_stream_date || null,
+      last_stream_date: breakForm.last_stream_date || null,
+      break_date: breakForm.break_date || null,
+      user_id: session.user.id
+    }
+    let error
+    if (editBreak) {
+      ;({ error } = await supabase.from('breaks').update(payload).eq('id', editBreak.id))
+    } else {
+      ;({ error } = await supabase.from('breaks').insert([payload]))
+    }
+    setSaving(false)
+    if (error) { console.error(error); return }
+    setShowBreakForm(false); setEditBreak(null); setBreakForm(EMPTY_BREAK); fetchBreaks()
+  }
+
+  async function deleteBreak(id) {
+    if (!window.confirm('Delete this entry?')) return
+    await supabase.from('breaks').delete().eq('id', id)
+    fetchBreaks()
+  }
+
+  function openEditBreak(b) {
+    setBreakForm({
+      type: b.type||'break', name: b.name||'', cost: b.cost||'', spots_total: b.spots_total||'', spots_sold: b.spots_sold||'', spot_price: b.spot_price||'',
+      packs_total: b.packs_total||'', packs_sold: b.packs_sold||'', pack_price: b.pack_price||'',
+      first_card_date: b.first_card_date||'', last_card_date: b.last_card_date||'',
+      first_stream_date: b.first_stream_date||'', last_stream_date: b.last_stream_date||'',
+      break_date: b.break_date||'', status: b.status||'upcoming', notes: b.notes||''
+    })
+    setEditBreak(b); setShowBreakForm(true)
+  }
+
+  function breakPL(b) {
+    if (b.type === 'break') {
+      const revenue = (b.spots_sold || 0) * (b.spot_price || 0)
+      return revenue - (b.cost || 0)
+    } else {
+      const revenue = (b.packs_sold || 0) * (b.pack_price || 0)
+      return revenue - (b.cost || 0)
+    }
+  }
+
+  const breakStats = useMemo(() => {
+    const totalPL = breaks.reduce((s, b) => s + breakPL(b), 0)
+    const completed = breaks.filter(b => b.status === 'completed').length
+    const active = breaks.filter(b => b.status === 'active' || b.status === 'upcoming').length
+    return { totalPL, completed, active, total: breaks.length }
+  }, [breaks])
+
   return (
     <div className="app">
       <div className="topbar">
         <div className="topbar-brand"><span className="brand-mark" />StockTrack</div>
         <nav className="topbar-nav">
-          {[{id:'home',label:'Home'},{id:'stock',label:'Stock'},{id:'metrics',label:'Metrics'}].map(n=>(
+          {[{id:'home',label:'Home'},{id:'stock',label:'Stock'},{id:'breaks',label:'Breaks'},{id:'metrics',label:'Metrics'}].map(n=>(
             <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>{n.label}</button>
           ))}
         </nav>
         <div className="topbar-actions">
           {page==='stock'&&<button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>}
+          {page==='breaks'&&<button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button>}
           <div className="user-pill">
             <span className="user-email">{session.user.email}</span>
             <button className="btn sm" onClick={signOut}>Sign out</button>
@@ -429,9 +520,154 @@ export default function Dashboard({ session }) {
             </div>
           </div>
         )}
+
+        {page==='breaks'&&(
+          <div>
+            <div className="page-header"><h1 className="page-title">Breaks</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div>
+            <div className="stats-bar">
+              <div className="stat-card"><div className="stat-label">Total entries</div><div className="stat-value">{breakStats.total}</div></div>
+              <div className="stat-card"><div className="stat-label">Active / Upcoming</div><div className="stat-value amber">{breakStats.active}</div></div>
+              <div className="stat-card"><div className="stat-label">Completed</div><div className="stat-value">{breakStats.completed}</div></div>
+              <div className="stat-card"><div className="stat-label">Total P&L</div><div className={`stat-value ${breakStats.totalPL>0?'pos':breakStats.totalPL<0?'neg':''}`}>{breakStats.totalPL>=0?'+':''}{fmt(breakStats.totalPL)}</div></div>
+            </div>
+
+            {breaksLoading ? <div className="loading">Loading...</div> : breaks.length === 0 ? (
+              <div className="empty"><div className="empty-icon">🃏</div><div className="empty-title">No breaks yet</div><div style={{marginTop:6}}>Add your first box break or mystery pack run</div></div>
+            ) : (
+              <div className="card-grid">
+                {breaks.map(b => {
+                  const pl = breakPL(b)
+                  const isBreak = b.type === 'break'
+                  const revenue = isBreak ? (b.spots_sold||0)*(b.spot_price||0) : (b.packs_sold||0)*(b.pack_price||0)
+                  const total = isBreak ? b.spots_total : b.packs_total
+                  const sold = isBreak ? b.spots_sold : b.packs_sold
+                  return (
+                    <div key={b.id} className="item-card">
+                      <div className="item-card-header">
+                        <div className="item-card-category">{isBreak ? '📦 Box Break' : '🎲 Mystery Packs'}</div>
+                        <span className={`badge ${b.status==='completed'?'sold':b.status==='active'?'in_stock':'in_stock'}`}>
+                          {b.status==='completed'?'Completed':b.status==='active'?'Active':'Upcoming'}
+                        </span>
+                      </div>
+                      <div className="item-card-body">
+                        <div className="item-card-brand">{b.name || (isBreak ? 'Box Break' : 'Mystery Packs')}</div>
+                        <div className="item-card-style">
+                          {isBreak ? `${b.spots_sold||0}/${b.spots_total||0} spots sold` : `${b.packs_sold||0}/${b.packs_total||0} packs sold`}
+                        </div>
+                      </div>
+                      <div className="item-card-stats">
+                        <div className="item-card-stat"><div className="item-card-stat-label">Cost</div><div className="item-card-stat-value">{fmt(b.cost)}</div></div>
+                        <div className="item-card-stat"><div className="item-card-stat-label">Revenue</div><div className="item-card-stat-value">{fmt(revenue)}</div></div>
+                        <div className="item-card-stat"><div className="item-card-stat-label">P&L</div><div className={`item-card-stat-value ${plColor(pl)}`}>{pl>=0?'+':''}{fmt(pl)}</div></div>
+                        <div className="item-card-stat"><div className="item-card-stat-label">{isBreak?'Price/spot':'Price/pack'}</div><div className="item-card-stat-value">{fmt(isBreak?b.spot_price:b.pack_price)}</div></div>
+                      </div>
+                      <div className="item-card-actions">
+                        <button className="btn sm" style={{flex:1}} onClick={()=>openEditBreak(b)}>Edit</button>
+                        <button className="btn sm danger" onClick={()=>deleteBreak(b.id)}>Del</button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Break Form Modal */}
+      {showBreakForm&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowBreakForm(false)}>
+          <div className="modal">
+            <div className="modal-title">{editBreak?'Edit entry':'Add break / pack run'}</div>
+            <div className="form-grid">
+              <div className="form-group full">
+                <label className="form-label">Type *</label>
+                <div className="type-toggle">
+                  <button className={`type-btn ${breakForm.type==='break'?'active':''}`} onClick={()=>setBreakForm(f=>({...f,type:'break'}))}>Box Break</button>
+                  <button className={`type-btn ${breakForm.type==='packs'?'active':''}`} onClick={()=>setBreakForm(f=>({...f,type:'packs'}))}>Mystery Packs</button>
+                </div>
+              </div>
+              {breakForm.type==='break'&&(
+                <div className="form-group full">
+                  <label className="form-label">Break name</label>
+                  <input className="form-input" placeholder="e.g. Topps Chrome PL Box 1" value={breakForm.name} onChange={e=>setBreakForm(f=>({...f,name:e.target.value}))}/>
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label">Total cost (£) *</label>
+                <input className="form-input" type="number" step="0.01" placeholder="0.00" value={breakForm.cost} onChange={e=>setBreakForm(f=>({...f,cost:e.target.value}))}/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select className="form-input" value={breakForm.status} onChange={e=>setBreakForm(f=>({...f,status:e.target.value}))}>
+                  <option value="upcoming">Upcoming</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+
+              {breakForm.type==='break'&&<>
+                <div className="form-group">
+                  <label className="form-label">Total spots</label>
+                  <input className="form-input" type="number" placeholder="e.g. 20" value={breakForm.spots_total} onChange={e=>setBreakForm(f=>({...f,spots_total:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Spots sold</label>
+                  <input className="form-input" type="number" placeholder="0" value={breakForm.spots_sold} onChange={e=>setBreakForm(f=>({...f,spots_sold:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Price per spot (£)</label>
+                  <input className="form-input" type="number" step="0.01" placeholder="0.00" value={breakForm.spot_price} onChange={e=>setBreakForm(f=>({...f,spot_price:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Break date</label>
+                  <input className="form-input" type="date" value={breakForm.break_date} onChange={e=>setBreakForm(f=>({...f,break_date:e.target.value}))}/>
+                </div>
+              </>}
+
+              {breakForm.type==='packs'&&<>
+                <div className="form-group">
+                  <label className="form-label">Total packs</label>
+                  <input className="form-input" type="number" placeholder="e.g. 200" value={breakForm.packs_total} onChange={e=>setBreakForm(f=>({...f,packs_total:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Packs sold</label>
+                  <input className="form-input" type="number" placeholder="0" value={breakForm.packs_sold} onChange={e=>setBreakForm(f=>({...f,packs_sold:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Price per pack (£)</label>
+                  <input className="form-input" type="number" step="0.01" placeholder="0.00" value={breakForm.pack_price} onChange={e=>setBreakForm(f=>({...f,pack_price:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">First card purchase</label>
+                  <input className="form-input" type="date" value={breakForm.first_card_date} onChange={e=>setBreakForm(f=>({...f,first_card_date:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Last card purchase</label>
+                  <input className="form-input" type="date" value={breakForm.last_card_date} onChange={e=>setBreakForm(f=>({...f,last_card_date:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">First stream date</label>
+                  <input className="form-input" type="date" value={breakForm.first_stream_date} onChange={e=>setBreakForm(f=>({...f,first_stream_date:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Last stream date</label>
+                  <input className="form-input" type="date" value={breakForm.last_stream_date} onChange={e=>setBreakForm(f=>({...f,last_stream_date:e.target.value}))}/>
+                </div>
+              </>}
+
+              <div className="form-group full">
+                <label className="form-label">Notes</label>
+                <input className="form-input" placeholder="Any additional notes..." value={breakForm.notes} onChange={e=>setBreakForm(f=>({...f,notes:e.target.value}))}/>
+              </div>
+            </div>
+            <div className="form-actions">
+              <button className="btn" onClick={()=>{setShowBreakForm(false);setEditBreak(null);setBreakForm(EMPTY_BREAK)}}>Cancel</button>
+              <button className="btn primary" onClick={saveBreak} disabled={saving}>{saving?'Saving...':editBreak?'Save changes':'Add entry'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showAdd&&(
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAdd(false)}>
           <div className="modal">
