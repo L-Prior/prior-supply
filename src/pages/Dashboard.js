@@ -325,7 +325,7 @@ export default function Dashboard({ session }) {
     break_date: '', status: 'upcoming', notes: ''
   }
 
-  useEffect(() => { if (session && page === 'breaks') fetchBreaks() }, [page])
+  useEffect(() => { if (session && page === 'breaks') fetchBreaks() }, [page, session])
 
   async function fetchBreaks() {
     setBreaksLoading(true)
@@ -539,8 +539,6 @@ export default function Dashboard({ session }) {
                   const pl = breakPL(b)
                   const isBreak = b.type === 'break'
                   const revenue = isBreak ? (b.spots_sold||0)*(b.spot_price||0) : (b.packs_sold||0)*(b.pack_price||0)
-                  const total = isBreak ? b.spots_total : b.packs_total
-                  const sold = isBreak ? b.spots_sold : b.packs_sold
                   return (
                     <div key={b.id} className="item-card">
                       <div className="item-card-header">
