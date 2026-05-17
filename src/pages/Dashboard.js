@@ -172,6 +172,11 @@ export default function Dashboard({ session }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [chartMonths, setChartMonths] = useState(6)
+  const [metricsSources, setMetricsSources] = useState({ reseller: true, breaker: true, collector: false })
+
+  function toggleSource(key) {
+    setMetricsSources(s => ({ ...s, [key]: !s[key] }))
+  }
 
   useEffect(() => { fetchItems() }, [])
 
@@ -294,9 +299,23 @@ export default function Dashboard({ session }) {
   }, [items])
 
   const plChartData = useMemo(() => getLast(chartMonths).map(({ key, label }) => {
-    const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
-    return { label, pl: parseFloat(sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)),0).toFixed(2)), revenue: parseFloat(sold.reduce((s,i)=>s+(i.sale_price||0),0).toFixed(2)), cost: parseFloat(sold.reduce((s,i)=>s+(i.purchase_price||0),0).toFixed(2)) }
-  }), [items, chartMonths])
+    let pl = 0, revenue = 0, cost = 0
+    if (metricsSources.reseller) {
+      const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
+      pl += sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)),0)
+      revenue += sold.reduce((s,i)=>s+(i.sale_price||0),0)
+      cost += sold.reduce((s,i)=>s+(i.purchase_price||0),0)
+    }
+    if (metricsSources.breaker) {
+      const bks = breaks.filter(b => b.status === 'completed' && getMonthKey(b.break_date || b.last_stream_date) === key)
+      bks.forEach(b => {
+        const bpl = breakPL(b)
+        const brev = b.type==='break' ? (b.spots_sold||0)*(b.spot_price||0) : (b.packs_sold||0)*(b.pack_price||0)
+        pl += bpl; revenue += brev; cost += (b.cost||0)
+      })
+    }
+    return { label, pl: parseFloat(pl.toFixed(2)), revenue: parseFloat(revenue.toFixed(2)), cost: parseFloat(cost.toFixed(2)) }
+  }), [items, breaks, chartMonths, metricsSources])
 
   const categoryData = useMemo(() => { const map = {}; items.forEach(i => { const cat = i.category||'Other'; if(!map[cat])map[cat]=0; map[cat]++ }); return Object.entries(map).map(([name,value])=>({name,value})) }, [items])
   const brandData = useMemo(() => { const map = {}; items.filter(i=>i.status==='sold').forEach(i => { const b=i.brand||'Unknown'; if(!map[b])map[b]=0; map[b]+=(i.sale_price||0)-(i.purchase_price||0) }); return Object.entries(map).map(([brand,pl])=>({brand,pl:parseFloat(pl.toFixed(2))})).sort((a,b)=>b.pl-a.pl).slice(0,8) }, [items])
@@ -509,7 +528,18 @@ export default function Dashboard({ session }) {
 
         {page==='metrics'&&(
           <div>
-            <div className="page-header"><h1 className="page-title">Metrics</h1><p className="page-subtitle">Deep dive into your performance</p></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
+              <div><h1 className="page-title">Metrics</h1><p className="page-subtitle">Deep dive into your performance</p></div>
+              <div className="metrics-sources">
+                <span className="metrics-sources-label">Data sources:</span>
+                {[{key:'reseller',label:'Reseller'},{key:'breaker',label:'Breaker'},{key:'collector',label:'Collector'}].map(s=>(
+                  <label key={s.key} className="metrics-checkbox">
+                    <input type="checkbox" checked={metricsSources[s.key]} onChange={()=>toggleSource(s.key)}/>
+                    {s.label}
+                  </label>
+                ))}
+              </div>
+            </div>
             <div className="metrics-grid">
               <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div><div className="chart-controls">{[3,6,12].map(m=><button key={m} className={`chart-btn ${chartMonths===m?'active':''}`} onClick={()=>setChartMonths(m)}>{m}M</button>)}</div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Bar dataKey="pl" name="P&L" fill="#16a34a" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Revenue vs Cost</div><div className="chart-subtitle">Monthly comparison</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/><Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4,4,0,0]}/><Bar dataKey="cost" name="Cost" fill="#e3e8ef" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div>
