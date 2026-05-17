@@ -349,7 +349,42 @@ export default function Dashboard({ session }) {
   const plSell = sellItem ? (parseFloat(salePrice)||0)-(sellItem.purchase_price||0) : 0
   const username = session?.user?.email?.split('@')[0] || 'there'
 
+  useEffect(() => { if (session) { fetchBreaks() } }, [session])
   useEffect(() => { if (session && page === 'breaks') fetchBreaks() }, [page, session])
+
+  // Break cards state
+  const [breakCards, setBreakCards] = useState([])
+  const [viewingBreak, setViewingBreak] = useState(null)
+  const [showCardForm, setShowCardForm] = useState(false)
+  const [cardForm, setCardForm] = useState({ item: '', tier: 'Floor', cost: '' })
+  const TIER_ORDER = { 'Floor': 0, 'Mid': 1, 'Chase': 2 }
+
+  async function fetchBreakCards(breakId) {
+    const { data } = await supabase.from('break_cards').select('*').eq('break_id', breakId)
+    setBreakCards(data || [])
+  }
+
+  async function saveCard() {
+    if (!cardForm.item || !viewingBreak) return
+    setSaving(true)
+    await supabase.from('break_cards').insert([{
+      item: cardForm.item, tier: cardForm.tier,
+      cost: parseFloat(cardForm.cost) || null,
+      break_id: viewingBreak.id, user_id: session.user.id
+    }])
+    setSaving(false)
+    setCardForm({ item: '', tier: 'Floor', cost: '' })
+    fetchBreakCards(viewingBreak.id)
+  }
+
+  async function deleteCard(id) {
+    await supabase.from('break_cards').delete().eq('id', id)
+    fetchBreakCards(viewingBreak.id)
+  }
+
+  const sortedCards = useMemo(() => {
+    return [...breakCards].sort((a, b) => (TIER_ORDER[a.tier] ?? 0) - (TIER_ORDER[b.tier] ?? 0))
+  }, [breakCards])
 
   async function fetchBreaks() {
     setBreaksLoading(true)
@@ -598,6 +633,7 @@ export default function Dashboard({ session }) {
                       </div>
                       <div className="item-card-actions">
                         <button className="btn sm" style={{flex:1}} onClick={()=>openEditBreak(b)}>Edit</button>
+                        {b.type==='packs' && <button className="btn sm success" onClick={()=>{ setViewingBreak(b); fetchBreakCards(b.id) }}>Inventory</button>}
                         <button className="btn sm danger" onClick={()=>deleteBreak(b.id)}>Del</button>
                       </div>
                     </div>
@@ -703,6 +739,58 @@ export default function Dashboard({ session }) {
           </div>
         </div>
       )}
+
+      {/* Card Inventory Modal */}
+      {viewingBreak&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setViewingBreak(null)}>
+          <div className="modal" style={{maxWidth:580}}>
+            <div className="modal-title">Card Inventory</div>
+            <div style={{fontSize:13,color:'var(--muted)',marginTop:-12,marginBottom:16}}>{viewingBreak.name||'Mystery Pack Run'}</div>
+
+            {/* Add card form */}
+            <div className="card-inventory-add">
+              <input className="form-input" placeholder="Item name" value={cardForm.item} onChange={e=>setCardForm(f=>({...f,item:e.target.value}))} style={{flex:2}}/>
+              <select className="form-input" value={cardForm.tier} onChange={e=>setCardForm(f=>({...f,tier:e.target.value}))} style={{flex:1}}>
+                <option value="Floor">Floor</option>
+                <option value="Mid">Mid</option>
+                <option value="Chase">Chase</option>
+              </select>
+              <input className="form-input" type="number" step="0.01" placeholder="Cost (£)" value={cardForm.cost} onChange={e=>setCardForm(f=>({...f,cost:e.target.value}))} style={{flex:1}}/>
+              <button className="btn primary sm" onClick={saveCard} disabled={saving||!cardForm.item}>Add</button>
+            </div>
+
+            {/* Card list */}
+            <div className="batch-units" style={{marginTop:16}}>
+              {sortedCards.length===0 ? (
+                <div style={{textAlign:'center',padding:'24px',color:'var(--muted)',fontSize:13}}>No items yet — add your first card above</div>
+              ) : sortedCards.map(card=>(
+                <div key={card.id} className="batch-unit-row">
+                  <div className="batch-unit-info" style={{flex:1}}>
+                    <div className="batch-unit-size">{card.item}</div>
+                    <div className="batch-unit-cost">{card.cost ? fmt(card.cost) : '—'}</div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <span className={`tier-badge tier-${card.tier?.toLowerCase()}`}>{card.tier}</span>
+                    <button className="btn sm danger" onClick={()=>deleteCard(card.id)}>Del</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {sortedCards.length > 0 && (
+              <div style={{marginTop:12,padding:'10px 14px',background:'var(--surface2)',borderRadius:'var(--radius)',border:'1px solid var(--border)',display:'flex',justifyContent:'space-between',fontSize:13}}>
+                <span style={{color:'var(--muted)'}}>Total cost</span>
+                <span style={{fontWeight:600}}>{fmt(sortedCards.reduce((s,c)=>s+(c.cost||0),0))}</span>
+              </div>
+            )}
+
+            <div className="form-actions" style={{marginTop:16}}>
+              <button className="btn" onClick={()=>setViewingBreak(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAdd&&(
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAdd(false)}>
           <div className="modal">
