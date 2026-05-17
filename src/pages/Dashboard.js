@@ -326,22 +326,39 @@ export default function Dashboard({ session }) {
     let pl = 0, revenue = 0, cost = 0
     if (metricsSources.reseller) {
       const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
-      pl += sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)),0)
-      revenue += sold.reduce((s,i)=>s+(i.sale_price||0),0)
-      cost += sold.reduce((s,i)=>s+(i.purchase_price||0),0)
+      const soldPL = sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)),0)
+      const soldRev = sold.reduce((s,i)=>s+(i.sale_price||0),0)
+      const soldCost = sold.reduce((s,i)=>s+(i.purchase_price||0),0)
+      pl += soldPL; revenue += soldRev; cost += soldCost
     }
     if (metricsSources.breaker) {
-      const bks = breaks.filter(b => b.status === 'completed' && getMonthKey(b.break_date || b.last_stream_date) === key)
+      const bks = breaks.filter(b => b.status === 'completed' && (
+        getMonthKey(b.break_date) === key ||
+        getMonthKey(b.last_stream_date) === key ||
+        getMonthKey(b.created_at) === key
+      ))
       bks.forEach(b => {
-        const bpl = breakPL(b)
         const brev = b.type==='break' ? (b.spots_sold||0)*(b.spot_price||0) : (b.packs_sold||0)*(b.pack_price||0)
-        pl += bpl; revenue += brev; cost += (b.cost||0)
+        const bcost = b.cost || 0
+        pl += brev - bcost; revenue += brev; cost += bcost
       })
     }
     return { label, pl: parseFloat(pl.toFixed(2)), revenue: parseFloat(revenue.toFixed(2)), cost: parseFloat(cost.toFixed(2)) }
   }), [items, breaks, chartMonths, metricsSources])
 
-  const categoryData = useMemo(() => { const map = {}; items.forEach(i => { const cat = i.category||'Other'; if(!map[cat])map[cat]=0; map[cat]++ }); return Object.entries(map).map(([name,value])=>({name,value})) }, [items])
+  const categoryData = useMemo(() => {
+    const map = {}
+    if (metricsSources.reseller) {
+      items.forEach(i => { const cat = i.category||'Other'; if(!map[cat])map[cat]=0; map[cat]++ })
+    }
+    if (metricsSources.breaker) {
+      breaks.forEach(b => {
+        const cat = b.type==='break' ? 'Box Break' : 'Mystery Packs'
+        if(!map[cat])map[cat]=0; map[cat]++
+      })
+    }
+    return Object.entries(map).map(([name,value])=>({name,value}))
+  }, [items, breaks, metricsSources])
   const brandData = useMemo(() => { const map = {}; items.filter(i=>i.status==='sold').forEach(i => { const b=i.brand||'Unknown'; if(!map[b])map[b]=0; map[b]+=(i.sale_price||0)-(i.purchase_price||0) }); return Object.entries(map).map(([brand,pl])=>({brand,pl:parseFloat(pl.toFixed(2))})).sort((a,b)=>b.pl-a.pl).slice(0,8) }, [items])
   const avgPLData = useMemo(() => getLast(6).map(({ key, label }) => { const sold = items.filter(i=>i.status==='sold'&&getMonthKey(i.sold_at)===key); const avg = sold.length ? sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)),0)/sold.length : 0; return { label, avg: parseFloat(avg.toFixed(2)) } }), [items])
   const sellThroughData = useMemo(() => { const map = {}; items.forEach(i => { const cat=i.category||'Other'; if(!map[cat])map[cat]={total:0,sold:0}; map[cat].total++; if(i.status==='sold')map[cat].sold++ }); return Object.entries(map).map(([cat,{total,sold}])=>({cat,rate:parseFloat(((sold/total)*100).toFixed(1))})) }, [items])
