@@ -298,6 +298,29 @@ export default function Dashboard({ session }) {
     return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl, monthPL }
   }, [items])
 
+  // Breaks state - declared before chart data so it can be used in combined metrics
+  const [breaks, setBreaks] = useState([])
+  const [breaksLoading, setBreaksLoading] = useState(false)
+  const [showBreakForm, setShowBreakForm] = useState(false)
+  const [editBreak, setEditBreak] = useState(null)
+  const [breakForm, setBreakForm] = useState({
+    type: 'break', name: '', cost: '', spots_total: '', spots_sold: '', spot_price: '',
+    packs_total: '', packs_sold: '', pack_price: '',
+    first_card_date: '', last_card_date: '', first_stream_date: '', last_stream_date: '',
+    break_date: '', status: 'upcoming', notes: ''
+  })
+  const EMPTY_BREAK = {
+    type: 'break', name: '', cost: '', spots_total: '', spots_sold: '', spot_price: '',
+    packs_total: '', packs_sold: '', pack_price: '',
+    first_card_date: '', last_card_date: '', first_stream_date: '', last_stream_date: '',
+    break_date: '', status: 'upcoming', notes: ''
+  }
+
+  function breakPL(b) {
+    if (b.type === 'break') return (b.spots_sold||0)*(b.spot_price||0) - (b.cost||0)
+    return (b.packs_sold||0)*(b.pack_price||0) - (b.cost||0)
+  }
+
   const plChartData = useMemo(() => getLast(chartMonths).map(({ key, label }) => {
     let pl = 0, revenue = 0, cost = 0
     if (metricsSources.reseller) {
@@ -325,24 +348,6 @@ export default function Dashboard({ session }) {
 
   const plSell = sellItem ? (parseFloat(salePrice)||0)-(sellItem.purchase_price||0) : 0
   const username = session?.user?.email?.split('@')[0] || 'there'
-
-  // Breaks
-  const [breaks, setBreaks] = useState([])
-  const [breaksLoading, setBreaksLoading] = useState(false)
-  const [showBreakForm, setShowBreakForm] = useState(false)
-  const [editBreak, setEditBreak] = useState(null)
-  const [breakForm, setBreakForm] = useState({
-    type: 'break', name: '', cost: '', spots_total: '', spots_sold: '', spot_price: '',
-    packs_total: '', packs_sold: '', pack_price: '',
-    first_card_date: '', last_card_date: '', first_stream_date: '', last_stream_date: '',
-    break_date: '', status: 'upcoming', notes: ''
-  })
-  const EMPTY_BREAK = {
-    type: 'break', name: '', cost: '', spots_total: '', spots_sold: '', spot_price: '',
-    packs_total: '', packs_sold: '', pack_price: '',
-    first_card_date: '', last_card_date: '', first_stream_date: '', last_stream_date: '',
-    break_date: '', status: 'upcoming', notes: ''
-  }
 
   useEffect(() => { if (session && page === 'breaks') fetchBreaks() }, [page, session])
 
@@ -397,16 +402,6 @@ export default function Dashboard({ session }) {
       break_date: b.break_date||'', status: b.status||'upcoming', notes: b.notes||''
     })
     setEditBreak(b); setShowBreakForm(true)
-  }
-
-  function breakPL(b) {
-    if (b.type === 'break') {
-      const revenue = (b.spots_sold || 0) * (b.spot_price || 0)
-      return revenue - (b.cost || 0)
-    } else {
-      const revenue = (b.packs_sold || 0) * (b.pack_price || 0)
-      return revenue - (b.cost || 0)
-    }
   }
 
   const breakStats = useMemo(() => {
