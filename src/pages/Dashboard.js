@@ -355,7 +355,6 @@ export default function Dashboard({ session }) {
   // Break cards state
   const [breakCards, setBreakCards] = useState([])
   const [viewingBreak, setViewingBreak] = useState(null)
-  const [showCardForm, setShowCardForm] = useState(false)
   const [cardForm, setCardForm] = useState({ item: '', tier: 'Floor', cost: '' })
   const TIER_ORDER = { 'Floor': 0, 'Mid': 1, 'Chase': 2 }
 
@@ -383,7 +382,8 @@ export default function Dashboard({ session }) {
   }
 
   const sortedCards = useMemo(() => {
-    return [...breakCards].sort((a, b) => (TIER_ORDER[a.tier] ?? 0) - (TIER_ORDER[b.tier] ?? 0))
+    const tierOrder = { 'Floor': 0, 'Mid': 1, 'Chase': 2 }
+    return [...breakCards].sort((a, b) => (tierOrder[a.tier] ?? 0) - (tierOrder[b.tier] ?? 0))
   }, [breakCards])
 
   async function fetchBreaks() {
