@@ -356,7 +356,6 @@ export default function Dashboard({ session }) {
   const [breakCards, setBreakCards] = useState([])
   const [viewingBreak, setViewingBreak] = useState(null)
   const [cardForm, setCardForm] = useState({ item: '', tier: 'Floor', cost: '' })
-  const TIER_ORDER = { 'Floor': 0, 'Mid': 1, 'Chase': 2 }
 
   async function fetchBreakCards(breakId) {
     const { data } = await supabase.from('break_cards').select('*').eq('break_id', breakId)
