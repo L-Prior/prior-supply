@@ -178,7 +178,7 @@ export default function Dashboard({ session }) {
     setMetricsSources(s => ({ ...s, [key]: !s[key] }))
   }
 
-  useEffect(() => { fetchItems() }, [])
+  useEffect(() => { fetchItems(); fetchBreaks() }, [])
 
   async function fetchItems() {
     setLoading(true)
@@ -317,6 +317,7 @@ export default function Dashboard({ session }) {
   }
 
   function breakPL(b) {
+    if (b.status !== 'completed') return 0
     if (b.type === 'break') return (b.spots_sold||0)*(b.spot_price||0) - (b.cost||0)
     return (b.packs_sold||0)*(b.pack_price||0) - (b.cost||0)
   }
@@ -348,9 +349,6 @@ export default function Dashboard({ session }) {
 
   const plSell = sellItem ? (parseFloat(salePrice)||0)-(sellItem.purchase_price||0) : 0
   const username = session?.user?.email?.split('@')[0] || 'there'
-
-  useEffect(() => { if (session) { fetchBreaks() } }, [session])
-  useEffect(() => { if (session && page === 'breaks') fetchBreaks() }, [page, session])
 
   // Break cards state
   const [breakCards, setBreakCards] = useState([])
@@ -627,7 +625,7 @@ export default function Dashboard({ session }) {
                       <div className="item-card-stats">
                         <div className="item-card-stat"><div className="item-card-stat-label">Cost</div><div className="item-card-stat-value">{fmt(b.cost)}</div></div>
                         <div className="item-card-stat"><div className="item-card-stat-label">Revenue</div><div className="item-card-stat-value">{fmt(revenue)}</div></div>
-                        <div className="item-card-stat"><div className="item-card-stat-label">P&L</div><div className={`item-card-stat-value ${plColor(pl)}`}>{pl>=0?'+':''}{fmt(pl)}</div></div>
+                        <div className="item-card-stat"><div className="item-card-stat-label">P&L</div><div className={`item-card-stat-value ${b.status==='completed'?plColor(pl):''}`}>{b.status==='completed'?(pl>=0?'+':'')+fmt(pl):'—'}</div></div>
                         <div className="item-card-stat"><div className="item-card-stat-label">{isBreak?'Price/spot':'Price/pack'}</div><div className="item-card-stat-value">{fmt(isBreak?b.spot_price:b.pack_price)}</div></div>
                       </div>
                       <div className="item-card-actions">
