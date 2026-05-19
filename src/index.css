@@ -1436,3 +1436,35 @@ tbody td {
   color: #ca8a04;
   border: 1px solid #fde68a;
 }
+
+/* Fee breakdown */
+.fee-breakdown {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+.fee-row:last-child { border-bottom: none; }
+
+.fee-deduct {
+  color: var(--red);
+}
+
+.fee-total {
+  font-weight: 600;
+  font-size: 14px;
+  background: var(--surface);
+}
+.fee-total.pos { color: var(--green); }
+.fee-total.neg { color: var(--red); }

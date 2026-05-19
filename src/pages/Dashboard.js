@@ -12,6 +12,42 @@ const POKEMON_TYPES = ['Booster Box', 'Elite Trainer Box', 'Pack', 'Bundle', 'Ot
 const CONDITIONS = ['Mint', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played']
 const GRADING_COMPANIES = ['PSA', 'BGS', 'CGC', 'ACE']
 
+// Fee platforms
+const RESELLER_PLATFORMS = [
+  { id: 'none', name: 'No fees (in-person)', type: 'flat', rate: 0 },
+  { id: 'depop', name: 'Depop (UK)', type: 'percent_plus_fixed', rate: 2.9, fixed: 0.30 },
+  { id: 'vinted', name: 'Vinted', type: 'flat', rate: 0 },
+  { id: 'vinted_pro', name: 'Vinted Pro', type: 'percent', rate: 5 },
+  { id: 'ebay_private', name: 'eBay (Private)', type: 'fixed', rate: 0.40 },
+  { id: 'ebay_business', name: 'eBay (Business)', type: 'percent_plus_fixed', rate: 12.8, fixed: 0.40 },
+  { id: 'laced', name: 'Laced', type: 'percent', rate: 15 },
+  { id: 'stockx_l1', name: 'StockX — Level 1 (0–11 sales)', type: 'percent', rate: 12 },
+  { id: 'stockx_l2', name: 'StockX — Level 2 (12–39 sales)', type: 'percent', rate: 11.5 },
+  { id: 'stockx_l3', name: 'StockX — Level 3 (40–799 sales)', type: 'percent', rate: 11 },
+  { id: 'stockx_l4', name: 'StockX — Level 4 (800+ sales)', type: 'percent', rate: 10 },
+  { id: 'alias', name: 'Alias', type: 'percent', rate: 9.5 },
+  { id: 'whatnot', name: 'Whatnot (UK)', type: 'percent_plus_fixed', rate: 9.09, fixed: 0.35 },
+  { id: 'custom', name: 'Custom', type: 'percent', rate: 0 },
+]
+
+const BREAKER_PLATFORMS = [
+  { id: 'none', name: 'No fees', type: 'flat', rate: 0 },
+  { id: 'whatnot', name: 'Whatnot (UK)', type: 'percent_plus_fixed', rate: 9.09, fixed: 0.35 },
+  { id: 'tiktok', name: 'TikTok Live (UK)', type: 'percent_plus_fixed', rate: 9, fixed: 0.50 },
+  { id: 'custom', name: 'Custom', type: 'percent', rate: 0 },
+]
+
+function calcFee(salePrice, platform, customRate = 0) {
+  if (!platform || !salePrice) return 0
+  const price = parseFloat(salePrice) || 0
+  const rate = platform.id === 'custom' ? (parseFloat(customRate) || 0) : platform.rate
+  if (platform.type === 'flat') return 0
+  if (platform.type === 'fixed') return platform.fixed || 0
+  if (platform.type === 'percent') return parseFloat((price * rate / 100).toFixed(2))
+  if (platform.type === 'percent_plus_fixed') return parseFloat((price * rate / 100 + (platform.fixed || 0)).toFixed(2))
+  return 0
+}
+
 const EMPTY_UNIT = { size: '', purchase_price: '' }
 const EMPTY_FORM = {
   category: '', pokemon_type: '',
@@ -153,6 +189,71 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
   return null
 }
 
+function FeeCalculator() {
+  const [calcPlatform, setCalcPlatform] = useState(null)
+  const [calcPrice, setCalcPrice] = useState('')
+  const [calcCost, setCalcCost] = useState('')
+  const [calcCustomRate, setCalcCustomRate] = useState('')
+  const [calcType, setCalcType] = useState('reseller')
+
+  const platforms = calcType === 'reseller' ? RESELLER_PLATFORMS : BREAKER_PLATFORMS
+  const fee = calcFee(calcPrice, calcPlatform, calcCustomRate)
+  const price = parseFloat(calcPrice) || 0
+  const cost = parseFloat(calcCost) || 0
+  const netSale = price - fee
+  const profit = netSale - cost
+  const roi = cost > 0 ? ((profit / cost) * 100).toFixed(1) : null
+
+  return (
+    <div style={{maxWidth:480}}>
+      <div className="chart-card">
+        <div className="chart-title" style={{marginBottom:20}}>Fee Calculator</div>
+        <div className="form-grid">
+          <div className="form-group full">
+            <label className="form-label">Calculator type</label>
+            <div className="type-toggle">
+              <button className={`type-btn ${calcType==='reseller'?'active':''}`} onClick={()=>{setCalcType('reseller');setCalcPlatform(null)}}>Reseller</button>
+              <button className={`type-btn ${calcType==='breaker'?'active':''}`} onClick={()=>{setCalcType('breaker');setCalcPlatform(null)}}>Breaker</button>
+            </div>
+          </div>
+          <div className="form-group full">
+            <label className="form-label">Platform</label>
+            <select className="form-input" value={calcPlatform?.id||''} onChange={e=>setCalcPlatform(platforms.find(p=>p.id===e.target.value)||null)}>
+              <option value="">Select platform</option>
+              {platforms.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          {calcPlatform?.id==='custom'&&(
+            <div className="form-group full">
+              <label className="form-label">Custom fee %</label>
+              <input className="form-input" type="number" step="0.1" placeholder="e.g. 10" value={calcCustomRate} onChange={e=>setCalcCustomRate(e.target.value)}/>
+            </div>
+          )}
+          <div className="form-group">
+            <label className="form-label">Sale price (£)</label>
+            <input className="form-input" type="number" step="0.01" placeholder="0.00" value={calcPrice} onChange={e=>setCalcPrice(e.target.value)}/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Cost price (£)</label>
+            <input className="form-input" type="number" step="0.01" placeholder="0.00" value={calcCost} onChange={e=>setCalcCost(e.target.value)}/>
+          </div>
+        </div>
+
+        {calcPrice && calcPlatform && (
+          <div className="fee-breakdown" style={{marginTop:8}}>
+            <div className="fee-row"><span>Sale price</span><span>{fmt(price)}</span></div>
+            {fee>0&&<div className="fee-row fee-deduct"><span>Platform fee ({calcPlatform.id==='custom'?calcCustomRate:calcPlatform.rate}%{calcPlatform.fixed?` + £${calcPlatform.fixed}`:''})</span><span>-{fmt(fee)}</span></div>}
+            <div className="fee-row"><span>Net proceeds</span><span>{fmt(netSale)}</span></div>
+            {calcCost>0&&<><div className="fee-row"><span>Cost</span><span>-{fmt(cost)}</span></div>
+            <div className={`fee-row fee-total ${profit>=0?'pos':'neg'}`}><span>Profit</span><span>{fmt(profit)}</span></div>
+            {roi&&<div className="fee-row" style={{fontSize:12,color:'var(--muted)'}}><span>ROI</span><span>{roi}%</span></div>}</>}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const [page, setPage] = useState('home')
@@ -164,6 +265,8 @@ export default function Dashboard({ session }) {
   const [sellItem, setSellItem] = useState(null)
   const [salePrice, setSalePrice] = useState('')
   const [sellingPlatform, setSellingPlatform] = useState('')
+  const [sellFeeplatform, setSellFeeplatform] = useState(null)
+  const [customFeeRate, setCustomFeeRate] = useState('')
   const [form, setForm] = useState(EMPTY_FORM)
   const [search, setSearch] = useState('')
   const [filterBrand, setFilterBrand] = useState('')
@@ -251,11 +354,18 @@ export default function Dashboard({ session }) {
   async function markSold() {
     if (!salePrice || !sellItem) return
     setSaving(true)
-    await supabase.from('stock').update({ status: 'sold', sale_price: parseFloat(salePrice), selling_platform: sellingPlatform, sold_at: new Date().toISOString() }).eq('id', sellItem.id)
-    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform('')
+    const feeAmt = calcFee(salePrice, sellFeeplatform, customFeeRate)
+    const platformName = sellFeeplatform ? sellFeeplatform.name : sellingPlatform
+    await supabase.from('stock').update({
+      status: 'sold', sale_price: parseFloat(salePrice),
+      selling_platform: platformName,
+      fee_amount: feeAmt || null,
+      sold_at: new Date().toISOString()
+    }).eq('id', sellItem.id)
+    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate('')
     fetchItems()
     if (batchModal) {
-      const updated = batchModal.units.map(u => u.id === sellItem.id ? { ...u, status: 'sold', sale_price: parseFloat(salePrice), selling_platform: sellingPlatform } : u)
+      const updated = batchModal.units.map(u => u.id === sellItem.id ? { ...u, status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt } : u)
       setBatchModal({ ...batchModal, units: updated })
     }
   }
@@ -464,7 +574,7 @@ export default function Dashboard({ session }) {
       <div className="topbar">
         <div className="topbar-brand"><span className="brand-mark" />StockTrack</div>
         <nav className="topbar-nav">
-          {[{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'}].map(n=>(
+          {[{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}].map(n=>(
             <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>{n.label}</button>
           ))}
         </nav>
@@ -603,6 +713,13 @@ export default function Dashboard({ session }) {
               <div className="empty-title">Coming soon</div>
               <div style={{marginTop:6}}>The collector tracker is on its way — catalogue your collection without the financial side.</div>
             </div>
+          </div>
+        )}
+
+        {page==='tools'&&(
+          <div>
+            <div className="page-header"><h1 className="page-title">Tools</h1><p className="page-subtitle">Calculators and utilities</p></div>
+            <FeeCalculator/>
           </div>
         )}
 
@@ -854,8 +971,13 @@ export default function Dashboard({ session }) {
                     <div className="batch-unit-right">
                       {unit.status==='sold'?(
                         <div className="batch-unit-sold">
-                          <span className="badge sold">Sold{unit.selling_platform?` via ${unit.selling_platform}`:''}</span>
-                          <span className={`batch-unit-pl ${plColor(pl)}`}>{pl!=null?(pl>=0?'+':'')+fmt(pl):'—'}</span>
+                          <div style={{textAlign:'right'}}>
+                            <span className="badge sold">Sold{unit.selling_platform?` via ${unit.selling_platform}`:''}</span>
+                            {unit.fee_amount>0&&<div style={{fontSize:11,color:'var(--muted)',marginTop:3}}>Fee: {fmt(unit.fee_amount)}</div>}
+                            <div className={`batch-unit-pl ${plColor(pl)}`} style={{marginTop:2}}>
+                              {pl!=null?fmt(pl-(unit.fee_amount||0)):'—'}
+                            </div>
+                          </div>
                         </div>
                       ):(
                         <div style={{display:'flex',gap:6}}>
@@ -892,17 +1014,39 @@ export default function Dashboard({ session }) {
               <input className="form-input" type="number" step="0.01" placeholder="0.00" value={salePrice} onChange={e=>setSalePrice(e.target.value)} autoFocus/>
             </div>
             <div className="form-group" style={{marginTop:12}}>
-              <label className="form-label">Selling platform</label>
-              <input className="form-input" placeholder="e.g. eBay, StockX, Vinted" value={sellingPlatform} onChange={e=>setSellingPlatform(e.target.value)}/>
+              <label className="form-label">Selling platform & fees</label>
+              <select className="form-input" value={sellFeeplatform?.id||''} onChange={e=>{
+                const p = RESELLER_PLATFORMS.find(p=>p.id===e.target.value)||null
+                setSellFeeplatform(p)
+                if(p) setSellingPlatform(p.name)
+              }}>
+                <option value="">Select platform</option>
+                {RESELLER_PLATFORMS.map(p=><option key={p.id} value={p.id}>{p.name}{p.rate>0?` (${p.rate}%${p.fixed?` + £${p.fixed}`:''})`:p.type==='fixed'?` (£${p.fixed} fixed)`:' (0%)'}</option>)}
+              </select>
             </div>
-            {salePrice&&(
-              <div className="pl-preview">
-                <span style={{color:'var(--muted)'}}>P&L</span>
-                <span className={plColor(plSell)} style={{fontWeight:600}}>{plSell>=0?'+':''}{fmt(plSell)}</span>
+            {sellFeeplatform?.id==='custom'&&(
+              <div className="form-group" style={{marginTop:8}}>
+                <label className="form-label">Custom fee %</label>
+                <input className="form-input" type="number" step="0.1" placeholder="e.g. 10" value={customFeeRate} onChange={e=>setCustomFeeRate(e.target.value)}/>
               </div>
             )}
+            {salePrice&&(()=>{
+              const price = parseFloat(salePrice)||0
+              const fee = calcFee(salePrice, sellFeeplatform, customFeeRate)
+              const netSale = price - fee
+              const pl = netSale - (sellItem.purchase_price||0)
+              return (
+                <div className="fee-breakdown">
+                  <div className="fee-row"><span>Sale price</span><span>{fmt(price)}</span></div>
+                  {fee>0&&<div className="fee-row fee-deduct"><span>Platform fee</span><span>-{fmt(fee)}</span></div>}
+                  <div className="fee-row"><span>Net proceeds</span><span>{fmt(netSale)}</span></div>
+                  <div className="fee-row"><span>Cost</span><span>-{fmt(sellItem.purchase_price)}</span></div>
+                  <div className={`fee-row fee-total ${pl>=0?'pos':'neg'}`}><span>Profit</span><span>{fmt(pl)}</span></div>
+                </div>
+              )
+            })()}
             <div className="form-actions" style={{marginTop:16}}>
-              <button className="btn" onClick={()=>setSellItem(null)}>Cancel</button>
+              <button className="btn" onClick={()=>{setSellItem(null);setSellFeeplatform(null);setCustomFeeRate('')}}>Cancel</button>
               <button className="btn primary" onClick={markSold} disabled={saving||!salePrice}>{saving?'Saving...':'Confirm sale'}</button>
             </div>
           </div>
