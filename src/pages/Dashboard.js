@@ -606,6 +606,7 @@ export default function Dashboard({ session }) {
             </div>
           )}
         </div>
+      </div>
 
       <div className="main">
         {page==='home'&&(
