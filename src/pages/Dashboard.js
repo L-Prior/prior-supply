@@ -48,7 +48,7 @@ function calcFee(salePrice, platform, customRate = 0) {
   return 0
 }
 
-const EMPTY_UNIT = { size: '', purchase_price: '' }
+const EMPTY_UNIT = { size: '', purchase_price: '', quantity: '1' }
 const EMPTY_FORM = {
   category: '', pokemon_type: '',
   brand: '', style: '', colourway: '', sku: '',
@@ -122,7 +122,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
       <div className="form-group"><label className="form-label">Colourway</label><input className="form-input" placeholder="e.g. Pure Money" value={form.colourway} onChange={e=>setForm(f=>({...f,colourway:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">SKU</label><input className="form-input" placeholder="e.g. 308497-100" value={form.sku} onChange={e=>setForm(f=>({...f,sku:e.target.value}))}/></div>
       {common}
-      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes & prices *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add size</button>}</div>{form.units.map((unit,i)=>(<div key={i} className="unit-row"><input className="form-input" placeholder="Size (UK)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/><input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>{form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}</div>))}</div></div>
+      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes, quantity & prices *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add size</button>}</div>{form.units.map((unit,i)=>(<div key={i} className="unit-row"><input className="form-input" placeholder="Size (UK)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/><input className="form-input" type="number" min="1" placeholder="Qty" value={unit.quantity||'1'} onChange={e=>updateUnit(i,'quantity',e.target.value)} style={{flex:'0 0 60px'}}/><input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>{form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}</div>))}</div></div>
     </>
   )
 
@@ -173,7 +173,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
       <div className="form-group"><label className="form-label">Item</label><input className="form-input" placeholder="e.g. Box Logo Hoodie" value={form.item} onChange={e=>setForm(f=>({...f,item:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">Colour</label><input className="form-input" placeholder="e.g. Black" value={form.colour} onChange={e=>setForm(f=>({...f,colour:e.target.value}))}/></div>
       {common}
-      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes & prices *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add size</button>}</div>{form.units.map((unit,i)=>(<div key={i} className="unit-row"><input className="form-input" placeholder="Size (e.g. M, L, XL)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/><input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>{form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}</div>))}</div></div>
+      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes, quantity & prices *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add size</button>}</div>{form.units.map((unit,i)=>(<div key={i} className="unit-row"><input className="form-input" placeholder="Size (e.g. M, L, XL)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/><input className="form-input" type="number" min="1" placeholder="Qty" value={unit.quantity} onChange={e=>updateUnit(i,'quantity',e.target.value)} style={{flex:'0 0 60px'}}/><input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>{form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}</div>))}</div></div>
     </>
   )
 
@@ -325,7 +325,10 @@ export default function Dashboard({ session }) {
       const payload = { ...base, purchase_price: parseFloat(form.units[0]?.purchase_price) || 0, size: form.units[0]?.size || '' }
       ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
     } else {
-      const rows = form.units.map(u => ({ ...base, size: u.size, purchase_price: parseFloat(u.purchase_price) || 0 }))
+      const rows = form.units.flatMap(u => {
+        const qty = parseInt(u.quantity) || 1
+        return Array.from({ length: qty }, () => ({ ...base, size: u.size, purchase_price: parseFloat(u.purchase_price) || 0 }))
+      })
       ;({ error } = await supabase.from('stock').insert(rows))
     }
     setSaving(false)
