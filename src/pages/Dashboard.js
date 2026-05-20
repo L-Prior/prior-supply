@@ -568,12 +568,15 @@ export default function Dashboard({ session }) {
     return { totalPL, completed, active, total: breaks.length }
   }, [breaks])
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}]
+
   return (
     <div className="app">
       <div className="topbar">
         <div className="topbar-brand"><span className="brand-mark" />StockTrack</div>
         <nav className="topbar-nav">
-          {[{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}].map(n=>(
+          {NAV_ITEMS.map(n=>(
             <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>{n.label}</button>
           ))}
         </nav>
@@ -585,8 +588,26 @@ export default function Dashboard({ session }) {
             <span className="user-email">{session.user.email}</span>
             <button className="btn sm" onClick={signOut}>Sign out</button>
           </div>
+          {/* Mobile menu button */}
+          <button className="mobile-menu-btn" onClick={()=>setMobileMenuOpen(o=>!o)}>
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      {mobileMenuOpen && (
+        <div className="mobile-menu">
+          {NAV_ITEMS.map(n=>(
+            <button key={n.id} className={`mobile-menu-item ${page===n.id?'active':''}`} onClick={()=>{setPage(n.id);setMobileMenuOpen(false)}}>
+              {n.label}
+            </button>
+          ))}
+          <div className="mobile-menu-divider"/>
+          <a href="/" className="mobile-menu-item">← Back to site</a>
+          <button className="mobile-menu-item danger" onClick={signOut}>Sign out</button>
+        </div>
+      )}
 
       <div className="main">
         {page==='home'&&(
@@ -1051,6 +1072,23 @@ export default function Dashboard({ session }) {
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Nav */}
+      <nav className="bottom-nav">
+        {[
+          { id: 'home', label: 'Home', icon: '🏠' },
+          { id: 'stock', label: 'Reseller', icon: '📦' },
+          { id: 'breaks', label: 'Breaker', icon: '🃏' },
+          { id: 'collector', label: 'Collector', icon: '🗂️' },
+          { id: 'metrics', label: 'Metrics', icon: '📊' },
+          { id: 'tools', label: 'Tools', icon: '🔧' },
+        ].map(n => (
+          <button key={n.id} className={`bottom-nav-item ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}>
+            <span className="bottom-nav-icon">{n.icon}</span>
+            {n.label}
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }

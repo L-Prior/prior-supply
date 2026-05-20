@@ -77,14 +77,6 @@ body {
   gap: 10px;
 }
 
-.topbar-brand::before {
-  content: '';
-  display: inline-block;
-  width: 28px;
-  height: 28px;
-  background: var(--accent);
-  border-radius: 6px;
-}
 
 .topbar-brand span {
   font-weight: 400;
@@ -1768,4 +1760,66 @@ tbody td {
   .fee-breakdown {
     font-size: 12px;
   }
+}
+
+/* Mobile menu */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text2);
+}
+
+.mobile-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  min-width: 180px;
+  overflow: hidden;
+  margin: 4px 16px 0 0;
+}
+
+.mobile-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.1s;
+}
+.mobile-menu-item:hover { background: var(--surface2); }
+.mobile-menu-item.active { color: var(--accent); background: var(--accent-light, #f0fdf4); }
+.mobile-menu-item.danger { color: var(--red); }
+
+.mobile-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn { display: flex; align-items: center; }
+  .mobile-menu { display: block; }
+  .topbar-nav { display: none; }
+  .user-pill { display: none; }
+
+  /* Fix double brand mark */
+  .topbar-brand .brand-mark:not(:first-child) { display: none; }
 }
