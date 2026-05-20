@@ -102,11 +102,11 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
   const common = (
     <>
       <div className="form-group">
-        <label className="form-label">Purchase date</label>
+        <label className="form-label">Purchase Date</label>
         <input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/>
       </div>
       <div className="form-group full">
-        <label className="form-label">Purchase platform</label>
+        <label className="form-label">Purchase Platform</label>
         <input className="form-input" placeholder="e.g. JD, eBay, Game" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/>
       </div>
       <div className="form-group full">
@@ -122,41 +122,54 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
       <div className="form-group"><label className="form-label">Style</label><input className="form-input" placeholder="e.g. Air Max 95" value={form.style} onChange={e=>setForm(f=>({...f,style:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">Colourway</label><input className="form-input" placeholder="e.g. Pure Money" value={form.colourway} onChange={e=>setForm(f=>({...f,colourway:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">SKU</label><input className="form-input" placeholder="e.g. 308497-100" value={form.sku} onChange={e=>setForm(f=>({...f,sku:e.target.value}))}/></div>
-      <div className="form-group">
-        <label className="form-label">Total cost (£) *</label>
-        <input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/>
-      </div>
+      <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. JD, SNKRS, eBay" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes & Quantities *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add Size</button>}</div>{form.units.map((unit,i)=>{
+        const totalUnits = form.units.reduce((s,u2)=>{
+          const q = u2.quantity==='10+'?(parseInt(u2.custom_qty)||1):(parseInt(u2.quantity)||1)
+          return s+q
+        },0)
+        const batchCost = parseFloat(form.batch_total_cost)||0
+        const unitQty = unit.quantity==='10+'?(parseInt(unit.custom_qty)||1):(parseInt(unit.quantity)||1)
+        const perUnit = batchCost>0&&totalUnits>0?(batchCost/totalUnits).toFixed(2):null
+        const sizeTotal = perUnit ? (parseFloat(perUnit)*unitQty).toFixed(2) : null
+        return (
+          <div key={i} className="unit-row-grid">
+            <div className="unit-row-inputs">
+              <input className="form-input" placeholder="Size (UK)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/>
+              <select className="form-input" value={unit.quantity} onChange={e=>updateUnit(i,'quantity',e.target.value)} style={{flex:'0 0 80px'}}>
+                {[1,2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}
+                <option value="10+">10+</option>
+              </select>
+              {unit.quantity==='10+'&&<input className="form-input" type="number" min="11" placeholder="Qty" value={unit.custom_qty||''} onChange={e=>updateUnit(i,'custom_qty',e.target.value)} style={{flex:'0 0 70px'}}/>}
+              {form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
+            </div>
+            {perUnit&&(
+              <div style={{display:'flex',gap:16,fontSize:12,color:'var(--muted)',paddingTop:2}}>
+                <span>£{perUnit} per unit</span>
+                <span>£{sizeTotal} for this size</span>
+              </div>
+            )}
+          </div>
+        )
+      })}
       {(()=>{
         const totalUnits = form.units.reduce((s,u)=>{
-          const qty = u.quantity==='10+'?(parseInt(u.custom_qty)||1):(parseInt(u.quantity)||1)
-          return s+qty
+          const q = u.quantity==='10+'?(parseInt(u.custom_qty)||1):(parseInt(u.quantity)||1)
+          return s+q
         },0)
-        const totalCost = parseFloat(form.batch_total_cost)||0
-        const perUnit = totalCost>0&&totalUnits>0?(totalCost/totalUnits).toFixed(2):null
-        return perUnit ? (
-          <div className="form-group" style={{display:'flex',alignItems:'flex-end'}}>
-            <div>
-              <div className="form-label" style={{marginBottom:4}}>Per unit</div>
-              <div className="unit-per-unit">£{perUnit}</div>
-            </div>
-            <div style={{marginLeft:12,fontSize:12,color:'var(--muted)',paddingBottom:8}}>{totalUnits} unit{totalUnits!==1?'s':''} total</div>
+        const batchCost = parseFloat(form.batch_total_cost)||0
+        const perUnit = batchCost>0&&totalUnits>0?(batchCost/totalUnits).toFixed(2):null
+        return perUnit?(
+          <div className="units-summary">
+            <span>{totalUnits} units total</span>
+            <span>£{perUnit} avg per unit</span>
           </div>
-        ) : null
+        ):null
       })()}
-      {common}
-      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes & quantities *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add size</button>}</div>{form.units.map((unit,i)=>(
-        <div key={i} className="unit-row-grid">
-          <div className="unit-row-inputs">
-            <input className="form-input" placeholder="Size (UK)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/>
-            <select className="form-input" value={unit.quantity} onChange={e=>updateUnit(i,'quantity',e.target.value)} style={{flex:'0 0 80px'}}>
-              {[1,2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}
-              <option value="10+">10+</option>
-            </select>
-            {unit.quantity==='10+'&&<input className="form-input" type="number" min="11" placeholder="Qty" value={unit.custom_qty||''} onChange={e=>updateUnit(i,'custom_qty',e.target.value)} style={{flex:'0 0 70px'}}/>}
-            {form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
-          </div>
-        </div>
-      ))}</div></div>
+      </div></div>
     </>
   )
 

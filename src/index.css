@@ -1855,3 +1855,17 @@ tbody td {
   color: var(--accent);
   padding: 0 4px;
 }
+
+/* Units summary */
+.units-summary {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--accent-light, #f0fdf4);
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+}
