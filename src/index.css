@@ -1821,3 +1821,37 @@ tbody td {
   /* Fix double brand mark */
   .topbar-brand .brand-mark:not(:first-child) { display: none; }
 }
+
+/* Unit row grid */
+.unit-row-grid {
+  margin-bottom: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.unit-row-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.unit-row-costs {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.unit-per-unit {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 0 4px;
+}
