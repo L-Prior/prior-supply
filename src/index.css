@@ -64,7 +64,6 @@ body {
   top: 0;
   z-index: 100;
   gap: 12px;
-  position: relative;
 }
 
 .topbar-brand {
@@ -1775,7 +1774,6 @@ tbody td {
 }
 
 .mobile-menu {
-  display: none;
   position: absolute;
   top: 100%;
   right: 0;

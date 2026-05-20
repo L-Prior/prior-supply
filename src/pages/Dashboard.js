@@ -580,34 +580,32 @@ export default function Dashboard({ session }) {
             <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>{n.label}</button>
           ))}
         </nav>
-        <div className="topbar-actions">
-          {page==='stock'&&<button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>}
-          {page==='breaks'&&<button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button>}
-          <div className="user-pill">
-            <a href="/" className="landing-nav-link" style={{fontSize:12}}>← Site</a>
-            <span className="user-email">{session.user.email}</span>
-            <button className="btn sm" onClick={signOut}>Sign out</button>
-          </div>
-          {/* Mobile menu button */}
-          <button className="mobile-menu-btn" onClick={()=>setMobileMenuOpen(o=>!o)}>
-            {mobileMenuOpen ? '✕' : '☰'}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile dropdown menu */}
-      {mobileMenuOpen && (
-        <div className="mobile-menu">
-          {NAV_ITEMS.map(n=>(
-            <button key={n.id} className={`mobile-menu-item ${page===n.id?'active':''}`} onClick={()=>{setPage(n.id);setMobileMenuOpen(false)}}>
-              {n.label}
+        <div style={{position:'relative'}}>
+          <div className="topbar-actions">
+            {page==='stock'&&<button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>}
+            {page==='breaks'&&<button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button>}
+            <div className="user-pill">
+              <a href="/" className="landing-nav-link" style={{fontSize:12}}>← Site</a>
+              <span className="user-email">{session.user.email}</span>
+              <button className="btn sm" onClick={signOut}>Sign out</button>
+            </div>
+            <button className="mobile-menu-btn" onClick={()=>setMobileMenuOpen(o=>!o)}>
+              {mobileMenuOpen ? '✕' : '☰'}
             </button>
-          ))}
-          <div className="mobile-menu-divider"/>
-          <a href="/" className="mobile-menu-item">← Back to site</a>
-          <button className="mobile-menu-item danger" onClick={signOut}>Sign out</button>
+          </div>
+          {mobileMenuOpen && (
+            <div className="mobile-menu">
+              {NAV_ITEMS.map(n=>(
+                <button key={n.id} className={`mobile-menu-item ${page===n.id?'active':''}`} onClick={()=>{setPage(n.id);setMobileMenuOpen(false)}}>
+                  {n.label}
+                </button>
+              ))}
+              <div className="mobile-menu-divider"/>
+              <a href="/" className="mobile-menu-item">← Back to site</a>
+              <button className="mobile-menu-item danger" onClick={signOut}>Sign out</button>
+            </div>
+          )}
         </div>
-      )}
 
       <div className="main">
         {page==='home'&&(
