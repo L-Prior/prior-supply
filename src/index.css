@@ -1468,3 +1468,304 @@ tbody td {
 }
 .fee-total.pos { color: var(--green); }
 .fee-total.neg { color: var(--red); }
+
+/* ─── Mobile Bottom Tab Bar ─────────────────────────────────────────────────── */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Hide top nav on mobile */
+  .topbar-nav {
+    display: none;
+  }
+
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .topbar-actions .user-pill .user-email {
+    display: none;
+  }
+
+  /* Show bottom nav on mobile */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 8px 4px;
+  }
+
+  .bottom-nav-item.active {
+    color: var(--accent);
+  }
+
+  .bottom-nav-icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  /* Add padding to main content so it doesn't hide behind bottom nav */
+  .main {
+    padding-bottom: 80px;
+  }
+
+  /* Fix stats bar to 2 columns on mobile */
+  .stats-bar {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Fix landing page nav */
+  .landing-nav-links .landing-nav-link:not(:last-child) {
+    display: none;
+  }
+
+  .landing-hero {
+    padding: 48px 0 40px;
+  }
+
+  .hero-ctas {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-cta {
+    text-align: center;
+  }
+
+  /* Fix + Add break/item button on mobile */
+  .topbar-actions {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-nav-hide-mobile {
+    display: none;
+  }
+
+  .landing-nav-inner {
+    padding: 0 16px;
+  }
+
+  .landing-container {
+    padding: 0 16px;
+  }
+
+  .landing-section {
+    padding: 48px 0;
+  }
+}
+
+/* ─── Mobile Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Topbar */
+  .topbar {
+    padding: 0 16px;
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  .topbar-brand {
+    font-size: 14px;
+    padding: 12px 0;
+  }
+
+  .topbar-nav {
+    position: static;
+    transform: none;
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    padding: 8px 0;
+    gap: 2px;
+    border-top: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .topbar-nav::-webkit-scrollbar { display: none; }
+
+  .nav-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0;
+  }
+
+  .user-email { display: none; }
+
+  .user-pill {
+    padding: 3px 3px 3px 8px;
+  }
+
+  /* Main content */
+  .main {
+    padding: 16px;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  /* Cards */
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Charts */
+  .chart-card {
+    padding: 16px;
+  }
+
+  .chart-header {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  /* Metrics */
+  .metrics-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .metrics-sources {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+
+  /* Modals */
+  .modal {
+    padding: 20px 16px;
+    max-height: 85vh;
+    margin: auto 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group.full {
+    grid-column: 1;
+  }
+
+  /* Two col */
+  .two-col {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  /* Landing page nav */
+  .landing-nav-inner {
+    padding: 0 16px;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 56px;
+  }
+
+  .landing-nav-links {
+    gap: 4px;
+  }
+
+  .landing-nav-link {
+    font-size: 12px;
+    padding: 4px 6px;
+  }
+
+  .landing-hero {
+    padding: 48px 0 40px;
+  }
+
+  .hero-ctas {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-cta {
+    text-align: center;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+
+  /* Unit row */
+  .unit-row {
+    flex-wrap: wrap;
+  }
+
+  /* Batch units */
+  .batch-unit-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Card inventory add */
+  .card-inventory-add {
+    flex-wrap: wrap;
+  }
+
+  /* Fee breakdown */
+  .fee-breakdown {
+    font-size: 12px;
+  }
+}
