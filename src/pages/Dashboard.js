@@ -173,6 +173,56 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
     </>
   )
 
+  // Reusable unit section with total cost at card level
+  const UnitSection = ({ label = 'Variants & Quantities', sizePlaceholder = 'Description (optional)', addLabel = '+ Add' }) => {
+    const totalUnits = form.units.reduce((s, u) => {
+      const q = u.quantity === '10+' ? (parseInt(u.custom_qty) || 1) : (parseInt(u.quantity) || 1)
+      return s + q
+    }, 0)
+    const batchCost = parseFloat(form.batch_total_cost) || 0
+    const perUnit = batchCost > 0 && totalUnits > 0 ? (batchCost / totalUnits).toFixed(2) : null
+
+    return (
+      <div className="form-group full">
+        <div className="units-section">
+          <div className="units-header">
+            <span className="form-label">{label}</span>
+            {!editItem && <button className="btn sm" onClick={addUnit}>{addLabel}</button>}
+          </div>
+          {form.units.map((unit, i) => {
+            const unitQty = unit.quantity === '10+' ? (parseInt(unit.custom_qty) || 1) : (parseInt(unit.quantity) || 1)
+            const sizeTotal = perUnit ? (parseFloat(perUnit) * unitQty).toFixed(2) : null
+            return (
+              <div key={i} className="unit-row-grid">
+                <div className="unit-row-inputs">
+                  <input className="form-input" placeholder={sizePlaceholder} value={unit.size} onChange={e => updateUnit(i, 'size', e.target.value)} style={{ flex: 1 }} />
+                  <select className="form-input" value={unit.quantity} onChange={e => updateUnit(i, 'quantity', e.target.value)} style={{ flex: '0 0 80px' }}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => <option key={n} value={n}>{n}</option>)}
+                    <option value="10+">10+</option>
+                  </select>
+                  {unit.quantity === '10+' && <input className="form-input" type="number" min="11" placeholder="Qty" value={unit.custom_qty || ''} onChange={e => updateUnit(i, 'custom_qty', e.target.value)} style={{ flex: '0 0 70px' }} />}
+                  {form.units.length > 1 && <button className="btn sm danger" onClick={() => removeUnit(i)}>✕</button>}
+                </div>
+                {perUnit && (
+                  <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--muted)', paddingTop: 2 }}>
+                    <span>£{perUnit} per unit</span>
+                    {sizeTotal && <span>£{sizeTotal} for this variant</span>}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          {perUnit && (
+            <div className="units-summary">
+              <span>{totalUnits} unit{totalUnits !== 1 ? 's' : ''} total</span>
+              <span>£{perUnit} avg per unit</span>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   if (cat === 'Pokémon') return (
     <>
       <div className="form-group full">
@@ -183,34 +233,41 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
         </div>
       </div>
       {form.pokemon_type==='singles'&&<>
-        <div className="form-group"><label className="form-label">Card name *</label><input className="form-input" placeholder="e.g. Charizard" value={form.card_name} onChange={e=>setForm(f=>({...f,card_name:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Card Name *</label><input className="form-input" placeholder="e.g. Charizard" value={form.card_name} onChange={e=>setForm(f=>({...f,card_name:e.target.value}))}/></div>
         <div className="form-group"><label className="form-label">Set</label><input className="form-input" placeholder="e.g. Base Set" value={form.set_name} onChange={e=>setForm(f=>({...f,set_name:e.target.value}))}/></div>
-        <div className="form-group"><label className="form-label">Card number</label><input className="form-input" placeholder="e.g. 004/102" value={form.card_number} onChange={e=>setForm(f=>({...f,card_number:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Card Number</label><input className="form-input" placeholder="e.g. 004/102" value={form.card_number} onChange={e=>setForm(f=>({...f,card_number:e.target.value}))}/></div>
         <div className="form-group"><label className="form-label">Condition</label><select className="form-input" value={form.condition} onChange={e=>setForm(f=>({...f,condition:e.target.value}))}><option value="">Select</option>{CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
         <div className="form-group full"><label className="form-label">Graded?</label><div className="type-toggle"><button className={`type-btn ${!form.graded?'active':''}`} onClick={()=>setForm(f=>({...f,graded:false,grading_company:'',grade:''}))}>No</button><button className={`type-btn ${form.graded?'active':''}`} onClick={()=>setForm(f=>({...f,graded:true}))}>Yes</button></div></div>
-        {form.graded&&<><div className="form-group"><label className="form-label">Grading company</label><select className="form-input" value={form.grading_company} onChange={e=>setForm(f=>({...f,grading_company:e.target.value}))}><option value="">Select</option>{GRADING_COMPANIES.map(g=><option key={g} value={g}>{g}</option>)}</select></div><div className="form-group"><label className="form-label">Grade</label><input className="form-input" placeholder="e.g. 9, 10" value={form.grade} onChange={e=>setForm(f=>({...f,grade:e.target.value}))}/></div></>}
-        <div className="form-group"><label className="form-label">Purchase price (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.units[0]?.purchase_price||''} onChange={e=>updateUnit(0,'purchase_price',e.target.value)}/></div>
-        {common}
+        {form.graded&&<><div className="form-group"><label className="form-label">Grading Company</label><select className="form-input" value={form.grading_company} onChange={e=>setForm(f=>({...f,grading_company:e.target.value}))}><option value="">Select</option>{GRADING_COMPANIES.map(g=><option key={g} value={g}>{g}</option>)}</select></div><div className="form-group"><label className="form-label">Grade</label><input className="form-input" placeholder="e.g. 9, 10" value={form.grade} onChange={e=>setForm(f=>({...f,grade:e.target.value}))}/></div></>}
+        <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. eBay, Whatnot" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
+        <div className="form-group full"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
       </>}
       {form.pokemon_type==='sealed'&&<>
-        <div className="form-group"><label className="form-label">Product name *</label><input className="form-input" placeholder="e.g. Scarlet & Violet ETB" value={form.product_name} onChange={e=>setForm(f=>({...f,product_name:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Product Name *</label><input className="form-input" placeholder="e.g. Scarlet & Violet ETB" value={form.product_name} onChange={e=>setForm(f=>({...f,product_name:e.target.value}))}/></div>
         <div className="form-group"><label className="form-label">Set</label><input className="form-input" placeholder="e.g. Scarlet & Violet" value={form.set_name} onChange={e=>setForm(f=>({...f,set_name:e.target.value}))}/></div>
-        <div className="form-group"><label className="form-label">Product type</label><select className="form-input" value={form.pokemon_sealed_type} onChange={e=>setForm(f=>({...f,pokemon_sealed_type:e.target.value}))}><option value="">Select</option>{POKEMON_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
-        <div className="form-group"><label className="form-label">Quantity</label><input className="form-input" type="number" placeholder="1" value={form.quantity} onChange={e=>setForm(f=>({...f,quantity:e.target.value}))}/></div>
-        {common}
-        <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Units & prices *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add unit</button>}</div>{form.units.map((unit,i)=>(<div key={i} className="unit-row"><input className="form-input" placeholder="Description (optional)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:2}}/><input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>{form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}</div>))}</div></div>
+        <div className="form-group"><label className="form-label">Product Type</label><select className="form-input" value={form.pokemon_sealed_type} onChange={e=>setForm(f=>({...f,pokemon_sealed_type:e.target.value}))}><option value="">Select</option>{POKEMON_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+        <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. eBay, Game" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
+        <div className="form-group full"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+        <UnitSection label="Units & Quantities *" sizePlaceholder="Description (optional)" addLabel="+ Add Unit"/>
       </>}
     </>
   )
 
   if (cat === 'Lego') return (
     <>
-      <div className="form-group"><label className="form-label">Set name *</label><input className="form-input" placeholder="e.g. Millennium Falcon" value={form.lego_set_name} onChange={e=>setForm(f=>({...f,lego_set_name:e.target.value}))}/></div>
-      <div className="form-group"><label className="form-label">Set number</label><input className="form-input" placeholder="e.g. 75192" value={form.set_number} onChange={e=>setForm(f=>({...f,set_number:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Set Name *</label><input className="form-input" placeholder="e.g. Millennium Falcon" value={form.lego_set_name} onChange={e=>setForm(f=>({...f,lego_set_name:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Set Number</label><input className="form-input" placeholder="e.g. 75192" value={form.set_number} onChange={e=>setForm(f=>({...f,set_number:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">Theme</label><input className="form-input" placeholder="e.g. Star Wars" value={form.theme} onChange={e=>setForm(f=>({...f,theme:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">Condition</label><select className="form-input" value={form.lego_condition} onChange={e=>setForm(f=>({...f,lego_condition:e.target.value}))}><option value="">Select</option><option value="Sealed">Sealed</option><option value="Open/Complete">Open/Complete</option><option value="Open/Incomplete">Open/Incomplete</option></select></div>
-      {common}
-      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Units & prices *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add unit</button>}</div>{form.units.map((unit,i)=>(<div key={i} className="unit-row"><input className="form-input" placeholder="Description (optional)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:2}}/><input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>{form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}</div>))}</div></div>
+      <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. Lego.com, eBay" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
+      <div className="form-group full"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+      <UnitSection label="Units & Quantities *" sizePlaceholder="Description (optional)" addLabel="+ Add Unit"/>
     </>
   )
 
@@ -219,17 +276,23 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
       <div className="form-group"><label className="form-label">Brand *</label><input className="form-input" placeholder="e.g. Supreme" value={form.clothing_brand} onChange={e=>setForm(f=>({...f,clothing_brand:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">Item</label><input className="form-input" placeholder="e.g. Box Logo Hoodie" value={form.item} onChange={e=>setForm(f=>({...f,item:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">Colour</label><input className="form-input" placeholder="e.g. Black" value={form.colour} onChange={e=>setForm(f=>({...f,colour:e.target.value}))}/></div>
-      {common}
-      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes, quantity & prices *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add size</button>}</div>{form.units.map((unit,i)=>(<div key={i} className="unit-row"><input className="form-input" placeholder="Size (e.g. M, L, XL)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:1}}/><input className="form-input" type="number" min="1" placeholder="Qty" value={unit.quantity} onChange={e=>updateUnit(i,'quantity',e.target.value)} style={{flex:'0 0 60px'}}/><input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>{form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}</div>))}</div></div>
+      <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. Supreme, eBay" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
+      <div className="form-group full"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+      <UnitSection label="Sizes & Quantities *" sizePlaceholder="Size (e.g. S, M, L, XL)" addLabel="+ Add Size"/>
     </>
   )
 
   if (cat === 'Miscellaneous') return (
     <>
-      <div className="form-group"><label className="form-label">Item name *</label><input className="form-input" placeholder="e.g. Vintage Camera" value={form.item_name} onChange={e=>setForm(f=>({...f,item_name:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Item Name *</label><input className="form-input" placeholder="e.g. Vintage Camera" value={form.item_name} onChange={e=>setForm(f=>({...f,item_name:e.target.value}))}/></div>
       <div className="form-group full"><label className="form-label">Description</label><input className="form-input" placeholder="Brief description..." value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/></div>
-      {common}
-      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Units & prices *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add unit</button>}</div>{form.units.map((unit,i)=>(<div key={i} className="unit-row"><input className="form-input" placeholder="Description (optional)" value={unit.size} onChange={e=>updateUnit(i,'size',e.target.value)} style={{flex:2}}/><input className="form-input" type="number" step="0.01" placeholder="Price (£)" value={unit.purchase_price} onChange={e=>updateUnit(i,'purchase_price',e.target.value)} style={{flex:1}}/>{form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}</div>))}</div></div>
+      <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. eBay, Facebook" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
+      <div className="form-group full"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+      <UnitSection label="Units & Quantities *" sizePlaceholder="Description (optional)" addLabel="+ Add Unit"/>
     </>
   )
 
@@ -379,7 +442,7 @@ export default function Dashboard({ session }) {
           return s + q
         }, 0)
         const batchCost = parseFloat(form.batch_total_cost) || 0
-        const pricePerUnit = form.category === 'Sneakers' && batchCost > 0 && totalUnits > 0
+        const pricePerUnit = batchCost > 0 && totalUnits > 0
           ? parseFloat((batchCost / totalUnits).toFixed(2))
           : parseFloat(u.purchase_price) || 0
         return Array.from({ length: qty }, () => ({ ...base, size: u.size, purchase_price: pricePerUnit }))
