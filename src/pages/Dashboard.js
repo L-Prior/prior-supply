@@ -49,8 +49,10 @@ function calcFee(salePrice, platform, customRate = 0) {
 }
 
 const EMPTY_UNIT = { size: '', purchase_price: '', quantity: '1', total_cost: '', custom_qty: '' }
+const ITEM_CONDITIONS = ['Brand New', 'Brand New (Defect)', 'Used (Great Condition)', 'Used (Good Condition)', 'Used (Bad Condition)']
+
 const EMPTY_FORM = {
-  category: '', pokemon_type: '',
+  category: '', pokemon_type: '', item_condition: 'Brand New',
   brand: '', style: '', colourway: '', sku: '',
   batch_total_cost: '',
   card_name: '', set_name: '', card_number: '', condition: '', graded: false, grading_company: '', grade: '', product_name: '', pokemon_sealed_type: '', quantity: '',
@@ -404,6 +406,7 @@ export default function Dashboard({ session }) {
     else if (form.category === 'Miscellaneous') { brand = form.item_name; style = form.description }
     const base = {
       category: form.category, brand, style, colourway, sku,
+      item_condition: form.item_condition || 'Brand New',
       purchase_platform: form.purchase_platform, purchase_date: form.purchase_date || null, notes: form.notes,
       pokemon_type: form.pokemon_type || null, card_name: form.card_name || null, set_name: form.set_name || null,
       card_number: form.card_number || null, condition: form.condition || null, graded: form.graded || false,
@@ -439,7 +442,7 @@ export default function Dashboard({ session }) {
   }
 
   function openEdit(item) {
-    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'' }] })
+    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'' }] })
     setEditItem(item); setShowAdd(true)
   }
 
@@ -1050,11 +1053,17 @@ export default function Dashboard({ session }) {
           <div className="modal">
             <div className="modal-title">{editItem?'Edit item':'Add new item'}</div>
             <div className="form-grid">
-              <div className="form-group full">
+              <div className="form-group">
                 <label className="form-label">Category *</label>
                 <select className="form-input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value,pokemon_type:'',units:[{...EMPTY_UNIT}]}))}>
                   <option value="">Select category</option>
                   {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Condition</label>
+                <select className="form-input" value={form.item_condition} onChange={e=>setForm(f=>({...f,item_condition:e.target.value}))}>
+                  {ITEM_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               {form.category&&<CategoryForm form={form} setForm={setForm} editItem={editItem} updateUnit={updateUnit} addUnit={addUnit} removeUnit={removeUnit}/>}
