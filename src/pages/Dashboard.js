@@ -208,7 +208,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
     </>
   )
 
- form, editItem, updateUnit, addUnit, removeUnit, label = 'Variants & Quantities', sizePlaceholder = 'Description (optional)', addLabel = '+ Add' }) {
+ function UnitSection({form, editItem, updateUnit, addUnit, removeUnit, label = 'Variants & Quantities', sizePlaceholder = 'Description (optional)', addLabel = '+ Add' }) {
   const totalUnits = form.units.reduce((s, u) => {
     const q = u.quantity === '10+' ? (parseInt(u.custom_qty) || 1) : (parseInt(u.quantity) || 1)
     return s + q
