@@ -1053,20 +1053,22 @@ export default function Dashboard({ session }) {
           <div className="modal">
             <div className="modal-title">{editItem?'Edit item':'Add new item'}</div>
             <div className="form-grid">
-              <div className="form-group">
+              <div className="form-group full">
                 <label className="form-label">Category *</label>
                 <select className="form-input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value,pokemon_type:'',units:[{...EMPTY_UNIT}]}))}>
                   <option value="">Select category</option>
                   {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="form-group">
-                <label className="form-label">Condition</label>
-                <select className="form-input" value={form.item_condition} onChange={e=>setForm(f=>({...f,item_condition:e.target.value}))}>
-                  {ITEM_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              {form.category&&<CategoryForm form={form} setForm={setForm} editItem={editItem} updateUnit={updateUnit} addUnit={addUnit} removeUnit={removeUnit}/>}
+              {form.category&&<>
+                <div className="form-group full">
+                  <label className="form-label">Condition</label>
+                  <select className="form-input" value={form.item_condition} onChange={e=>setForm(f=>({...f,item_condition:e.target.value}))}>
+                    {ITEM_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <CategoryForm form={form} setForm={setForm} editItem={editItem} updateUnit={updateUnit} addUnit={addUnit} removeUnit={removeUnit}/>
+              </>}
             </div>
             {!form.category&&<div style={{color:'var(--muted)',fontSize:13,textAlign:'center',padding:'16px 0'}}>Select a category to continue</div>}
             {saveError&&<div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {saveError}</div>}
