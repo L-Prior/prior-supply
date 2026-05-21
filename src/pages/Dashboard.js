@@ -99,22 +99,6 @@ function getLast(n) {
 
 function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit }) {
   const cat = form.category
-  const common = (
-    <>
-      <div className="form-group">
-        <label className="form-label">Purchase Date</label>
-        <input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/>
-      </div>
-      <div className="form-group full">
-        <label className="form-label">Purchase Platform</label>
-        <input className="form-input" placeholder="e.g. JD, eBay, Game" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/>
-      </div>
-      <div className="form-group full">
-        <label className="form-label">Notes</label>
-        <input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/>
-      </div>
-    </>
-  )
 
   if (cat === 'Sneakers') return (
     <>
