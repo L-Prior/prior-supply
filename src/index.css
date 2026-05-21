@@ -1869,3 +1869,14 @@ tbody td {
   font-weight: 500;
   color: var(--accent);
 }
+
+/* Fix modal being hidden behind bottom nav on mobile */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding-bottom: 70px;
+  }
+
+  .modal {
+    max-height: calc(85vh - 70px);
+  }
+}

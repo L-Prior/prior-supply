@@ -1129,23 +1129,6 @@ export default function Dashboard({ session }) {
           </div>
         </div>
       )}
-
-      {/* Mobile Bottom Nav */}
-      <nav className="bottom-nav">
-        {[
-          { id: 'home', label: 'Home', icon: '🏠' },
-          { id: 'stock', label: 'Reseller', icon: '📦' },
-          { id: 'breaks', label: 'Breaker', icon: '🃏' },
-          { id: 'collector', label: 'Collector', icon: '🗂️' },
-          { id: 'metrics', label: 'Metrics', icon: '📊' },
-          { id: 'tools', label: 'Tools', icon: '🔧' },
-        ].map(n => (
-          <button key={n.id} className={`bottom-nav-item ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}>
-            <span className="bottom-nav-icon">{n.icon}</span>
-            {n.label}
-          </button>
-        ))}
-      </nav>
     </div>
   )
 }
