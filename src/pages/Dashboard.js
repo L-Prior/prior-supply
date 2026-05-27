@@ -786,7 +786,7 @@ export default function Dashboard({ session }) {
                         <div className="item-card-style">{[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
                       </div>
                       <div className="item-card-stats">
-                        <div className="item-card-stat"><div className="item-card-stat-label">Size</div><div className="item-card-stat-value">{isSingle?(batch.units[0].size?`UK ${batch.units[0].size}`:'—'):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`}</div></div>
+                        <div className="item-card-stat"><div className="item-card-stat-label">{batch.category==='Miscellaneous'&&!batch.units[0]?.size?'Qty':'Size'}</div><div className="item-card-stat-value">{isSingle?(batch.category==='Miscellaneous'&&!batch.units[0]?.size?`${batch.units.length}`:(batch.units[0].size?`UK ${batch.units[0].size}`:'—')):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`}</div></div>
                         <div className="item-card-stat"><div className="item-card-stat-label">Cost</div><div className="item-card-stat-value">{fmt(totalCost)}</div>{!isSingle&&inStockUnits.length>0&&<div className="item-card-stat-avg">avg {fmt(avgCost)}</div>}</div>
                         <div className="item-card-stat"><div className="item-card-stat-label">P&L</div><div className={`item-card-stat-value ${plColor(soldUnits.length?totalPL:null)}`}>{soldUnits.length?fmt(totalPL):'—'}</div></div>
                         <div className="item-card-stat"><div className="item-card-stat-label">Sold</div><div className="item-card-stat-value">{batch.units.length>1?`${soldUnits.length}/${batch.units.length}`:(soldUnits.length?'✓':'—')}</div></div>
