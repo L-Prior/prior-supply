@@ -868,6 +868,7 @@ tbody td {
   font-size: 10px;
   color: var(--muted);
   margin-top: 2px;
+  white-space: nowrap;
 }
 
 .item-card-meta {
