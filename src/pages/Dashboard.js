@@ -231,7 +231,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
       </>}
       {form.pokemon_type==='sealed'&&<>
         <div className="form-group"><label className="form-label">Series *</label><input className="form-input" placeholder="e.g. Scarlet & Violet" value={form.product_name} onChange={e=>setForm(f=>({...f,product_name:e.target.value}))}/></div>
-        <div className="form-group"><label className="form-label">Set</label><input className="form-input" placeholder="e.g. Scarlet & Violet" value={form.set_name} onChange={e=>setForm(f=>({...f,set_name:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Set</label><input className="form-input" placeholder="e.g. Prismatic Evolution" value={form.set_name} onChange={e=>setForm(f=>({...f,set_name:e.target.value}))}/></div>
         <div className="form-group"><label className="form-label">Product Type</label><select className="form-input" value={form.pokemon_sealed_type} onChange={e=>setForm(f=>({...f,pokemon_sealed_type:e.target.value}))}><option value="">Select</option>{POKEMON_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
         <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
         <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. eBay, Game" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
