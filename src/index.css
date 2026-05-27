@@ -832,7 +832,9 @@ tbody td {
   font-size: 13px;
   color: var(--text2);
   margin-top: 2px;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-card-stats {
