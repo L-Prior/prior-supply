@@ -829,13 +829,11 @@ export default function Dashboard({ session }) {
                       <div className="item-card-stats">
                         <div className="item-card-stat">
                           <div className="item-card-stat-label">
-                            {batch.category==='Sneakers'||batch.category==='Clothing'?'Size':
-                             batch.category==='Miscellaneous'&&!batch.units[0]?.size?'Qty':'Condition'}
+                            {batch.category==='Sneakers'||batch.category==='Clothing'?'Size':'Condition'}
                           </div>
                           <div className="item-card-stat-value">
                             {isSingle?(
                               batch.category==='Sneakers'||batch.category==='Clothing'?(batch.units[0].size?`UK ${batch.units[0].size}`:'—'):
-                              batch.category==='Miscellaneous'&&!batch.units[0]?.size?`${batch.units.length}`:
                               batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'&&batch.units[0]?.graded?`${batch.units[0]?.grading_company||''} ${batch.units[0]?.grade||''}`.trim():
                               batch.units[0]?.condition||'—'
                             ):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`}
