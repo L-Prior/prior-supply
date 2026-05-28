@@ -452,6 +452,45 @@ export default function Dashboard({ session }) {
     if (batchModal) setBatchModal(prev => ({ ...prev, units: prev.units.filter(u => u.id !== id) }))
   }
 
+  function duplicateItem(batch) {
+    const item = batch.units[0]
+    setForm({
+      ...EMPTY_FORM,
+      category: item.category||'',
+      pokemon_type: item.pokemon_type||'',
+      item_condition: item.item_condition||'Brand New',
+      brand: item.brand||'',
+      style: item.style||'',
+      colourway: item.colourway||'',
+      sku: item.sku||'',
+      card_name: item.card_name||'',
+      set_name: item.set_name||'',
+      card_number: item.card_number||'',
+      condition: item.condition||'',
+      graded: item.graded||false,
+      grading_company: item.grading_company||'',
+      grade: item.grade||'',
+      product_name: item.product_name||'',
+      pokemon_sealed_type: item.pokemon_sealed_type||'',
+      lego_set_name: item.lego_set_name||'',
+      set_number: item.set_number||'',
+      theme: item.theme||'',
+      lego_condition: item.lego_condition||'',
+      clothing_brand: item.clothing_brand||'',
+      item: item.item||'',
+      colour: item.colour||'',
+      item_name: item.item_name||'',
+      description: item.description||'',
+      purchase_platform: item.purchase_platform||'',
+      notes: item.notes||'',
+      batch_total_cost: '',
+      units: [{ ...EMPTY_UNIT }]
+    })
+    setEditItem(null)
+    setSaveError('')
+    setShowAdd(true)
+  }
+
   async function deleteBatch(batchId) {
     if (!window.confirm('Delete all units in this batch?')) return
     await supabase.from('stock').delete().eq('batch_id', batchId)
@@ -795,6 +834,7 @@ export default function Dashboard({ session }) {
                         {isSingle&&batch.units[0].status==='in_stock'&&<button className="btn sm success" style={{flex:1}} onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
                         {!isSingle&&!allSold&&<button className="btn sm success" style={{flex:1}} onClick={()=>setBatchModal(batch)}>View units</button>}
                         {isSingle&&<button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
+                        <button className="btn sm" onClick={()=>duplicateItem(batch)}>Copy</button>
                         {isSingle?<button className="btn sm danger" onClick={()=>deleteItem(batch.units[0].id)}>Del</button>:<button className="btn sm danger" onClick={()=>deleteBatch(batch.key)}>Del all</button>}
                       </div>
                     </div>
