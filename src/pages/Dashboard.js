@@ -1100,12 +1100,12 @@ export default function Dashboard({ session }) {
                 </select>
               </div>
               {form.category&&<>
-                <div className="form-group full">
+                {form.category!=='Pokémon'&&<div className="form-group full">
                   <label className="form-label">Condition</label>
                   <select className="form-input" value={form.item_condition} onChange={e=>setForm(f=>({...f,item_condition:e.target.value}))}>
                     {ITEM_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}
                   </select>
-                </div>
+                </div>}
                 <CategoryForm form={form} setForm={setForm} editItem={editItem} updateUnit={updateUnit} addUnit={addUnit} removeUnit={removeUnit}/>
               </>}
             </div>
