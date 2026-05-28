@@ -832,11 +832,11 @@ export default function Dashboard({ session }) {
                             {batch.category==='Sneakers'||batch.category==='Clothing'?'Size':'Condition'}
                           </div>
                           <div className="item-card-stat-value">
-                            {isSingle?(
-                              batch.category==='Sneakers'||batch.category==='Clothing'?(batch.units[0].size?`UK ${batch.units[0].size}`:'—'):
-                              batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'&&batch.units[0]?.graded?`${batch.units[0]?.grading_company||''} ${batch.units[0]?.grade||''}`.trim():
-                              batch.units[0]?.condition||'—'
-                            ):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`}
+                            {batch.category==='Sneakers'||batch.category==='Clothing'?(
+                              isSingle?(batch.units[0].size?`UK ${batch.units[0].size}`:'—'):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`
+                            ):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'&&batch.units[0]?.graded?
+                              `${batch.units[0]?.grading_company||''} ${batch.units[0]?.grade||''}`.trim():
+                              batch.units[0]?.condition||'—'}
                           </div>
                         </div>
                         <div className="item-card-stat"><div className="item-card-stat-label">Cost</div><div className="item-card-stat-value">{fmt(totalCost)}</div>{!isSingle&&inStockUnits.length>0&&<div className="item-card-stat-avg">avg {fmt(avgCost)}</div>}</div>
