@@ -50,7 +50,7 @@ function calcFee(salePrice, platform, customRate = 0) {
 }
 
 const EMPTY_UNIT = { size: '', purchase_price: '', quantity: '1', total_cost: '', custom_qty: '' }
-const ITEM_CONDITIONS = ['Brand New', 'Brand New (Defect)', 'Used (Great Condition)', 'Used (Good Condition)', 'Used (Bad Condition)']
+const ITEM_CONDITIONS = ['Brand New', 'BN Defect', 'Used - Great', 'Used - Good', 'Used - Bad']
 
 const EMPTY_FORM = {
   category: '', pokemon_type: '', item_condition: 'Brand New',

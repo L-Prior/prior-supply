@@ -859,9 +859,12 @@ tbody td {
 }
 
 .item-card-stat-value {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-card-stat-avg {
