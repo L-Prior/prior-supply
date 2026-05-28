@@ -827,7 +827,20 @@ export default function Dashboard({ session }) {
                         <div className="item-card-style">{batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?[batch.style,batch.units[0]?.card_number,batch.colourway].filter(Boolean).join(' · '):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='sealed'?[batch.colourway,batch.units[0]?.pokemon_sealed_type,batch.style].filter(Boolean).join(' · ')||'—':[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
                       </div>
                       <div className="item-card-stats">
-                        <div className="item-card-stat"><div className="item-card-stat-label">{batch.category==='Miscellaneous'&&!batch.units[0]?.size?'Qty':batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?(batch.units[0]?.graded?'Grade':'Condition'):'Size'}</div><div className="item-card-stat-value">{isSingle?(batch.category==='Miscellaneous'&&!batch.units[0]?.size?`${batch.units.length}`:batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?(batch.units[0]?.graded?`${batch.units[0]?.grading_company||''} ${batch.units[0]?.grade||''}`.trim()||(batch.units[0].condition||'—'):(batch.units[0].condition||'—')):(batch.units[0].size?`UK ${batch.units[0].size}`:'—')):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`}</div></div>
+                        <div className="item-card-stat">
+                          <div className="item-card-stat-label">
+                            {batch.category==='Sneakers'||batch.category==='Clothing'?'Size':
+                             batch.category==='Miscellaneous'&&!batch.units[0]?.size?'Qty':'Condition'}
+                          </div>
+                          <div className="item-card-stat-value">
+                            {isSingle?(
+                              batch.category==='Sneakers'||batch.category==='Clothing'?(batch.units[0].size?`UK ${batch.units[0].size}`:'—'):
+                              batch.category==='Miscellaneous'&&!batch.units[0]?.size?`${batch.units.length}`:
+                              batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'&&batch.units[0]?.graded?`${batch.units[0]?.grading_company||''} ${batch.units[0]?.grade||''}`.trim():
+                              batch.units[0]?.condition||'—'
+                            ):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`}
+                          </div>
+                        </div>
                         <div className="item-card-stat"><div className="item-card-stat-label">Cost</div><div className="item-card-stat-value">{fmt(totalCost)}</div>{!isSingle&&inStockUnits.length>0&&<div className="item-card-stat-avg">avg {fmt(avgCost)}</div>}</div>
                         <div className="item-card-stat"><div className="item-card-stat-label">P&L</div><div className={`item-card-stat-value ${plColor(soldUnits.length?totalPL:null)}`}>{soldUnits.length?fmt(totalPL):'—'}</div></div>
                         <div className="item-card-stat"><div className="item-card-stat-label">Sold</div><div className="item-card-stat-value">{batch.units.length>1?`${soldUnits.length}/${batch.units.length}`:(soldUnits.length?'✓':'—')}</div></div>
