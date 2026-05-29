@@ -315,20 +315,25 @@ function StockChecklist({ items, breaks }) {
     if (i.size) batchMap[key].sizes[i.size] = (batchMap[key].sizes[i.size] || 0) + 1
   })
 
-  const stockRows = Object.values(batchMap).map(b => ({
-    id: `batch-${b.batch_id || b.id}`,
-    brand: b.brand || '—',
-    style: b.style || '—',
-    colourway: b.category === 'Pokémon'
-      ? [b.set_name, b.pokemon_sealed_type].filter(Boolean).join(' · ') || b.colourway || '—'
-      : b.colourway || '—',
-    sku: b.sku || '',
-    sizeDisplay: Object.keys(b.sizes).length > 0
-      ? Object.keys(b.sizes).map(s => `UK ${s}`).join('\n')
-      : '—',
-    qty: b.qty,
-    category: b.category
-  }))
+  const stockRows = []
+  Object.values(batchMap).forEach(b => {
+    const baseRow = {
+      brand: b.brand || '—',
+      style: b.style || '—',
+      colourway: b.category === 'Pokémon'
+        ? [b.set_name, b.pokemon_sealed_type].filter(Boolean).join(' · ') || b.colourway || '—'
+        : b.colourway || '—',
+      sku: b.sku || '',
+      category: b.category
+    }
+    if (Object.keys(b.sizes).length > 0) {
+      Object.entries(b.sizes).forEach(([size, qty]) => {
+        stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}-${size}`, sizeDisplay: `UK ${size}`, qty })
+      })
+    } else {
+      stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}`, sizeDisplay: '—', qty: b.qty })
+    }
+  })
 
   const breakRows = selectedCategories.Breaker ? breaks.filter(b => b.status !== 'completed').map(b => ({
     id: `break-${b.id}`,
@@ -403,7 +408,7 @@ function StockChecklist({ items, breaks }) {
               <div className="checklist-col style">{row.style}</div>
               <div className="checklist-col colourway">{row.colourway||'—'}</div>
               <div className="checklist-col sku">{row.sku||'—'}</div>
-              <div className="checklist-col size">{row.sizeDisplay.split('\n').map((s, i) => <div key={i}>{s}</div>)}</div>
+              <div className="checklist-col size">{row.sizeDisplay}</div>
               <div className="checklist-col qty">{row.qty}</div>
               <div className="checklist-col discrepancy">
                 {status[row.id]==='incorrect'&&(
