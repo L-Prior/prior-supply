@@ -286,6 +286,97 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
   return null
 }
 
+function StockChecklist({ items, breaks }) {
+  const [selectedCategories, setSelectedCategories] = useState({
+    Sneakers: true, Pokémon: true, Lego: true, Clothing: true, Miscellaneous: true, Breaker: false
+  })
+  const [checked, setChecked] = useState({})
+
+  function toggleCategory(cat) {
+    setSelectedCategories(s => ({ ...s, [cat]: !s[cat] }))
+    setChecked({})
+  }
+
+  function toggleChecked(id) {
+    setChecked(s => ({ ...s, [id]: !s[id] }))
+  }
+
+  const stockRows = items.filter(i => selectedCategories[i.category] && i.status === 'in_stock')
+  const breakRows = selectedCategories.Breaker ? breaks.filter(b => b.status !== 'completed') : []
+
+  const allRows = [
+    ...stockRows.map(i => ({
+      id: `stock-${i.id}`,
+      brand: i.brand || '—',
+      style: i.style || '—',
+      colourway: i.colourway || '',
+      sku: i.sku || '',
+      size: i.size ? `UK ${i.size}` : (i.category === 'Pokémon' && i.pokemon_type === 'singles' ? (i.card_number || '') : ''),
+      category: i.category
+    })),
+    ...breakRows.map(b => ({
+      id: `break-${b.id}`,
+      brand: b.type === 'break' ? 'Box Break' : 'Mystery Packs',
+      style: b.name || (b.type === 'break' ? 'Box Break' : 'Mystery Packs'),
+      colourway: '',
+      sku: '',
+      size: b.type === 'break' ? `${b.spots_sold||0}/${b.spots_total||0} spots` : `${b.packs_sold||0}/${b.packs_total||0} packs`,
+      category: 'Breaker'
+    }))
+  ]
+
+  function handlePrint() {
+    window.print()
+  }
+
+  return (
+    <div>
+      <div className="chart-card" style={{marginBottom:20}}>
+        <div className="chart-title" style={{marginBottom:16}}>Stock Checklist</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:16}}>
+          {Object.keys(selectedCategories).map(cat => (
+            <label key={cat} className="metrics-checkbox">
+              <input type="checkbox" checked={selectedCategories[cat]} onChange={()=>toggleCategory(cat)}/>
+              {cat}
+            </label>
+          ))}
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:13,color:'var(--muted)'}}>{allRows.length} item{allRows.length!==1?'s':''}</span>
+          <button className="btn primary sm" onClick={handlePrint}>🖨️ Print</button>
+        </div>
+      </div>
+
+      {allRows.length === 0 ? (
+        <div className="empty"><div className="empty-icon">📋</div><div className="empty-title">No stock found</div><div style={{marginTop:6}}>Select at least one category above</div></div>
+      ) : (
+        <div className="chart-card checklist-card" id="checklist-print">
+          <div className="checklist-header">
+            <div className="checklist-col check"></div>
+            <div className="checklist-col brand">Brand</div>
+            <div className="checklist-col style">Style</div>
+            <div className="checklist-col colourway">Colourway</div>
+            <div className="checklist-col sku">SKU</div>
+            <div className="checklist-col size">Size / Ref</div>
+          </div>
+          {allRows.map((row, i) => (
+            <div key={row.id} className={`checklist-row ${checked[row.id]?'checked':''} ${i%2===0?'alt':''}`}>
+              <div className="checklist-col check">
+                <input type="checkbox" checked={!!checked[row.id]} onChange={()=>toggleChecked(row.id)} className="checklist-checkbox"/>
+              </div>
+              <div className="checklist-col brand">{row.brand}</div>
+              <div className="checklist-col style">{row.style}</div>
+              <div className="checklist-col colourway">{row.colourway||'—'}</div>
+              <div className="checklist-col sku">{row.sku||'—'}</div>
+              <div className="checklist-col size">{row.size||'—'}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FeeCalculator() {
   const [calcPlatform, setCalcPlatform] = useState(null)
   const [calcPrice, setCalcPrice] = useState('')
@@ -717,6 +808,7 @@ export default function Dashboard({ session }) {
   }, [breaks])
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [toolTab, setToolTab] = useState('fee')
   const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}]
 
   return (
@@ -898,7 +990,12 @@ export default function Dashboard({ session }) {
         {page==='tools'&&(
           <div>
             <div className="page-header"><h1 className="page-title">Tools</h1><p className="page-subtitle">Calculators and utilities</p></div>
-            <FeeCalculator/>
+            <div style={{display:'flex',gap:8,marginBottom:24}}>
+              <button className={`type-btn ${toolTab==='fee'?'active':''}`} onClick={()=>setToolTab('fee')}>Fee Calculator</button>
+              <button className={`type-btn ${toolTab==='checklist'?'active':''}`} onClick={()=>setToolTab('checklist')}>Stock Checklist</button>
+            </div>
+            {toolTab==='fee'&&<FeeCalculator/>}
+            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks}/>}
           </div>
         )}
 
