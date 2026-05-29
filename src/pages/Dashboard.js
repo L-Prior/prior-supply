@@ -290,22 +290,22 @@ function StockChecklist({ items, breaks }) {
   const [selectedCategories, setSelectedCategories] = useState({
     Sneakers: true, Pokémon: true, Lego: true, Clothing: true, Miscellaneous: true, Breaker: false
   })
-  const [checked, setChecked] = useState({})
+  const [status, setStatus] = useState({}) // 'correct' | 'incorrect' | undefined
   const [notes, setNotes] = useState({})
 
   function toggleCategory(cat) {
     setSelectedCategories(s => ({ ...s, [cat]: !s[cat] }))
   }
 
-  function toggleChecked(id) {
-    setChecked(s => ({ ...s, [id]: !s[id] }))
+  function setRowStatus(id, val) {
+    setStatus(s => ({ ...s, [id]: s[id] === val ? undefined : val }))
+    if (val === 'correct') setNotes(n => ({ ...n, [id]: '' }))
   }
 
   function setNote(id, val) {
     setNotes(s => ({ ...s, [id]: val }))
   }
 
-  // Group stock items by batch_id
   const batchMap = {}
   items.filter(i => selectedCategories[i.category] && i.status === 'in_stock').forEach(i => {
     const key = i.batch_id || i.id
@@ -342,7 +342,9 @@ function StockChecklist({ items, breaks }) {
   })) : []
 
   const allRows = [...stockRows, ...breakRows]
-  const flaggedCount = Object.values(notes).filter(n => n && n.trim()).length
+  const correctCount = Object.values(status).filter(s => s === 'correct').length
+  const incorrectCount = Object.values(status).filter(s => s === 'incorrect').length
+  const uncheckedCount = allRows.length - correctCount - incorrectCount
 
   return (
     <div>
@@ -357,10 +359,11 @@ function StockChecklist({ items, breaks }) {
           ))}
         </div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-          <div style={{display:'flex',gap:16,fontSize:13,color:'var(--muted)'}}>
-            <span>{allRows.length} item{allRows.length!==1?'s':''}</span>
-            <span>{Object.values(checked).filter(Boolean).length} checked</span>
-            {flaggedCount>0&&<span style={{color:'#f59e0b'}}>⚠️ {flaggedCount} discrepanc{flaggedCount!==1?'ies':'y'}</span>}
+          <div style={{display:'flex',gap:16,fontSize:13}}>
+            <span style={{color:'var(--muted)'}}>{allRows.length} items</span>
+            {correctCount>0&&<span style={{color:'var(--green)'}}>✓ {correctCount} correct</span>}
+            {incorrectCount>0&&<span style={{color:'var(--red)'}}>✗ {incorrectCount} incorrect</span>}
+            {uncheckedCount>0&&<span style={{color:'var(--muted)'}}>◯ {uncheckedCount} unchecked</span>}
           </div>
           <button className="btn primary sm" onClick={()=>window.print()}>🖨️ Print</button>
         </div>
@@ -371,7 +374,7 @@ function StockChecklist({ items, breaks }) {
       ) : (
         <div className="chart-card checklist-card" id="checklist-print">
           <div className="checklist-header">
-            <div className="checklist-col check"></div>
+            <div className="checklist-col actions">Status</div>
             <div className="checklist-col brand">Brand</div>
             <div className="checklist-col style">Style</div>
             <div className="checklist-col colourway">Colourway / Set</div>
@@ -381,9 +384,20 @@ function StockChecklist({ items, breaks }) {
             <div className="checklist-col discrepancy">Discrepancy</div>
           </div>
           {allRows.map((row, i) => (
-            <div key={row.id} className={`checklist-row ${checked[row.id]?'checked':''} ${notes[row.id]?'flagged':''} ${i%2===0?'alt':''}`}>
-              <div className="checklist-col check">
-                <input type="checkbox" checked={!!checked[row.id]} onChange={()=>toggleChecked(row.id)} className="checklist-checkbox"/>
+            <div key={row.id} className={`checklist-row ${status[row.id]==='correct'?'row-correct':status[row.id]==='incorrect'?'row-incorrect':''} ${i%2===0?'alt':''}`}>
+              <div className="checklist-col actions">
+                <div style={{display:'flex',gap:4}}>
+                  <button
+                    className={`check-btn correct ${status[row.id]==='correct'?'active':''}`}
+                    onClick={()=>setRowStatus(row.id,'correct')}
+                    title="Correct"
+                  >✓</button>
+                  <button
+                    className={`check-btn incorrect ${status[row.id]==='incorrect'?'active':''}`}
+                    onClick={()=>setRowStatus(row.id,'incorrect')}
+                    title="Incorrect"
+                  >✗</button>
+                </div>
               </div>
               <div className="checklist-col brand">{row.brand}</div>
               <div className="checklist-col style">{row.style}</div>
@@ -392,15 +406,17 @@ function StockChecklist({ items, breaks }) {
               <div className="checklist-col size">{row.sizeDisplay}</div>
               <div className="checklist-col qty">{row.qty}</div>
               <div className="checklist-col discrepancy">
-                <div className="discrepancy-wrap" title={notes[row.id]||''}>
+                {status[row.id]==='incorrect'&&(
                   <input
                     className="discrepancy-input"
-                    placeholder="Note any issues..."
+                    placeholder="Describe the issue..."
                     value={notes[row.id]||''}
-                    onChange={e=>setNote(row.id, e.target.value)}
+                    onChange={e=>setNote(row.id,e.target.value)}
+                    title={notes[row.id]||''}
+                    autoFocus
                   />
-                  {notes[row.id]&&<div className="discrepancy-preview">{notes[row.id]}</div>}
-                </div>
+                )}
+                {status[row.id]==='correct'&&<span style={{fontSize:12,color:'var(--muted)'}}>—</span>}
               </div>
             </div>
           ))}

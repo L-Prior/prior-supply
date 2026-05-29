@@ -1996,3 +1996,60 @@ tbody td {
   .discrepancy-input { border: none; background: none; padding: 0; font-size: 11px; }
   .checklist-row.flagged { border-left: 2px solid #f59e0b; }
 }
+/* Checklist ✓/✗ buttons */
+.checklist-col.actions { flex: 0 0 80px; }
+.checklist-col.check { flex: 0 0 32px; }
+.checklist-col.brand { flex: 0 0 110px; font-weight: 500; }
+.checklist-col.style { flex: 1; }
+.checklist-col.colourway { flex: 0 0 150px; color: var(--text2); }
+.checklist-col.sku { flex: 0 0 100px; color: var(--muted); font-size: 12px; }
+.checklist-col.size { flex: 0 0 120px; color: var(--text2); }
+.checklist-col.qty { flex: 0 0 40px; text-align: center; font-weight: 600; }
+.checklist-col.discrepancy { flex: 1; min-width: 0; }
+
+.check-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  color: var(--muted);
+}
+.check-btn:hover { transform: scale(1.1); }
+.check-btn.correct:hover { border-color: var(--green); color: var(--green); }
+.check-btn.incorrect:hover { border-color: var(--red); color: var(--red); }
+.check-btn.correct.active { background: #dcfce7; border-color: var(--green); color: var(--green); }
+.check-btn.incorrect.active { background: #fee2e2; border-color: var(--red); color: var(--red); }
+
+.checklist-row.row-correct { background: #f0fdf4 !important; }
+.checklist-row.row-incorrect { background: #fff7ed !important; border-left: 3px solid #f59e0b; }
+
+.discrepancy-input {
+  width: 100%;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius);
+  background: #fffbeb;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+.discrepancy-input:focus { outline: none; border-color: #d97706; }
+.discrepancy-input::placeholder { color: var(--muted); }
+
+@media print {
+  .check-btn { display: none; }
+  .checklist-col.actions::after { content: ''; }
+  .checklist-row.row-correct .checklist-col.actions::after { content: '✓'; color: green; font-weight: bold; }
+  .checklist-row.row-incorrect .checklist-col.actions::after { content: '✗'; color: red; font-weight: bold; }
+  .checklist-row.row-incorrect { border-left: 2px solid #f59e0b; }
+  .discrepancy-input { border: none; background: none; padding: 0; }
+}
