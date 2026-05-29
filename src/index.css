@@ -2053,3 +2053,12 @@ tbody td {
   .checklist-row.row-incorrect { border-left: 2px solid #f59e0b; }
   .discrepancy-input { border: none; background: none; padding: 0; }
 }
+/* Sticky checklist controls */
+.checklist-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}

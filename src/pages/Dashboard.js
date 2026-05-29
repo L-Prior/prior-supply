@@ -394,7 +394,7 @@ function StockChecklist({ items, breaks, onAddItem }) {
 
       {checklistTab==='checklist'&&(
         <div>
-          <div className="chart-card" style={{marginBottom:20}}>
+          <div className="chart-card checklist-sticky" style={{marginBottom:20}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:16}}>
               <div className="chart-title" style={{margin:0}}>Stock Checklist</div>
               <button className="btn sm" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>setShowFlagForm(true)}>+ Flag unlisted item</button>
