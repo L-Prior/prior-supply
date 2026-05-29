@@ -6,9 +6,11 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 
-const CATEGORIES = ['Sneakers', 'Pokémon', 'Lego', 'Clothing', 'Miscellaneous']
+const CATEGORIES = ['Sneakers', 'Pokémon', 'Topps', 'Lego', 'Clothing', 'Miscellaneous']
 const COLORS = ['#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0','#f59e0b','#3b82f6']
 const POKEMON_TYPES = ['Booster Box', 'Elite Trainer Box', 'Pack', 'Blister', 'Triple Blister', 'Bundle', 'Other']
+const TOPPS_SEALED_TYPES = ['Hobby Box', 'Blaster Box', 'Mega Box', 'Tin', 'Pack', 'Bundle', 'Other']
+const TOPPS_PARALLELS = ['Base', 'Gold', 'Refractor', 'Chrome', 'Prizm', 'Foil', 'Numbered', 'Auto', 'Other']
 const CONDITIONS = ['Sealed', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played']
 const SEALED_CONDITIONS = ['Sealed', 'Box Damaged', 'Ripped', 'Damaged']
 const GRADING_COMPANIES = ['PSA', 'BGS', 'CGC', 'ACE']
@@ -60,6 +62,7 @@ const EMPTY_FORM = {
   lego_set_name: '', set_number: '', theme: '', lego_condition: '',
   clothing_brand: '', item: '', clothing_size: '', colour: '',
   item_name: '', description: '',
+  topps_type: '', topps_card_name: '', topps_set: '', topps_year: '', topps_card_number: '', topps_parallel: '', topps_print_run: '', topps_sealed_type: '', topps_product_name: '',
   purchase_platform: '', purchase_date: '', notes: '',
   units: [{ ...EMPTY_UNIT }]
 }
@@ -237,6 +240,45 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
         <div className="form-group"><label className="form-label">Condition</label><select className="form-input" value={form.condition} onChange={e=>setForm(f=>({...f,condition:e.target.value}))}><option value="">Select</option>{SEALED_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
         <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
         <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. eBay, Game" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
+        <div className="form-group full"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+        <UnitSection form={form} editItem={editItem} updateUnit={updateUnit} addUnit={addUnit} removeUnit={removeUnit} label="Units & Quantities *" sizePlaceholder="Description (optional)" addLabel="+ Add Unit"/>
+      </>}
+    </>
+  )
+
+  if (cat === 'Topps') return (
+    <>
+      <div className="form-group full">
+        <label className="form-label">Type *</label>
+        <div className="type-toggle">
+          <button className={`type-btn ${form.topps_type==='singles'?'active':''}`} onClick={()=>setForm(f=>({...f,topps_type:'singles'}))}>Singles</button>
+          <button className={`type-btn ${form.topps_type==='sealed'?'active':''}`} onClick={()=>setForm(f=>({...f,topps_type:'sealed'}))}>Sealed</button>
+        </div>
+      </div>
+      {form.topps_type==='singles'&&<>
+        <div className="form-group"><label className="form-label">Card Name *</label><input className="form-input" placeholder="e.g. Erling Haaland" value={form.topps_card_name} onChange={e=>setForm(f=>({...f,topps_card_name:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Set</label><input className="form-input" placeholder="e.g. Topps Chrome" value={form.topps_set} onChange={e=>setForm(f=>({...f,topps_set:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Year</label><input className="form-input" placeholder="e.g. 2024" value={form.topps_year} onChange={e=>setForm(f=>({...f,topps_year:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Card Number</label><input className="form-input" placeholder="e.g. 123" value={form.topps_card_number} onChange={e=>setForm(f=>({...f,topps_card_number:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Parallel</label><select className="form-input" value={form.topps_parallel} onChange={e=>setForm(f=>({...f,topps_parallel:e.target.value}))}><option value="">Select</option>{TOPPS_PARALLELS.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
+        <div className="form-group"><label className="form-label">Print Run</label><input className="form-input" placeholder="e.g. /50" value={form.topps_print_run} onChange={e=>setForm(f=>({...f,topps_print_run:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Condition</label><select className="form-input" value={form.condition} onChange={e=>setForm(f=>({...f,condition:e.target.value}))}><option value="">Select</option>{CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+        <div className="form-group full"><label className="form-label">Graded?</label><div className="type-toggle"><button className={`type-btn ${!form.graded?'active':''}`} onClick={()=>setForm(f=>({...f,graded:false,grading_company:'',grade:''}))}>No</button><button className={`type-btn ${form.graded?'active':''}`} onClick={()=>setForm(f=>({...f,graded:true}))}>Yes</button></div></div>
+        {form.graded&&<><div className="form-group"><label className="form-label">Grading Company</label><select className="form-input" value={form.grading_company} onChange={e=>setForm(f=>({...f,grading_company:e.target.value}))}><option value="">Select</option>{GRADING_COMPANIES.map(g=><option key={g} value={g}>{g}</option>)}</select></div><div className="form-group"><label className="form-label">Grade</label><input className="form-input" placeholder="e.g. 9, 10" value={form.grade} onChange={e=>setForm(f=>({...f,grade:e.target.value}))}/></div></>}
+        <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. eBay, Whatnot" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
+        <div className="form-group full"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+      </>}
+      {form.topps_type==='sealed'&&<>
+        <div className="form-group"><label className="form-label">Product Name *</label><input className="form-input" placeholder="e.g. Topps Chrome Premier League" value={form.topps_product_name} onChange={e=>setForm(f=>({...f,topps_product_name:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Set</label><input className="form-input" placeholder="e.g. Topps Chrome" value={form.topps_set} onChange={e=>setForm(f=>({...f,topps_set:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Year</label><input className="form-input" placeholder="e.g. 2024" value={form.topps_year} onChange={e=>setForm(f=>({...f,topps_year:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Product Type</label><select className="form-input" value={form.topps_sealed_type} onChange={e=>setForm(f=>({...f,topps_sealed_type:e.target.value}))}><option value="">Select</option>{TOPPS_SEALED_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+        <div className="form-group"><label className="form-label">Condition</label><select className="form-input" value={form.condition} onChange={e=>setForm(f=>({...f,condition:e.target.value}))}><option value="">Select</option>{SEALED_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+        <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={form.purchase_date} onChange={e=>setForm(f=>({...f,purchase_date:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. eBay, Whatnot" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
         <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
         <div className="form-group full"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
         <UnitSection form={form} editItem={editItem} updateUnit={updateUnit} addUnit={addUnit} removeUnit={removeUnit} label="Units & Quantities *" sizePlaceholder="Description (optional)" addLabel="+ Add Unit"/>
@@ -549,6 +591,7 @@ export default function Dashboard({ session }) {
     else if (form.category === 'Pokémon') { brand = 'Pokémon'; style = form.pokemon_type === 'singles' ? form.card_name : form.product_name; colourway = form.set_name; sku = form.card_number }
     else if (form.category === 'Lego') { brand = 'Lego'; style = form.lego_set_name; colourway = form.theme; sku = form.set_number }
     else if (form.category === 'Clothing') { brand = form.clothing_brand; style = form.item; colourway = form.colour }
+    else if (form.category === 'Topps') { brand = 'Topps'; style = form.topps_type === 'singles' ? form.topps_card_name : form.topps_product_name; colourway = form.topps_set; sku = form.topps_card_number }
     else if (form.category === 'Miscellaneous') { brand = form.item_name; style = form.description }
     const base = {
       category: form.category, brand, style, colourway, sku,
@@ -588,7 +631,7 @@ export default function Dashboard({ session }) {
   }
 
   function openEdit(item) {
-    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'' }] })
+    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'' }] })
     setEditItem(item); setShowAdd(true)
   }
 
@@ -1264,7 +1307,7 @@ export default function Dashboard({ session }) {
                 </select>
               </div>
               {form.category&&<>
-                {form.category!=='Pokémon'&&<div className="form-group full">
+                {form.category!=='Pokémon'&&form.category!=='Topps'&&<div className="form-group full">
                   <label className="form-label">Condition</label>
                   <select className="form-input" value={form.item_condition} onChange={e=>setForm(f=>({...f,item_condition:e.target.value}))}>
                     {ITEM_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}
