@@ -319,7 +319,9 @@ function StockChecklist({ items, breaks }) {
     id: `batch-${b.batch_id || b.id}`,
     brand: b.brand || '—',
     style: b.style || '—',
-    colourway: b.colourway || '',
+    colourway: b.category === 'Pokémon'
+      ? [b.set_name, b.pokemon_sealed_type].filter(Boolean).join(' · ') || b.colourway || '—'
+      : b.colourway || '—',
     sku: b.sku || '',
     sizeDisplay: Object.keys(b.sizes).length > 0
       ? Object.entries(b.sizes).map(([s, q]) => q > 1 ? `UK ${s} x${q}` : `UK ${s}`).join(', ')
@@ -372,7 +374,7 @@ function StockChecklist({ items, breaks }) {
             <div className="checklist-col check"></div>
             <div className="checklist-col brand">Brand</div>
             <div className="checklist-col style">Style</div>
-            <div className="checklist-col colourway">Colourway</div>
+            <div className="checklist-col colourway">Colourway / Set</div>
             <div className="checklist-col sku">SKU</div>
             <div className="checklist-col size">Sizes</div>
             <div className="checklist-col qty">Qty</div>
