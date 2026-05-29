@@ -2003,8 +2003,8 @@ tbody td {
 .checklist-col.style { flex: 1; }
 .checklist-col.colourway { flex: 0 0 240px; color: var(--text2); }
 .checklist-col.sku { flex: 0 0 130px; color: var(--muted); font-size: 12px; }
-.checklist-col.size { flex: 0 0 120px; color: var(--text2); white-space: normal; }
-.checklist-col.qty { flex: 0 0 40px; text-align: center; font-weight: 600; }
+.checklist-col.size { flex: 0 0 100px; color: var(--text2); white-space: normal; padding-right: 4px; }
+.checklist-col.qty { flex: 0 0 40px; text-align: left; font-weight: 600; padding-left: 0; }
 .checklist-col.discrepancy { flex: 1; min-width: 0; }
 
 .check-btn {
