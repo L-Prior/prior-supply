@@ -1999,7 +1999,7 @@ tbody td {
 /* Checklist ✓/✗ buttons */
 .checklist-col.actions { flex: 0 0 80px; }
 .checklist-col.check { flex: 0 0 32px; }
-.checklist-col.brand { flex: 0 0 110px; font-weight: 500; }
+.checklist-col.brand { flex: 0 0 140px; font-weight: 500; }
 .checklist-col.style { flex: 1; }
 .checklist-col.colourway { flex: 0 0 240px; color: var(--text2); }
 .checklist-col.sku { flex: 0 0 130px; color: var(--muted); font-size: 12px; }
