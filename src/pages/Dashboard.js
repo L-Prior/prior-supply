@@ -324,7 +324,7 @@ function StockChecklist({ items, breaks }) {
       : b.colourway || '—',
     sku: b.sku || '',
     sizeDisplay: Object.keys(b.sizes).length > 0
-      ? Object.entries(b.sizes).map(([s, q]) => q > 1 ? `UK ${s} x${q}` : `UK ${s}`).join(', ')
+      ? Object.keys(b.sizes).map(s => `UK ${s}`).join('\n')
       : '—',
     qty: b.qty,
     category: b.category
@@ -403,7 +403,7 @@ function StockChecklist({ items, breaks }) {
               <div className="checklist-col style">{row.style}</div>
               <div className="checklist-col colourway">{row.colourway||'—'}</div>
               <div className="checklist-col sku">{row.sku||'—'}</div>
-              <div className="checklist-col size">{row.sizeDisplay}</div>
+              <div className="checklist-col size">{row.sizeDisplay.split('\n').map((s, i) => <div key={i}>{s}</div>)}</div>
               <div className="checklist-col qty">{row.qty}</div>
               <div className="checklist-col discrepancy">
                 {status[row.id]==='incorrect'&&(

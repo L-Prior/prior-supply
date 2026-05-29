@@ -2001,9 +2001,9 @@ tbody td {
 .checklist-col.check { flex: 0 0 32px; }
 .checklist-col.brand { flex: 0 0 110px; font-weight: 500; }
 .checklist-col.style { flex: 1; }
-.checklist-col.colourway { flex: 0 0 150px; color: var(--text2); }
+.checklist-col.colourway { flex: 0 0 200px; color: var(--text2); }
 .checklist-col.sku { flex: 0 0 100px; color: var(--muted); font-size: 12px; }
-.checklist-col.size { flex: 0 0 120px; color: var(--text2); }
+.checklist-col.size { flex: 0 0 120px; color: var(--text2); white-space: normal; }
 .checklist-col.qty { flex: 0 0 40px; text-align: center; font-weight: 600; }
 .checklist-col.discrepancy { flex: 1; min-width: 0; }
 
