@@ -8,7 +8,7 @@ import {
 
 const CATEGORIES = ['Sneakers', 'Pokémon', 'Topps', 'Lego', 'Clothing', 'Miscellaneous']
 const COLORS = ['#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0','#f59e0b','#3b82f6']
-const POKEMON_TYPES = ['Booster Box', 'Elite Trainer Box', 'Pack', 'Blister', 'Triple Blister', 'Bundle', 'Other']
+const POKEMON_TYPES = ['Booster Box', 'Elite Trainer Box', 'Pack', 'Sleeved Booster', 'Blister', 'Triple Blister', 'Bundle', 'Other']
 const TOPPS_SEALED_TYPES = ['Hobby Box', 'Blaster Box', 'Mega Box', 'Tin', 'Pack', 'Bundle', 'Other']
 const TOPPS_PARALLELS = ['Base', 'Gold', 'Refractor', 'Chrome', 'Prizm', 'Foil', 'Numbered', 'Auto', 'Other']
 const CONDITIONS = ['Sealed', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played']
