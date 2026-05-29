@@ -1952,3 +1952,47 @@ tbody td {
   .checklist-col.check::after { content: '☐'; font-size: 14px; }
   .checklist-row.checked .checklist-col.check::after { content: '☑'; }
 }
+
+/* Checklist updates */
+.checklist-col.qty { flex: 0 0 50px; text-align: center; font-weight: 600; }
+.checklist-col.discrepancy { flex: 1; min-width: 0; }
+
+.checklist-row.flagged {
+  background: #fffbeb !important;
+  border-left: 3px solid #f59e0b;
+}
+
+.discrepancy-wrap {
+  position: relative;
+}
+
+.discrepancy-input {
+  width: 100%;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.discrepancy-input:focus {
+  outline: none;
+  border-color: #f59e0b;
+  white-space: normal;
+  overflow: visible;
+}
+
+.discrepancy-input::placeholder {
+  color: var(--muted);
+}
+
+@media print {
+  .discrepancy-input { border: none; background: none; padding: 0; font-size: 11px; }
+  .checklist-row.flagged { border-left: 2px solid #f59e0b; }
+}

@@ -291,43 +291,56 @@ function StockChecklist({ items, breaks }) {
     Sneakers: true, Pokémon: true, Lego: true, Clothing: true, Miscellaneous: true, Breaker: false
   })
   const [checked, setChecked] = useState({})
+  const [notes, setNotes] = useState({})
 
   function toggleCategory(cat) {
     setSelectedCategories(s => ({ ...s, [cat]: !s[cat] }))
-    setChecked({})
   }
 
   function toggleChecked(id) {
     setChecked(s => ({ ...s, [id]: !s[id] }))
   }
 
-  const stockRows = items.filter(i => selectedCategories[i.category] && i.status === 'in_stock')
-  const breakRows = selectedCategories.Breaker ? breaks.filter(b => b.status !== 'completed') : []
-
-  const allRows = [
-    ...stockRows.map(i => ({
-      id: `stock-${i.id}`,
-      brand: i.brand || '—',
-      style: i.style || '—',
-      colourway: i.colourway || '',
-      sku: i.sku || '',
-      size: i.size ? `UK ${i.size}` : (i.category === 'Pokémon' && i.pokemon_type === 'singles' ? (i.card_number || '') : ''),
-      category: i.category
-    })),
-    ...breakRows.map(b => ({
-      id: `break-${b.id}`,
-      brand: b.type === 'break' ? 'Box Break' : 'Mystery Packs',
-      style: b.name || (b.type === 'break' ? 'Box Break' : 'Mystery Packs'),
-      colourway: '',
-      sku: '',
-      size: b.type === 'break' ? `${b.spots_sold||0}/${b.spots_total||0} spots` : `${b.packs_sold||0}/${b.packs_total||0} packs`,
-      category: 'Breaker'
-    }))
-  ]
-
-  function handlePrint() {
-    window.print()
+  function setNote(id, val) {
+    setNotes(s => ({ ...s, [id]: val }))
   }
+
+  // Group stock items by batch_id
+  const batchMap = {}
+  items.filter(i => selectedCategories[i.category] && i.status === 'in_stock').forEach(i => {
+    const key = i.batch_id || i.id
+    if (!batchMap[key]) batchMap[key] = { ...i, units: [], qty: 0, sizes: {} }
+    batchMap[key].units.push(i)
+    batchMap[key].qty++
+    if (i.size) batchMap[key].sizes[i.size] = (batchMap[key].sizes[i.size] || 0) + 1
+  })
+
+  const stockRows = Object.values(batchMap).map(b => ({
+    id: `batch-${b.batch_id || b.id}`,
+    brand: b.brand || '—',
+    style: b.style || '—',
+    colourway: b.colourway || '',
+    sku: b.sku || '',
+    sizeDisplay: Object.keys(b.sizes).length > 0
+      ? Object.entries(b.sizes).map(([s, q]) => q > 1 ? `UK ${s} x${q}` : `UK ${s}`).join(', ')
+      : '—',
+    qty: b.qty,
+    category: b.category
+  }))
+
+  const breakRows = selectedCategories.Breaker ? breaks.filter(b => b.status !== 'completed').map(b => ({
+    id: `break-${b.id}`,
+    brand: b.type === 'break' ? 'Box Break' : 'Mystery Packs',
+    style: b.name || (b.type === 'break' ? 'Box Break' : 'Mystery Packs'),
+    colourway: '',
+    sku: '',
+    sizeDisplay: b.type === 'break' ? `${b.spots_sold||0}/${b.spots_total||0} spots` : `${b.packs_sold||0}/${b.packs_total||0} packs`,
+    qty: 1,
+    category: 'Breaker'
+  })) : []
+
+  const allRows = [...stockRows, ...breakRows]
+  const flaggedCount = Object.values(notes).filter(n => n && n.trim()).length
 
   return (
     <div>
@@ -341,9 +354,13 @@ function StockChecklist({ items, breaks }) {
             </label>
           ))}
         </div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span style={{fontSize:13,color:'var(--muted)'}}>{allRows.length} item{allRows.length!==1?'s':''}</span>
-          <button className="btn primary sm" onClick={handlePrint}>🖨️ Print</button>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+          <div style={{display:'flex',gap:16,fontSize:13,color:'var(--muted)'}}>
+            <span>{allRows.length} item{allRows.length!==1?'s':''}</span>
+            <span>{Object.values(checked).filter(Boolean).length} checked</span>
+            {flaggedCount>0&&<span style={{color:'#f59e0b'}}>⚠️ {flaggedCount} discrepanc{flaggedCount!==1?'ies':'y'}</span>}
+          </div>
+          <button className="btn primary sm" onClick={()=>window.print()}>🖨️ Print</button>
         </div>
       </div>
 
@@ -357,10 +374,12 @@ function StockChecklist({ items, breaks }) {
             <div className="checklist-col style">Style</div>
             <div className="checklist-col colourway">Colourway</div>
             <div className="checklist-col sku">SKU</div>
-            <div className="checklist-col size">Size / Ref</div>
+            <div className="checklist-col size">Sizes</div>
+            <div className="checklist-col qty">Qty</div>
+            <div className="checklist-col discrepancy">Discrepancy</div>
           </div>
           {allRows.map((row, i) => (
-            <div key={row.id} className={`checklist-row ${checked[row.id]?'checked':''} ${i%2===0?'alt':''}`}>
+            <div key={row.id} className={`checklist-row ${checked[row.id]?'checked':''} ${notes[row.id]?'flagged':''} ${i%2===0?'alt':''}`}>
               <div className="checklist-col check">
                 <input type="checkbox" checked={!!checked[row.id]} onChange={()=>toggleChecked(row.id)} className="checklist-checkbox"/>
               </div>
@@ -368,7 +387,19 @@ function StockChecklist({ items, breaks }) {
               <div className="checklist-col style">{row.style}</div>
               <div className="checklist-col colourway">{row.colourway||'—'}</div>
               <div className="checklist-col sku">{row.sku||'—'}</div>
-              <div className="checklist-col size">{row.size||'—'}</div>
+              <div className="checklist-col size">{row.sizeDisplay}</div>
+              <div className="checklist-col qty">{row.qty}</div>
+              <div className="checklist-col discrepancy">
+                <div className="discrepancy-wrap" title={notes[row.id]||''}>
+                  <input
+                    className="discrepancy-input"
+                    placeholder="Note any issues..."
+                    value={notes[row.id]||''}
+                    onChange={e=>setNote(row.id, e.target.value)}
+                  />
+                  {notes[row.id]&&<div className="discrepancy-preview">{notes[row.id]}</div>}
+                </div>
+              </div>
             </div>
           ))}
         </div>
