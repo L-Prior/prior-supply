@@ -328,64 +328,52 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
   return null
 }
 
-function StockChecklist({ items, breaks }) {
+function StockChecklist({ items, breaks, onAddItem }) {
   const [selectedCategories, setSelectedCategories] = useState({
-    Sneakers: true, Pokémon: true, Lego: true, Clothing: true, Miscellaneous: true, Breaker: false
+    Sneakers: true, 'Pokémon': true, Topps: true, Lego: true, Clothing: true, Miscellaneous: true, Breaker: false
   })
-  const [status, setStatus] = useState({}) // 'correct' | 'incorrect' | undefined
+  const [status, setStatus] = useState({})
   const [notes, setNotes] = useState({})
+  const [checklistTab, setChecklistTab] = useState('checklist')
+  const [unlisted, setUnlisted] = useState([])
+  const [showFlagForm, setShowFlagForm] = useState(false)
+  const [flagNote, setFlagNote] = useState('')
 
-  function toggleCategory(cat) {
-    setSelectedCategories(s => ({ ...s, [cat]: !s[cat] }))
-  }
-
-  function setRowStatus(id, val) {
-    setStatus(s => ({ ...s, [id]: s[id] === val ? undefined : val }))
-    if (val === 'correct') setNotes(n => ({ ...n, [id]: '' }))
-  }
-
-  function setNote(id, val) {
-    setNotes(s => ({ ...s, [id]: val }))
-  }
+  function toggleCategory(cat) { setSelectedCategories(s => ({ ...s, [cat]: !s[cat] })) }
+  function setRowStatus(id, val) { setStatus(s => ({ ...s, [id]: s[id] === val ? undefined : val })); if (val === 'correct') setNotes(n => ({ ...n, [id]: '' })) }
+  function setNote(id, val) { setNotes(s => ({ ...s, [id]: val })) }
+  function addUnlisted() { if (!flagNote.trim()) return; setUnlisted(u => [...u, { id: Date.now(), note: flagNote.trim() }]); setFlagNote(''); setShowFlagForm(false) }
+  function removeUnlisted(id) { setUnlisted(u => u.filter(i => i.id !== id)) }
 
   const batchMap = {}
   items.filter(i => selectedCategories[i.category] && i.status === 'in_stock').forEach(i => {
     const key = i.batch_id || i.id
     if (!batchMap[key]) batchMap[key] = { ...i, units: [], qty: 0, sizes: {} }
-    batchMap[key].units.push(i)
-    batchMap[key].qty++
+    batchMap[key].units.push(i); batchMap[key].qty++
     if (i.size) batchMap[key].sizes[i.size] = (batchMap[key].sizes[i.size] || 0) + 1
   })
 
   const stockRows = []
   Object.values(batchMap).forEach(b => {
     const baseRow = {
-      brand: b.brand || '—',
-      style: b.style || '—',
-      colourway: b.category === 'Pokémon'
-        ? [b.set_name, b.pokemon_sealed_type].filter(Boolean).join(' · ') || b.colourway || '—'
+      brand: b.brand || '—', style: b.style || '—',
+      colourway: (b.category === 'Pokémon' || b.category === 'Topps')
+        ? [b.set_name || b.topps_set, b.pokemon_sealed_type || b.topps_sealed_type].filter(Boolean).join(' · ') || b.colourway || '—'
         : b.colourway || '—',
-      sku: b.sku || '',
-      category: b.category
+      sku: b.sku || '', category: b.category
     }
     if (Object.keys(b.sizes).length > 0) {
-      Object.entries(b.sizes).forEach(([size, qty]) => {
-        stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}-${size}`, sizeDisplay: `UK ${size}`, qty })
-      })
+      Object.entries(b.sizes).forEach(([size, qty]) => { stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}-${size}`, sizeDisplay: `UK ${size}`, qty }) })
     } else {
       stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}`, sizeDisplay: '—', qty: b.qty })
     }
   })
 
   const breakRows = selectedCategories.Breaker ? breaks.filter(b => b.status !== 'completed').map(b => ({
-    id: `break-${b.id}`,
-    brand: b.type === 'break' ? 'Box Break' : 'Mystery Packs',
-    style: b.name || (b.type === 'break' ? 'Box Break' : 'Mystery Packs'),
-    colourway: '',
-    sku: '',
+    id: `break-${b.id}`, brand: b.type === 'break' ? 'Box Break' : 'Mystery Packs',
+    style: b.name || (b.type === 'break' ? 'Box Break' : 'Mystery Packs'), colourway: '', sku: '',
     sizeDisplay: b.type === 'break' ? `${b.spots_sold||0}/${b.spots_total||0} spots` : `${b.packs_sold||0}/${b.packs_total||0} packs`,
-    qty: 1,
-    category: 'Breaker'
+    qty: 1, category: 'Breaker'
   })) : []
 
   const allRows = [...stockRows, ...breakRows]
@@ -395,83 +383,114 @@ function StockChecklist({ items, breaks }) {
 
   return (
     <div>
-      <div className="chart-card" style={{marginBottom:20}}>
-        <div className="chart-title" style={{marginBottom:16}}>Stock Checklist</div>
-        <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:16}}>
-          {Object.keys(selectedCategories).map(cat => (
-            <label key={cat} className="metrics-checkbox">
-              <input type="checkbox" checked={selectedCategories[cat]} onChange={()=>toggleCategory(cat)}/>
-              {cat}
-            </label>
-          ))}
-        </div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-          <div style={{display:'flex',gap:16,fontSize:13}}>
-            <span style={{color:'var(--muted)'}}>{allRows.length} items</span>
-            {correctCount>0&&<span style={{color:'var(--green)'}}>✓ {correctCount} correct</span>}
-            {incorrectCount>0&&<span style={{color:'var(--red)'}}>✗ {incorrectCount} incorrect</span>}
-            {uncheckedCount>0&&<span style={{color:'var(--muted)'}}>◯ {uncheckedCount} unchecked</span>}
-          </div>
-          <button className="btn primary sm" onClick={()=>window.print()}>🖨️ Print</button>
-        </div>
+      <div style={{display:'flex',gap:8,marginBottom:20}}>
+        <button className={`type-btn ${checklistTab==='checklist'?'active':''}`} onClick={()=>setChecklistTab('checklist')}>
+          Checklist <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{allRows.length}</span>
+        </button>
+        <button className={`type-btn ${checklistTab==='unlisted'?'active':''}`} onClick={()=>setChecklistTab('unlisted')}>
+          Unlisted {unlisted.length>0&&<span style={{marginLeft:4,background:'#fee2e2',color:'var(--red)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{unlisted.length}</span>}
+        </button>
       </div>
 
-      {allRows.length === 0 ? (
-        <div className="empty"><div className="empty-icon">📋</div><div className="empty-title">No stock found</div><div style={{marginTop:6}}>Select at least one category above</div></div>
-      ) : (
-        <div className="chart-card checklist-card" id="checklist-print">
-          <div className="checklist-header">
-            <div className="checklist-col actions">Status</div>
-            <div className="checklist-col brand">Brand</div>
-            <div className="checklist-col style">Style</div>
-            <div className="checklist-col colourway">Colourway / Set</div>
-            <div className="checklist-col sku">SKU</div>
-            <div className="checklist-col size">Sizes</div>
-            <div className="checklist-col qty">Qty</div>
-            <div className="checklist-col discrepancy">Discrepancy</div>
-          </div>
-          {allRows.map((row, i) => (
-            <div key={row.id} className={`checklist-row ${status[row.id]==='correct'?'row-correct':status[row.id]==='incorrect'?'row-incorrect':''} ${i%2===0?'alt':''}`}>
-              <div className="checklist-col actions">
-                <div style={{display:'flex',gap:4}}>
-                  <button
-                    className={`check-btn correct ${status[row.id]==='correct'?'active':''}`}
-                    onClick={()=>setRowStatus(row.id,'correct')}
-                    title="Correct"
-                  >✓</button>
-                  <button
-                    className={`check-btn incorrect ${status[row.id]==='incorrect'?'active':''}`}
-                    onClick={()=>setRowStatus(row.id,'incorrect')}
-                    title="Incorrect"
-                  >✗</button>
+      {checklistTab==='checklist'&&(
+        <div>
+          <div className="chart-card" style={{marginBottom:20}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:16}}>
+              <div className="chart-title" style={{margin:0}}>Stock Checklist</div>
+              <button className="btn sm" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>setShowFlagForm(true)}>+ Flag unlisted item</button>
+            </div>
+            {showFlagForm&&(
+              <div style={{background:'#fffbeb',border:'1px solid #f59e0b',borderRadius:'var(--radius)',padding:'12px 14px',marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:'#92400e',marginBottom:8}}>Describe the unlisted item</div>
+                <div style={{display:'flex',gap:8}}>
+                  <input className="form-input" placeholder="e.g. Nike Air Max 95 UK 9 — Black colourway" value={flagNote} onChange={e=>setFlagNote(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addUnlisted()} autoFocus style={{flex:1}}/>
+                  <button className="btn primary sm" onClick={addUnlisted} disabled={!flagNote.trim()}>Add</button>
+                  <button className="btn sm" onClick={()=>{setShowFlagForm(false);setFlagNote('')}}>Cancel</button>
                 </div>
               </div>
-              <div className="checklist-col brand">{row.brand}</div>
-              <div className="checklist-col style">{row.style}</div>
-              <div className="checklist-col colourway">{row.colourway||'—'}</div>
-              <div className="checklist-col sku">{row.sku||'—'}</div>
-              <div className="checklist-col size">{row.sizeDisplay}</div>
-              <div className="checklist-col qty">{row.qty}</div>
-              <div className="checklist-col discrepancy">
-                {status[row.id]==='incorrect'&&(
-                  <input
-                    className="discrepancy-input"
-                    placeholder="Describe the issue..."
-                    value={notes[row.id]||''}
-                    onChange={e=>setNote(row.id,e.target.value)}
-                    title={notes[row.id]||''}
-                    autoFocus
-                  />
-                )}
-                {status[row.id]==='correct'&&<span style={{fontSize:12,color:'var(--muted)'}}>—</span>}
-              </div>
+            )}
+            <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:16}}>
+              {Object.keys(selectedCategories).map(cat => (
+                <label key={cat} className="metrics-checkbox"><input type="checkbox" checked={selectedCategories[cat]} onChange={()=>toggleCategory(cat)}/>{cat}</label>
+              ))}
             </div>
-          ))}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+              <div style={{display:'flex',gap:16,fontSize:13}}>
+                <span style={{color:'var(--muted)'}}>{allRows.length} items</span>
+                {correctCount>0&&<span style={{color:'var(--green)'}}>✓ {correctCount} correct</span>}
+                {incorrectCount>0&&<span style={{color:'var(--red)'}}>✗ {incorrectCount} incorrect</span>}
+                {uncheckedCount>0&&<span style={{color:'var(--muted)'}}>◯ {uncheckedCount} unchecked</span>}
+                {unlisted.length>0&&<span style={{color:'#d97706',cursor:'pointer'}} onClick={()=>setChecklistTab('unlisted')}>⚠ {unlisted.length} unlisted</span>}
+              </div>
+              <button className="btn primary sm" onClick={()=>window.print()}>🖨️ Print</button>
+            </div>
+          </div>
+          {allRows.length===0?(
+            <div className="empty"><div className="empty-icon">📋</div><div className="empty-title">No stock found</div><div style={{marginTop:6}}>Select at least one category above</div></div>
+          ):(
+            <div className="chart-card checklist-card" id="checklist-print">
+              <div className="checklist-header">
+                <div className="checklist-col actions">Status</div>
+                <div className="checklist-col brand">Brand</div>
+                <div className="checklist-col style">Style</div>
+                <div className="checklist-col colourway">Colourway / Set</div>
+                <div className="checklist-col sku">SKU</div>
+                <div className="checklist-col size">Sizes</div>
+                <div className="checklist-col qty">Qty</div>
+                <div className="checklist-col discrepancy">Discrepancy</div>
+              </div>
+              {allRows.map((row, i) => (
+                <div key={row.id} className={`checklist-row ${status[row.id]==='correct'?'row-correct':status[row.id]==='incorrect'?'row-incorrect':''} ${i%2===0?'alt':''}`}>
+                  <div className="checklist-col actions">
+                    <div style={{display:'flex',gap:4}}>
+                      <button className={`check-btn correct ${status[row.id]==='correct'?'active':''}`} onClick={()=>setRowStatus(row.id,'correct')} title="Correct">✓</button>
+                      <button className={`check-btn incorrect ${status[row.id]==='incorrect'?'active':''}`} onClick={()=>setRowStatus(row.id,'incorrect')} title="Incorrect">✗</button>
+                    </div>
+                  </div>
+                  <div className="checklist-col brand">{row.brand}</div>
+                  <div className="checklist-col style">{row.style}</div>
+                  <div className="checklist-col colourway">{row.colourway||'—'}</div>
+                  <div className="checklist-col sku">{row.sku||'—'}</div>
+                  <div className="checklist-col size">{row.sizeDisplay}</div>
+                  <div className="checklist-col qty">{row.qty}</div>
+                  <div className="checklist-col discrepancy">
+                    {status[row.id]==='incorrect'&&(<input className="discrepancy-input" placeholder="Describe the issue..." value={notes[row.id]||''} onChange={e=>setNote(row.id,e.target.value)} title={notes[row.id]||''} autoFocus/>)}
+                    {status[row.id]==='correct'&&<span style={{fontSize:12,color:'var(--muted)'}}>—</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {checklistTab==='unlisted'&&(
+        <div>
+          <div className="chart-card">
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:unlisted.length>0?16:0}}>
+              <div className="chart-title" style={{margin:0}}>Unlisted Items</div>
+              <button className="btn sm" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>{setChecklistTab('checklist');setTimeout(()=>setShowFlagForm(true),50)}}>+ Flag another</button>
+            </div>
+            {unlisted.length===0?(
+              <div style={{textAlign:'center',padding:'24px 0',color:'var(--muted)',fontSize:13,marginTop:12}}>No unlisted items flagged yet</div>
+            ):(
+              <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:4}}>
+                {unlisted.map(u=>(
+                  <div key={u.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',background:'#fffbeb',border:'1px solid #f59e0b',borderRadius:'var(--radius)'}}>
+                    <div style={{flex:1,fontSize:13,color:'var(--text)'}}>{u.note}</div>
+                    <button className="btn primary sm" onClick={()=>{onAddItem();removeUnlisted(u.id)}}>+ Add to stock</button>
+                    <button className="btn sm danger" onClick={()=>removeUnlisted(u.id)}>Del</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   )
 }
+
 
 function FeeCalculator() {
   const [calcPlatform, setCalcPlatform] = useState(null)
@@ -1092,7 +1111,7 @@ export default function Dashboard({ session }) {
               <button className={`type-btn ${toolTab==='checklist'?'active':''}`} onClick={()=>setToolTab('checklist')}>Stock Checklist</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
-            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks}/>}
+            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}}/>}
           </div>
         )}
 
