@@ -925,6 +925,7 @@ export default function Dashboard({ session }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toolTab, setToolTab] = useState('fee')
+  const [metricsTab, setMetricsTab] = useState('reseller')
   const [userPlan, setUserPlan] = useState('pro') // default pro until Stripe is set up
   const FREE_LIMIT = 30
 
@@ -1007,12 +1008,9 @@ export default function Dashboard({ session }) {
   const collectorStats = useMemo(() => {
     const totalValue = collectorItems.reduce((s, i) => s + (i.purchase_price||0), 0)
     const byCategory = {}
-    collectorItems.forEach(i => { const c = i.category||'Other'; if(!byCategory[c])byCategory[c]={count:0,value:0}; byCategory[c].count++; byCategory[c].value+=(i.purchase_price||0) })
-    const categoryChartData = Object.entries(byCategory).map(([name,{count,value}])=>({name,value:count,totalValue:parseFloat(value.toFixed(2))}))
-    const topItems = [...collectorItems].sort((a,b)=>(b.purchase_price||0)-(a.purchase_price||0)).slice(0,5)
-    const growthData = getLast(6).map(({key,label})=>({label,count:collectorItems.filter(i=>getMonthKey(i.created_at)===key).length}))
-    const avgValue = collectorItems.length ? totalValue / collectorItems.length : 0
-    return { totalValue, byCategory, categoryChartData, topItems, growthData, total: collectorItems.length, avgValue }
+    collectorItems.forEach(i => { const c = i.category||'Other'; if(!byCategory[c])byCategory[c]=0; byCategory[c]++ })
+    const topItems = [...collectorItems].sort((a,b) => (b.purchase_price||0)-(a.purchase_price||0)).slice(0,5)
+    return { totalValue, byCategory, topItems, total: collectorItems.length }
   }, [collectorItems])
   const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}]
 
@@ -1158,19 +1156,26 @@ export default function Dashboard({ session }) {
 
         {page==='metrics'&&(
           <div>
-            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
-              <div><h1 className="page-title">Metrics</h1><p className="page-subtitle">Deep dive into your performance</p></div>
-              <div className="metrics-sources">
-                <span className="metrics-sources-label">Data sources:</span>
-                {[{key:'reseller',label:'Reseller'},{key:'breaker',label:'Breaker'},{key:'collector',label:'Collector'}].map(s=>(
-                  <label key={s.key} className="metrics-checkbox">
-                    <input type="checkbox" checked={metricsSources[s.key]} onChange={()=>toggleSource(s.key)}/>
-                    {s.label}
-                  </label>
-                ))}
-              </div>
+            <div className="page-header"><h1 className="page-title">Metrics</h1><p className="page-subtitle">Deep dive into your performance</p></div>
+
+            <div style={{display:'flex',gap:8,marginBottom:24}}>
+              <button className={`type-btn ${metricsTab==='reseller'?'active':''}`} onClick={()=>setMetricsTab('reseller')}>Reseller & Breaker</button>
+              <button className={`type-btn ${metricsTab==='collector'?'active':''}`} onClick={()=>setMetricsTab('collector')}>Collector</button>
             </div>
-            <div className="metrics-grid">
+
+            {metricsTab==='reseller'&&(
+              <div>
+                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:16}}>
+                  <div className="metrics-sources">
+                    <span className="metrics-sources-label">Data sources:</span>
+                    {[{key:'reseller',label:'Reseller'},{key:'breaker',label:'Breaker'}].map(s=>(
+                      <label key={s.key} className="metrics-checkbox">
+                        <input type="checkbox" checked={metricsSources[s.key]} onChange={()=>toggleSource(s.key)}/>{s.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="metrics-grid">
               <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div><div className="chart-controls">{[3,6,12].map(m=><button key={m} className={`chart-btn ${chartMonths===m?'active':''}`} onClick={()=>setChartMonths(m)}>{m}M</button>)}</div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Bar dataKey="pl" name="P&L" fill="#16a34a" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Revenue vs Cost</div><div className="chart-subtitle">Monthly comparison</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/><Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4,4,0,0]}/><Bar dataKey="cost" name="Cost" fill="#e3e8ef" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Stock by Category</div><div className="chart-subtitle">All items</div></div></div><ResponsiveContainer width="100%" height={260}><PieChart><Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={3}>{categoryData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/></PieChart></ResponsiveContainer></div>
@@ -1179,6 +1184,70 @@ export default function Dashboard({ session }) {
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Avg Profit per Sale</div><div className="chart-subtitle">Last 6 months</div></div></div><ResponsiveContainer width="100%" height={260}><LineChart data={avgPLData} margin={{top:10,right:20,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Line type="monotone" dataKey="avg" name="Avg P&L" stroke="#16a34a" strokeWidth={2} dot={{fill:'#16a34a',r:4}}/></LineChart></ResponsiveContainer></div>
               <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Best & Worst Performers</div><div className="chart-subtitle">Top and bottom 5 sold items by profit</div></div></div><div className="two-col"><div><div className="perf-label green">🏆 Best performers</div>{bestWorst.best.length===0?<div className="td-muted" style={{fontSize:13}}>No sold items yet</div>:bestWorst.best.map((item,i)=>(<div key={item.id} className="perf-row"><div className="perf-rank">{i+1}</div><div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div></div><div className="perf-pl pos">+{fmt(item.pl)}</div></div>))}</div><div><div className="perf-label red">📉 Worst performers</div>{bestWorst.worst.length===0?<div className="td-muted" style={{fontSize:13}}>No sold items yet</div>:bestWorst.worst.map((item,i)=>(<div key={item.id} className="perf-row"><div className="perf-rank">{i+1}</div><div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div></div><div className={`perf-pl ${item.pl>=0?'pos':'neg'}`}>{item.pl>=0?'+':''}{fmt(item.pl)}</div></div>))}</div></div></div>
             </div>
+              </div>
+            )}
+
+            {metricsTab==='collector'&&(
+              <div>
+                {collectorItems.length===0?(
+                  <div className="empty"><div className="empty-icon">🗂️</div><div className="empty-title">No collection data yet</div><div style={{marginTop:6}}>Add items to your collection to see metrics</div></div>
+                ):(
+                  <div>
+                    <div className="stats-bar" style={{marginBottom:24}}>
+                      <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{collectorStats.total}</div></div>
+                      <div className="stat-card"><div className="stat-label">Collection value</div><div className="stat-value">{fmt(collectorStats.totalValue)}</div></div>
+                      <div className="stat-card"><div className="stat-label">Avg per item</div><div className="stat-value">{fmt(collectorStats.avgValue)}</div></div>
+                      {Object.entries(collectorStats.byCategory).map(([cat,{count}])=>(
+                        <div key={cat} className="stat-card"><div className="stat-label">{cat}</div><div className="stat-value">{count}</div></div>
+                      ))}
+                    </div>
+                    <div className="metrics-grid">
+                      <div className="chart-card half">
+                        <div className="chart-header"><div><div className="chart-title">Collection by Category</div><div className="chart-subtitle">Items and value</div></div></div>
+                        <ResponsiveContainer width="100%" height={260}>
+                          <PieChart>
+                            <Pie data={collectorStats.categoryChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={3}>
+                              {collectorStats.categoryChartData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
+                            </Pie>
+                            <Tooltip formatter={(v,n,p)=>[`${v} items · ${fmt(p.payload.totalValue)}`,n]} contentStyle={{borderRadius:8,border:'1px solid var(--border)'}}/>
+                            <Legend/>
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="chart-card half">
+                        <div className="chart-header"><div><div className="chart-title">Items Added</div><div className="chart-subtitle">Last 6 months</div></div></div>
+                        <ResponsiveContainer width="100%" height={260}>
+                          <BarChart data={collectorStats.growthData} margin={{top:10,right:10,left:0,bottom:0}}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/>
+                            <XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                            <YAxis tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                            <Tooltip contentStyle={{borderRadius:8,border:'1px solid var(--border)'}}/>
+                            <Bar dataKey="count" name="Items added" fill="#16a34a" radius={[4,4,0,0]}/>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="chart-card full">
+                        <div className="chart-header"><div><div className="chart-title">Most Valuable Items</div><div className="chart-subtitle">Top 5 by purchase price</div></div></div>
+                        {collectorStats.topItems.length===0?(
+                          <div style={{color:'var(--muted)',fontSize:13,padding:'16px 0'}}>No items with prices yet</div>
+                        ):(
+                          collectorStats.topItems.map((item,i)=>(
+                            <div key={item.id} className="perf-row">
+                              <div className="perf-rank">{i+1}</div>
+                              <div className="perf-info">
+                                <div className="perf-name">{item.brand} {item.style}</div>
+                                <div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}{item.category?` · ${item.category}`:''}</div>
+                              </div>
+                              <div className="perf-pl" style={{color:'var(--text)'}}>{fmt(item.purchase_price)}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1196,66 +1265,12 @@ export default function Dashboard({ session }) {
 
             {/* Pro metrics */}
             {userPlan==='pro'&&collectorItems.length>0&&(
-              <div>
-                <div className="stats-bar" style={{marginBottom:20}}>
-                  <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{collectorStats.total}</div></div>
-                  <div className="stat-card"><div className="stat-label">Collection value</div><div className="stat-value">{fmt(collectorStats.totalValue)}</div></div>
-                  <div className="stat-card"><div className="stat-label">Avg per item</div><div className="stat-value">{fmt(collectorStats.avgValue)}</div></div>
-                  {Object.entries(collectorStats.byCategory).map(([cat,{count}]) => (
-                    <div key={cat} className="stat-card"><div className="stat-label">{cat}</div><div className="stat-value">{count}</div></div>
-                  ))}
-                </div>
-
-                <div className="metrics-grid" style={{marginBottom:24}}>
-                  {/* Category breakdown */}
-                  <div className="chart-card half">
-                    <div className="chart-header"><div><div className="chart-title">Collection by Category</div><div className="chart-subtitle">Items and value</div></div></div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <PieChart>
-                        <Pie data={collectorStats.categoryChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3}>
-                          {collectorStats.categoryChartData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
-                        </Pie>
-                        <Tooltip formatter={(v,n,p)=>[`${v} items (${fmt(p.payload.totalValue)})`,n]} contentStyle={{borderRadius:8,border:'1px solid var(--border)'}}/>
-                        <Legend/>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Collection growth */}
-                  <div className="chart-card half">
-                    <div className="chart-header"><div><div className="chart-title">Items Added</div><div className="chart-subtitle">Last 6 months</div></div></div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={collectorStats.growthData} margin={{top:10,right:10,left:0,bottom:0}}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/>
-                        <XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
-                        <YAxis tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} allowDecimals={false}/>
-                        <Tooltip contentStyle={{borderRadius:8,border:'1px solid var(--border)'}}/>
-                        <Bar dataKey="count" name="Items added" fill="#16a34a" radius={[4,4,0,0]}/>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Top items by value */}
-                  <div className="chart-card full">
-                    <div className="chart-header"><div><div className="chart-title">Most Valuable Items</div><div className="chart-subtitle">Top 5 by purchase price</div></div></div>
-                    {collectorStats.topItems.length===0?(
-                      <div style={{color:'var(--muted)',fontSize:13,padding:'16px 0'}}>No items with prices yet</div>
-                    ):(
-                      <div>
-                        {collectorStats.topItems.map((item,i)=>(
-                          <div key={item.id} className="perf-row">
-                            <div className="perf-rank">{i+1}</div>
-                            <div className="perf-info">
-                              <div className="perf-name">{item.brand} {item.style}</div>
-                              <div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}{item.category?` · ${item.category}`:''}</div>
-                            </div>
-                            <div className="perf-pl" style={{color:'var(--text)'}}>{fmt(item.purchase_price)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <div className="stats-bar" style={{marginBottom:20}}>
+                <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{collectorStats.total}</div></div>
+                <div className="stat-card"><div className="stat-label">Collection value</div><div className="stat-value">{fmt(collectorStats.totalValue)}</div></div>
+                {Object.entries(collectorStats.byCategory).map(([cat, count]) => (
+                  <div key={cat} className="stat-card"><div className="stat-label">{cat}</div><div className="stat-value">{count}</div></div>
+                ))}
               </div>
             )}
 
