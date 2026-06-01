@@ -575,6 +575,7 @@ export default function Dashboard({ session }) {
   const [filterBrand, setFilterBrand] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [chartMonths, setChartMonths] = useState(6)
@@ -735,19 +736,43 @@ export default function Dashboard({ session }) {
     return Object.values(map).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }, [items])
 
-  const filteredBatches = useMemo(() => batches.filter(b => {
-    const q = search.toLowerCase()
-    if (search && ![(b.brand||''),(b.style||''),(b.colourway||''),(b.sku||'')].some(v => v.toLowerCase().includes(q))) return false
-    if (filterBrand && b.brand !== filterBrand) return false
-    if (filterCategory && b.category !== filterCategory) return false
-    if (filterStatus) {
-      const inStock = b.units.some(u => u.status === 'in_stock')
-      const allSold = b.units.every(u => u.status === 'sold')
-      if (filterStatus === 'in_stock' && !inStock) return false
-      if (filterStatus === 'sold' && !allSold) return false
-    }
-    return true
-  }), [batches, search, filterBrand, filterCategory, filterStatus])
+  const STALE_DAYS = 30
+
+  const filteredBatches = useMemo(() => {
+    const now = new Date()
+    let result = batches.filter(b => {
+      const q = search.toLowerCase()
+      if (search && ![(b.brand||''),(b.style||''),(b.colourway||''),(b.sku||'')].some(v => v.toLowerCase().includes(q))) return false
+      if (filterBrand && b.brand !== filterBrand) return false
+      if (filterCategory && b.category !== filterCategory) return false
+      if (filterStatus) {
+        const inStock = b.units.some(u => u.status === 'in_stock')
+        const allSold = b.units.every(u => u.status === 'sold')
+        if (filterStatus === 'in_stock' && !inStock) return false
+        if (filterStatus === 'sold' && !allSold) return false
+        if (filterStatus === 'stale') {
+          const hasStale = b.units.some(u => u.status === 'in_stock' && u.purchase_date && ((now - new Date(u.purchase_date)) / 86400000) > STALE_DAYS)
+          if (!hasStale) return false
+        }
+      }
+      return true
+    })
+
+    result.sort((a, b) => {
+      if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at)
+      if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at)
+      if (sortBy === 'brand') return (a.brand||'').localeCompare(b.brand||'')
+      if (sortBy === 'cost_high') { const aC = a.units.reduce((s,u)=>s+(u.purchase_price||0),0); const bC = b.units.reduce((s,u)=>s+(u.purchase_price||0),0); return bC - aC }
+      if (sortBy === 'cost_low') { const aC = a.units.reduce((s,u)=>s+(u.purchase_price||0),0); const bC = b.units.reduce((s,u)=>s+(u.purchase_price||0),0); return aC - bC }
+      if (sortBy === 'stale') {
+        const aDate = a.units[0]?.purchase_date ? new Date(a.units[0].purchase_date) : new Date()
+        const bDate = b.units[0]?.purchase_date ? new Date(b.units[0].purchase_date) : new Date()
+        return aDate - bDate
+      }
+      return 0
+    })
+    return result
+  }, [batches, search, filterBrand, filterCategory, filterStatus, sortBy])
 
   const stats = useMemo(() => {
     const inStock = items.filter(i => i.status === 'in_stock')
@@ -1096,7 +1121,15 @@ export default function Dashboard({ session }) {
               <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180}}/>
               <select className="filter-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}><option value="">All categories</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select>
               <select className="filter-select" value={filterBrand} onChange={e=>setFilterBrand(e.target.value)}><option value="">All brands</option>{[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=><option key={b} value={b}>{b}</option>)}</select>
-              <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option></select>
+              <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="stale">⚠ Stale ({STALE_DAYS}+ days)</option></select>
+              <select className="filter-select" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="brand">Brand A–Z</option>
+                <option value="cost_high">Cost: high–low</option>
+                <option value="cost_low">Cost: low–high</option>
+                <option value="stale">Longest in stock</option>
+              </select>
               {(search||filterBrand||filterStatus||filterCategory)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('')}}>Clear</button>}
               <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
             </div>
@@ -1116,7 +1149,14 @@ export default function Dashboard({ session }) {
                     <div key={batch.key} className="item-card" onClick={()=>setBatchModal(batch)} style={{cursor:'pointer'}}>
                       <div className="item-card-header">
                         <div className="item-card-category">{batch.category||'Uncategorised'}</div>
-                        <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                        <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                          {(()=>{
+                            const now = new Date()
+                            const isStale = batch.units.some(u => u.status==='in_stock' && u.purchase_date && ((now-new Date(u.purchase_date))/86400000)>STALE_DAYS)
+                            return isStale ? <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10}}>⚠ {STALE_DAYS}+ days</span> : null
+                          })()}
+                          <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                        </div>
                       </div>
                       <div className="item-card-body">
                         <div className="item-card-brand">{batch.brand||'—'}</div>
