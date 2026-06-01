@@ -928,7 +928,7 @@ export default function Dashboard({ session }) {
   const [userPlan, setUserPlan] = useState('pro') // default pro until Stripe is set up
   const FREE_LIMIT = 30
 
-  useEffect(() => { if (session) fetchProfile() }, [session])
+  useEffect(() => { if (session) fetchProfile() }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
   async function fetchProfile() {
     const { data } = await supabase.from('profiles').select('plan').eq('id', session.user.id).single()
     if (data) setUserPlan(data.plan || 'free')
