@@ -707,7 +707,15 @@ export default function Dashboard({ session }) {
     fetchItems(); setBatchModal(null)
   }
 
-  async function markSold() {
+  async function markLongTerm(batchId) {
+    await supabase.from('stock').update({ long_term: true }).eq('batch_id', batchId)
+    fetchItems()
+  }
+
+  async function unmarkLongTerm(batchId) {
+    await supabase.from('stock').update({ long_term: false }).eq('batch_id', batchId)
+    fetchItems()
+  }
     if (!salePrice || !sellItem) return
     setSaving(true)
     const feeAmt = calcFee(salePrice, sellFeeplatform, customFeeRate)
@@ -736,7 +744,7 @@ export default function Dashboard({ session }) {
     return Object.values(map).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }, [items])
 
-  const STALE_DAYS = 30
+  const STALE_DAYS = 21
 
   const filteredBatches = useMemo(() => {
     const now = new Date()
@@ -751,8 +759,11 @@ export default function Dashboard({ session }) {
         if (filterStatus === 'in_stock' && !inStock) return false
         if (filterStatus === 'sold' && !allSold) return false
         if (filterStatus === 'stale') {
-          const hasStale = b.units.some(u => u.status === 'in_stock' && u.purchase_date && ((now - new Date(u.purchase_date)) / 86400000) > STALE_DAYS)
+          const hasStale = b.units.some(u => u.status==='in_stock' && !u.long_term && u.purchase_date && ((now - new Date(u.purchase_date)) / 86400000) > STALE_DAYS)
           if (!hasStale) return false
+        }
+        if (filterStatus === 'long_term') {
+          if (!b.units.some(u => u.long_term)) return false
         }
       }
       return true
@@ -1121,7 +1132,7 @@ export default function Dashboard({ session }) {
               <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180}}/>
               <select className="filter-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}><option value="">All categories</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select>
               <select className="filter-select" value={filterBrand} onChange={e=>setFilterBrand(e.target.value)}><option value="">All brands</option>{[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=><option key={b} value={b}>{b}</option>)}</select>
-              <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="stale">⚠ Stale ({STALE_DAYS}+ days)</option></select>
+              <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="stale">⚠ Stale ({STALE_DAYS}+ days)</option><option value="long_term">📌 Long-term holds</option></select>
               <select className="filter-select" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
@@ -1152,8 +1163,11 @@ export default function Dashboard({ session }) {
                         <div style={{display:'flex',gap:6,alignItems:'center'}}>
                           {(()=>{
                             const now = new Date()
-                            const isStale = batch.units.some(u => u.status==='in_stock' && u.purchase_date && ((now-new Date(u.purchase_date))/86400000)>STALE_DAYS)
-                            return isStale ? <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10}}>⚠ {STALE_DAYS}+ days</span> : null
+                            const isLongTerm = batch.units.some(u => u.long_term)
+                            const isStale = !isLongTerm && batch.units.some(u => u.status==='in_stock' && u.purchase_date && ((now-new Date(u.purchase_date))/86400000)>STALE_DAYS)
+                            if (isLongTerm) return <span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();unmarkLongTerm(batch.key)}} title="Click to remove long-term hold">📌 Long-term</span>
+                            if (isStale) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch.key)}} title="Click to mark as long-term hold">⚠ {STALE_DAYS}+ days</span>
+                            return null
                           })()}
                           <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
                         </div>
