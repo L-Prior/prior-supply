@@ -2062,3 +2062,32 @@ tbody td {
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
+/* Shop coming soon */
+.shop-coming-soon {
+  text-align: center;
+  padding: 48px 32px;
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.shop-coming-soon-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.shop-coming-soon-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.shop-coming-soon-desc {
+  font-size: 15px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin: 0;
+}

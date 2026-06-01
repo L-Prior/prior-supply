@@ -56,6 +56,7 @@ export default function Landing({ session }) {
           </div>
           <div className="landing-nav-links">
             <a href="#features" className="landing-nav-link">Features</a>
+            <a href="#shop" className="landing-nav-link">Shop</a>
             <a href="#pricing" className="landing-nav-link">Pricing</a>
             {session
               ? <Link to="/dashboard" className="btn primary sm">Dashboard</Link>
@@ -101,6 +102,21 @@ export default function Landing({ session }) {
                 <div className="feature-desc">{f.desc}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Shop */}
+      <section className="landing-section" id="shop">
+        <div className="landing-container">
+          <div className="section-label">Shop</div>
+          <h2 className="section-title">Sneaker care, sorted</h2>
+          <p className="section-sub">Everything you need to keep your collection fresh. Pro members get an exclusive discount on every order.</p>
+          <div className="shop-coming-soon">
+            <div className="shop-coming-soon-icon">🛍️</div>
+            <div className="shop-coming-soon-title">Coming soon</div>
+            <p className="shop-coming-soon-desc">Crease protectors, shoe trees, laces, storage boxes and more — all in one place. Pro members save on every order.</p>
+            <div className="hero-note" style={{marginTop:16}}>🔒 Pro members get exclusive discounts</div>
           </div>
         </div>
       </section>
