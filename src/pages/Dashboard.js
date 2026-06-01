@@ -1007,9 +1007,12 @@ export default function Dashboard({ session }) {
   const collectorStats = useMemo(() => {
     const totalValue = collectorItems.reduce((s, i) => s + (i.purchase_price||0), 0)
     const byCategory = {}
-    collectorItems.forEach(i => { const c = i.category||'Other'; if(!byCategory[c])byCategory[c]=0; byCategory[c]++ })
-    const topItems = [...collectorItems].sort((a,b) => (b.purchase_price||0)-(a.purchase_price||0)).slice(0,5)
-    return { totalValue, byCategory, topItems, total: collectorItems.length }
+    collectorItems.forEach(i => { const c = i.category||'Other'; if(!byCategory[c])byCategory[c]={count:0,value:0}; byCategory[c].count++; byCategory[c].value+=(i.purchase_price||0) })
+    const categoryChartData = Object.entries(byCategory).map(([name,{count,value}])=>({name,value:count,totalValue:parseFloat(value.toFixed(2))}))
+    const topItems = [...collectorItems].sort((a,b)=>(b.purchase_price||0)-(a.purchase_price||0)).slice(0,5)
+    const growthData = getLast(6).map(({key,label})=>({label,count:collectorItems.filter(i=>getMonthKey(i.created_at)===key).length}))
+    const avgValue = collectorItems.length ? totalValue / collectorItems.length : 0
+    return { totalValue, byCategory, categoryChartData, topItems, growthData, total: collectorItems.length, avgValue }
   }, [collectorItems])
   const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}]
 
@@ -1193,12 +1196,66 @@ export default function Dashboard({ session }) {
 
             {/* Pro metrics */}
             {userPlan==='pro'&&collectorItems.length>0&&(
-              <div className="stats-bar" style={{marginBottom:20}}>
-                <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{collectorStats.total}</div></div>
-                <div className="stat-card"><div className="stat-label">Collection value</div><div className="stat-value">{fmt(collectorStats.totalValue)}</div></div>
-                {Object.entries(collectorStats.byCategory).map(([cat, count]) => (
-                  <div key={cat} className="stat-card"><div className="stat-label">{cat}</div><div className="stat-value">{count}</div></div>
-                ))}
+              <div>
+                <div className="stats-bar" style={{marginBottom:20}}>
+                  <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{collectorStats.total}</div></div>
+                  <div className="stat-card"><div className="stat-label">Collection value</div><div className="stat-value">{fmt(collectorStats.totalValue)}</div></div>
+                  <div className="stat-card"><div className="stat-label">Avg per item</div><div className="stat-value">{fmt(collectorStats.avgValue)}</div></div>
+                  {Object.entries(collectorStats.byCategory).map(([cat,{count}]) => (
+                    <div key={cat} className="stat-card"><div className="stat-label">{cat}</div><div className="stat-value">{count}</div></div>
+                  ))}
+                </div>
+
+                <div className="metrics-grid" style={{marginBottom:24}}>
+                  {/* Category breakdown */}
+                  <div className="chart-card half">
+                    <div className="chart-header"><div><div className="chart-title">Collection by Category</div><div className="chart-subtitle">Items and value</div></div></div>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <PieChart>
+                        <Pie data={collectorStats.categoryChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3}>
+                          {collectorStats.categoryChartData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
+                        </Pie>
+                        <Tooltip formatter={(v,n,p)=>[`${v} items (${fmt(p.payload.totalValue)})`,n]} contentStyle={{borderRadius:8,border:'1px solid var(--border)'}}/>
+                        <Legend/>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Collection growth */}
+                  <div className="chart-card half">
+                    <div className="chart-header"><div><div className="chart-title">Items Added</div><div className="chart-subtitle">Last 6 months</div></div></div>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={collectorStats.growthData} margin={{top:10,right:10,left:0,bottom:0}}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/>
+                        <XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip contentStyle={{borderRadius:8,border:'1px solid var(--border)'}}/>
+                        <Bar dataKey="count" name="Items added" fill="#16a34a" radius={[4,4,0,0]}/>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Top items by value */}
+                  <div className="chart-card full">
+                    <div className="chart-header"><div><div className="chart-title">Most Valuable Items</div><div className="chart-subtitle">Top 5 by purchase price</div></div></div>
+                    {collectorStats.topItems.length===0?(
+                      <div style={{color:'var(--muted)',fontSize:13,padding:'16px 0'}}>No items with prices yet</div>
+                    ):(
+                      <div>
+                        {collectorStats.topItems.map((item,i)=>(
+                          <div key={item.id} className="perf-row">
+                            <div className="perf-rank">{i+1}</div>
+                            <div className="perf-info">
+                              <div className="perf-name">{item.brand} {item.style}</div>
+                              <div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}{item.category?` · ${item.category}`:''}</div>
+                            </div>
+                            <div className="perf-pl" style={{color:'var(--text)'}}>{fmt(item.purchase_price)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
