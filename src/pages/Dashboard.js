@@ -63,7 +63,7 @@ const EMPTY_FORM = {
   clothing_brand: '', item: '', clothing_size: '', colour: '',
   item_name: '', description: '',
   topps_type: '', topps_card_name: '', topps_set: '', topps_year: '', topps_card_number: '', topps_parallel: '', topps_print_run: '', topps_sealed_type: '', topps_product_name: '',
-  purchase_platform: '', purchase_date: '', notes: '',
+  purchase_platform: '', purchase_date: '', notes: '', long_term: false,
   units: [{ ...EMPTY_UNIT }]
 }
 
@@ -616,6 +616,7 @@ export default function Dashboard({ session }) {
     const base = {
       category: form.category, brand, style, colourway, sku,
       item_condition: form.item_condition || 'Brand New',
+      long_term: form.long_term || false,
       purchase_platform: form.purchase_platform, purchase_date: form.purchase_date || null, notes: form.notes,
       pokemon_type: form.pokemon_type || null, card_name: form.card_name || null, set_name: form.set_name || null,
       card_number: form.card_number || null, condition: form.condition || null, graded: form.graded || false,
@@ -651,7 +652,7 @@ export default function Dashboard({ session }) {
   }
 
   function openEdit(item) {
-    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'' }] })
+    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'' }] })
     setEditItem(item); setShowAdd(true)
   }
 
@@ -1633,6 +1634,12 @@ export default function Dashboard({ session }) {
               </>}
             </div>
             {!form.category&&<div style={{color:'var(--muted)',fontSize:13,textAlign:'center',padding:'16px 0'}}>Select a category to continue</div>}
+            {editItem&&(
+              <label className="metrics-checkbox" style={{marginTop:12,borderColor:form.long_term?'#6366f1':'var(--border)',color:form.long_term?'#6366f1':'var(--text2)'}}>
+                <input type="checkbox" checked={!!form.long_term} onChange={e=>setForm(f=>({...f,long_term:e.target.checked}))}/>
+                📌 Long-term hold — disable the 21-day stale warning for this item
+              </label>
+            )}
             {saveError&&<div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {saveError}</div>}
             <div className="form-actions">
               <button className="btn" onClick={()=>{setShowAdd(false);setEditItem(null);setForm(EMPTY_FORM);setSaveError('')}}>Cancel</button>
@@ -1690,6 +1697,11 @@ export default function Dashboard({ session }) {
             </div>
             <div className="form-actions" style={{marginTop:16}}>
               <button className="btn" onClick={()=>setBatchModal(null)}>Close</button>
+              {batchModal.units.some(u=>u.long_term)?(
+                <button className="btn" style={{borderColor:'#6366f1',color:'#6366f1'}} onClick={()=>unmarkLongTerm(batchModal)}>📌 Remove long-term hold</button>
+              ):(
+                <button className="btn" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>markLongTerm(batchModal)}>📌 Mark as long-term hold</button>
+              )}
             </div>
           </div>
         </div>
