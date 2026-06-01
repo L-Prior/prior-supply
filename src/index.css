@@ -2056,7 +2056,7 @@ tbody td {
 /* Sticky checklist controls */
 .checklist-sticky {
   position: sticky;
-  top: 0;
+  top: 60px;
   z-index: 50;
   background: var(--surface);
   border-radius: var(--radius-lg);
