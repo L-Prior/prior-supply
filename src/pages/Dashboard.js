@@ -716,7 +716,8 @@ export default function Dashboard({ session }) {
     await supabase.from('stock').update({ long_term: false }).eq('batch_id', batchId)
     fetchItems()
   }
-    if (!salePrice || !sellItem) return
+
+  async function markSold() {
     setSaving(true)
     const feeAmt = calcFee(salePrice, sellFeeplatform, customFeeRate)
     const platformName = sellFeeplatform ? sellFeeplatform.name : sellingPlatform
