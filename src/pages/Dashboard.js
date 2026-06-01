@@ -391,7 +391,6 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem }) {
   const correctCount = Object.values(status).filter(s => s === 'correct').length
   const incorrectCount = Object.values(status).filter(s => s === 'incorrect').length
   const uncheckedCount = allRows.length - correctCount - incorrectCount
-  const discrepancyCount = incorrectCount + unlisted.length
 
   return (
     <div>
