@@ -925,6 +925,92 @@ export default function Dashboard({ session }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toolTab, setToolTab] = useState('fee')
+  const [userPlan, setUserPlan] = useState('pro') // default pro until Stripe is set up
+  const FREE_LIMIT = 30
+
+  useEffect(() => { if (session) fetchProfile() }, [session])
+  async function fetchProfile() {
+    const { data } = await supabase.from('profiles').select('plan').eq('id', session.user.id).single()
+    if (data) setUserPlan(data.plan || 'free')
+  }
+
+  // Collector state
+  const [collectorItems, setCollectorItems] = useState([])
+  const [collectorLoading, setCollectorLoading] = useState(false)
+  const [showCollectorAdd, setShowCollectorAdd] = useState(false)
+  const [editCollectorItem, setEditCollectorItem] = useState(null)
+  const [collectorForm, setCollectorForm] = useState({ ...EMPTY_FORM })
+  const [collectorSaving, setCollectorSaving] = useState(false)
+  const [collectorError, setCollectorError] = useState('')
+
+  useEffect(() => { if (session && page === 'collector') fetchCollector() }, [page, session])
+
+  async function fetchCollector() {
+    setCollectorLoading(true)
+    const { data } = await supabase.from('collector').select('*').order('created_at', { ascending: false })
+    setCollectorItems(data || [])
+    setCollectorLoading(false)
+  }
+
+  async function saveCollectorItem() {
+    if (userPlan === 'free' && !editCollectorItem && collectorItems.length >= FREE_LIMIT) return
+    setCollectorSaving(true); setCollectorError('')
+    const batchId = editCollectorItem?.batch_id || crypto.randomUUID()
+    let brand = '', style = '', colourway = '', sku = ''
+    if (collectorForm.category === 'Sneakers') { brand = collectorForm.brand; style = collectorForm.style; colourway = collectorForm.colourway; sku = collectorForm.sku }
+    else if (collectorForm.category === 'Pokémon') { brand = 'Pokémon'; style = collectorForm.pokemon_type === 'singles' ? collectorForm.card_name : collectorForm.product_name; colourway = collectorForm.set_name; sku = collectorForm.card_number }
+    else if (collectorForm.category === 'Clothing') { brand = collectorForm.clothing_brand; style = collectorForm.item; colourway = collectorForm.colour }
+    else if (collectorForm.category === 'Miscellaneous') { brand = collectorForm.item_name; style = collectorForm.description }
+    const base = {
+      category: collectorForm.category, brand, style, colourway, sku,
+      item_condition: collectorForm.item_condition || 'Brand New',
+      condition: collectorForm.condition || null,
+      purchase_price: parseFloat(collectorForm.batch_total_cost) || 0,
+      purchase_platform: collectorForm.purchase_platform, purchase_date: collectorForm.purchase_date || null, notes: collectorForm.notes,
+      pokemon_type: collectorForm.pokemon_type || null, card_name: collectorForm.card_name || null, set_name: collectorForm.set_name || null,
+      card_number: collectorForm.card_number || null, graded: collectorForm.graded || false,
+      grading_company: collectorForm.grading_company || null, grade: collectorForm.grade || null,
+      product_name: collectorForm.product_name || null, pokemon_sealed_type: collectorForm.pokemon_sealed_type || null,
+      clothing_brand: collectorForm.clothing_brand || null, item: collectorForm.item || null, colour: collectorForm.colour || null,
+      item_name: collectorForm.item_name || null, description: collectorForm.description || null,
+      batch_id: batchId, user_id: session.user.id
+    }
+    let error
+    if (editCollectorItem) {
+      ;({ error } = await supabase.from('collector').update({ ...base, size: collectorForm.units[0]?.size || '' }).eq('id', editCollectorItem.id))
+    } else {
+      const totalUnits = collectorForm.units.reduce((s, u) => { const q = u.quantity === '10+' ? (parseInt(u.custom_qty)||1) : (parseInt(u.quantity)||1); return s + q }, 0)
+      const batchCost = parseFloat(collectorForm.batch_total_cost) || 0
+      const rows = collectorForm.units.flatMap(u => {
+        const qty = u.quantity === '10+' ? (parseInt(u.custom_qty)||1) : (parseInt(u.quantity)||1)
+        const pricePerUnit = batchCost > 0 && totalUnits > 0 ? parseFloat((batchCost/totalUnits).toFixed(2)) : 0
+        return Array.from({ length: qty }, () => ({ ...base, size: u.size, purchase_price: pricePerUnit }))
+      })
+      ;({ error } = await supabase.from('collector').insert(rows))
+    }
+    setCollectorSaving(false)
+    if (error) { setCollectorError(error.message); return }
+    setShowCollectorAdd(false); setEditCollectorItem(null); setCollectorForm({ ...EMPTY_FORM }); fetchCollector()
+  }
+
+  async function deleteCollectorItem(id) {
+    if (!window.confirm('Delete this item?')) return
+    await supabase.from('collector').delete().eq('id', id)
+    fetchCollector()
+  }
+
+  function openEditCollector(item) {
+    setCollectorForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', clothing_brand: item.clothing_brand||'', item: item.item||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', batch_total_cost: item.purchase_price||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: '1', custom_qty: '' }] })
+    setEditCollectorItem(item); setShowCollectorAdd(true)
+  }
+
+  const collectorStats = useMemo(() => {
+    const totalValue = collectorItems.reduce((s, i) => s + (i.purchase_price||0), 0)
+    const byCategory = {}
+    collectorItems.forEach(i => { const c = i.category||'Other'; if(!byCategory[c])byCategory[c]=0; byCategory[c]++ })
+    const topItems = [...collectorItems].sort((a,b) => (b.purchase_price||0)-(a.purchase_price||0)).slice(0,5)
+    return { totalValue, byCategory, topItems, total: collectorItems.length }
+  }, [collectorItems])
   const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}]
 
   return (
@@ -940,6 +1026,7 @@ export default function Dashboard({ session }) {
           <div className="topbar-actions">
             {page==='stock'&&<button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>}
             {page==='breaks'&&<button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button>}
+            {page==='collector'&&<button className="btn primary" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={userPlan==='free'&&collectorItems.length>=FREE_LIMIT}>+ Add item</button>}
             <div className="user-pill">
               <a href="/" className="landing-nav-link" style={{fontSize:12}}>← Site</a>
               <span className="user-email">{session.user.email}</span>
@@ -1094,12 +1181,55 @@ export default function Dashboard({ session }) {
 
         {page==='collector'&&(
           <div>
-            <div className="page-header"><h1 className="page-title">Collector</h1><p className="page-subtitle">Track your collection</p></div>
-            <div className="empty">
-              <div className="empty-icon">🗂️</div>
-              <div className="empty-title">Coming soon</div>
-              <div style={{marginTop:6}}>The collector tracker is on its way — catalogue your collection without the financial side.</div>
-            </div>
+            <div className="page-header"><h1 className="page-title">Collector</h1><p className="page-subtitle">Your personal collection</p></div>
+
+            {/* Free tier limit warning */}
+            {userPlan==='free'&&(
+              <div style={{background:'#fffbeb',border:'1px solid #f59e0b',borderRadius:'var(--radius)',padding:'12px 16px',marginBottom:20,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                <span style={{fontSize:13,color:'#92400e'}}>{collectorItems.length}/{FREE_LIMIT} items used on free plan</span>
+                {collectorItems.length>=FREE_LIMIT&&<span style={{fontSize:13,fontWeight:600,color:'#d97706'}}>Limit reached — upgrade to add more</span>}
+              </div>
+            )}
+
+            {/* Pro metrics */}
+            {userPlan==='pro'&&collectorItems.length>0&&(
+              <div className="stats-bar" style={{marginBottom:20}}>
+                <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{collectorStats.total}</div></div>
+                <div className="stat-card"><div className="stat-label">Collection value</div><div className="stat-value">{fmt(collectorStats.totalValue)}</div></div>
+                {Object.entries(collectorStats.byCategory).map(([cat, count]) => (
+                  <div key={cat} className="stat-card"><div className="stat-label">{cat}</div><div className="stat-value">{count}</div></div>
+                ))}
+              </div>
+            )}
+
+            {collectorLoading?<div className="loading">Loading collection...</div>:collectorItems.length===0?(
+              <div className="empty"><div className="empty-icon">🗂️</div><div className="empty-title">Nothing in your collection yet</div><div style={{marginTop:6}}>Add your first item to get started</div></div>
+            ):(
+              <div className="card-grid">
+                {collectorItems.map(item=>(
+                  <div key={item.id} className="item-card">
+                    <div className="item-card-header">
+                      <div className="item-card-category">{item.category||'Uncategorised'}</div>
+                      <span className="badge in_stock">{item.item_condition||'Brand New'}</span>
+                    </div>
+                    <div className="item-card-body">
+                      <div className="item-card-brand">{item.brand||'—'}</div>
+                      <div className="item-card-style">{[item.style,item.colourway].filter(Boolean).join(' — ')||'—'}</div>
+                    </div>
+                    <div className="item-card-stats">
+                      <div className="item-card-stat"><div className="item-card-stat-label">{item.category==='Sneakers'||item.category==='Clothing'?'Size':'Condition'}</div><div className="item-card-stat-value">{item.category==='Sneakers'||item.category==='Clothing'?(item.size?`UK ${item.size}`:'—'):(item.condition||item.item_condition||'—')}</div></div>
+                      <div className="item-card-stat"><div className="item-card-stat-label">Paid</div><div className="item-card-stat-value">{fmt(item.purchase_price)}</div></div>
+                      <div className="item-card-stat"><div className="item-card-stat-label">SKU</div><div className="item-card-stat-value">{item.sku||'—'}</div></div>
+                      <div className="item-card-stat"><div className="item-card-stat-label">From</div><div className="item-card-stat-value">{item.purchase_platform||'—'}</div></div>
+                    </div>
+                    <div className="item-card-actions">
+                      <button className="btn sm" style={{flex:1}} onClick={()=>openEditCollector(item)}>Edit</button>
+                      <button className="btn sm danger" onClick={()=>deleteCollectorItem(item.id)}>Del</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1308,6 +1438,38 @@ export default function Dashboard({ session }) {
 
             <div className="form-actions" style={{marginTop:16}}>
               <button className="btn" onClick={()=>setViewingBreak(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collector Add/Edit Modal */}
+      {showCollectorAdd&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowCollectorAdd(false)}>
+          <div className="modal">
+            <div className="modal-title">{editCollectorItem?'Edit collection item':'Add to collection'}</div>
+            <div className="form-grid">
+              <div className="form-group full">
+                <label className="form-label">Category *</label>
+                <select className="form-input" value={collectorForm.category} onChange={e=>setCollectorForm(f=>({...f,category:e.target.value,pokemon_type:'',units:[{...EMPTY_UNIT}]}))}>
+                  <option value="">Select category</option>
+                  {['Sneakers','Pokémon','Clothing','Miscellaneous'].map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              {collectorForm.category&&<>
+                {collectorForm.category!=='Pokémon'&&<div className="form-group full">
+                  <label className="form-label">Condition</label>
+                  <select className="form-input" value={collectorForm.item_condition} onChange={e=>setCollectorForm(f=>({...f,item_condition:e.target.value}))}>
+                    {ITEM_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>}
+                <CategoryForm form={collectorForm} setForm={setCollectorForm} editItem={editCollectorItem} updateUnit={(i,field,value)=>setCollectorForm(f=>{const units=[...f.units];units[i]={...units[i],[field]:value};return{...f,units}})} addUnit={()=>setCollectorForm(f=>({...f,units:[...f.units,{...EMPTY_UNIT}]}))} removeUnit={(i)=>setCollectorForm(f=>({...f,units:f.units.filter((_,idx)=>idx!==i)}))}/>
+              </>}
+            </div>
+            {collectorError&&<div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {collectorError}</div>}
+            <div className="form-actions">
+              <button className="btn" onClick={()=>{setShowCollectorAdd(false);setEditCollectorItem(null);setCollectorForm({...EMPTY_FORM});setCollectorError('')}}>Cancel</button>
+              <button className="btn primary" onClick={saveCollectorItem} disabled={collectorSaving||!collectorForm.category}>{collectorSaving?'Saving...':editCollectorItem?'Save changes':'Add to collection'}</button>
             </div>
           </div>
         </div>
