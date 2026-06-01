@@ -707,13 +707,21 @@ export default function Dashboard({ session }) {
     fetchItems(); setBatchModal(null)
   }
 
-  async function markLongTerm(batchId) {
-    await supabase.from('stock').update({ long_term: true }).eq('batch_id', batchId)
+  async function markLongTerm(batch) {
+    if (batch.units[0]?.batch_id) {
+      await supabase.from('stock').update({ long_term: true }).eq('batch_id', batch.units[0].batch_id)
+    } else {
+      await supabase.from('stock').update({ long_term: true }).eq('id', batch.units[0].id)
+    }
     fetchItems()
   }
 
-  async function unmarkLongTerm(batchId) {
-    await supabase.from('stock').update({ long_term: false }).eq('batch_id', batchId)
+  async function unmarkLongTerm(batch) {
+    if (batch.units[0]?.batch_id) {
+      await supabase.from('stock').update({ long_term: false }).eq('batch_id', batch.units[0].batch_id)
+    } else {
+      await supabase.from('stock').update({ long_term: false }).eq('id', batch.units[0].id)
+    }
     fetchItems()
   }
 
@@ -1166,8 +1174,8 @@ export default function Dashboard({ session }) {
                             const now = new Date()
                             const isLongTerm = batch.units.some(u => u.long_term)
                             const isStale = !isLongTerm && batch.units.some(u => u.status==='in_stock' && u.purchase_date && ((now-new Date(u.purchase_date))/86400000)>STALE_DAYS)
-                            if (isLongTerm) return <span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();unmarkLongTerm(batch.key)}} title="Click to remove long-term hold">📌 Long-term</span>
-                            if (isStale) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch.key)}} title="Click to mark as long-term hold">⚠ {STALE_DAYS}+ days</span>
+                            if (isLongTerm) return <span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();unmarkLongTerm(batch)}} title="Click to remove long-term hold">📌 Long-term</span>
+                            if (isStale) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="Click to mark as long-term hold">⚠ {STALE_DAYS}+ days</span>
                             return null
                           })()}
                           <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
