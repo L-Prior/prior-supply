@@ -1080,7 +1080,8 @@ export default function Dashboard({ session }) {
   const [collectorSaving, setCollectorSaving] = useState(false)
   const [collectorError, setCollectorError] = useState('')
 
-  useEffect(() => { if (session && page === 'collector') fetchCollector() }, [page, session])
+  useEffect(() => { if (session) fetchCollector() }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (session && page === 'collector') fetchCollector() }, [page, session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchCollector() {
     setCollectorLoading(true)
@@ -1144,9 +1145,12 @@ export default function Dashboard({ session }) {
   const collectorStats = useMemo(() => {
     const totalValue = collectorItems.reduce((s, i) => s + (i.purchase_price||0), 0)
     const byCategory = {}
-    collectorItems.forEach(i => { const c = i.category||'Other'; if(!byCategory[c])byCategory[c]=0; byCategory[c]++ })
-    const topItems = [...collectorItems].sort((a,b) => (b.purchase_price||0)-(a.purchase_price||0)).slice(0,5)
-    return { totalValue, byCategory, topItems, total: collectorItems.length }
+    collectorItems.forEach(i => { const c = i.category||'Other'; if(!byCategory[c])byCategory[c]={count:0,value:0}; byCategory[c].count++; byCategory[c].value+=(i.purchase_price||0) })
+    const categoryChartData = Object.entries(byCategory).map(([name,{count,value}])=>({name,value:count,totalValue:parseFloat(value.toFixed(2))}))
+    const topItems = [...collectorItems].sort((a,b)=>(b.purchase_price||0)-(a.purchase_price||0)).slice(0,5)
+    const growthData = getLast(6).map(({key,label})=>({label,count:collectorItems.filter(i=>getMonthKey(i.created_at)===key).length}))
+    const avgValue = collectorItems.length ? totalValue / collectorItems.length : 0
+    return { totalValue, byCategory, categoryChartData, topItems, growthData, total: collectorItems.length, avgValue }
   }, [collectorItems])
   const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}]
 
