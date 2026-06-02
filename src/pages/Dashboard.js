@@ -1422,7 +1422,7 @@ export default function Dashboard({ session }) {
               <div className="stats-bar" style={{marginBottom:20}}>
                 <div className="stat-card"><div className="stat-label">Total items</div><div className="stat-value">{collectorStats.total}</div></div>
                 <div className="stat-card"><div className="stat-label">Collection value</div><div className="stat-value">{fmt(collectorStats.totalValue)}</div></div>
-                {Object.entries(collectorStats.byCategory).map(([cat, count]) => (
+                {Object.entries(collectorStats.byCategory).map(([cat, {count}]) => (
                   <div key={cat} className="stat-card"><div className="stat-label">{cat}</div><div className="stat-value">{count}</div></div>
                 ))}
               </div>
