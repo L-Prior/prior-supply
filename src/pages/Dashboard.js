@@ -657,6 +657,7 @@ export default function Dashboard({ session }) {
   const [sellingPlatform, setSellingPlatform] = useState('')
   const [sellFeeplatform, setSellFeeplatform] = useState(null)
   const [customFeeRate, setCustomFeeRate] = useState('')
+  const [payoutStatus, setPayoutStatus] = useState('pending')
   const [form, setForm] = useState(EMPTY_FORM)
   const [search, setSearch] = useState('')
   const [filterBrand, setFilterBrand] = useState('')
@@ -703,7 +704,6 @@ export default function Dashboard({ session }) {
     const base = {
       category: form.category, brand, style, colourway, sku,
       item_condition: form.item_condition || 'Brand New',
-      long_term: form.long_term || false,
       purchase_platform: form.purchase_platform, purchase_date: form.purchase_date || null, notes: form.notes,
       pokemon_type: form.pokemon_type || null, card_name: form.card_name || null, set_name: form.set_name || null,
       card_number: form.card_number || null, condition: form.condition || null, graded: form.graded || false,
@@ -716,7 +716,7 @@ export default function Dashboard({ session }) {
     }
     let error
     if (editItem) {
-      const payload = { ...base, purchase_price: parseFloat(form.units[0]?.purchase_price) || 0, size: form.units[0]?.size || '' }
+      const payload = { ...base, purchase_price: parseFloat(form.units[0]?.purchase_price) || 0, size: form.units[0]?.size || '', long_term: form.long_term || false }
       ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
     } else {
       const rows = form.units.flatMap(u => {
@@ -824,9 +824,10 @@ export default function Dashboard({ session }) {
       status: 'sold', sale_price: parseFloat(salePrice),
       selling_platform: platformName,
       fee_amount: feeAmt || null,
+      payout_status: payoutStatus,
       sold_at: new Date().toISOString()
     }).eq('id', sellItem.id)
-    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate('')
+    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate(''); setPayoutStatus('pending')
     fetchItems()
     if (batchModal) {
       const updated = batchModal.units.map(u => u.id === sellItem.id ? { ...u, status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt } : u)
@@ -1776,6 +1777,7 @@ export default function Dashboard({ session }) {
                         <div className="batch-unit-sold">
                           <div style={{textAlign:'right'}}>
                             <span className="badge sold">Sold{unit.selling_platform?` via ${unit.selling_platform}`:''}</span>
+                            {unit.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✅ Paid out</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Payout pending</span>}
                             {unit.fee_amount>0&&<div style={{fontSize:11,color:'var(--muted)',marginTop:3}}>Fee: {fmt(unit.fee_amount)}</div>}
                             <div className={`batch-unit-pl ${plColor(pl)}`} style={{marginTop:2}}>
                               {pl!=null?fmt(pl-(unit.fee_amount||0)):'—'}
@@ -1853,8 +1855,15 @@ export default function Dashboard({ session }) {
                 </div>
               )
             })()}
+            <div style={{marginTop:16}}>
+              <label className="form-label" style={{marginBottom:8,display:'block'}}>Payout Status</label>
+              <div className="type-toggle">
+                <button className={`type-btn ${payoutStatus==='pending'?'active':''}`} onClick={()=>setPayoutStatus('pending')}>⏳ Pending</button>
+                <button className={`type-btn ${payoutStatus==='paid'?'active':''}`} onClick={()=>setPayoutStatus('paid')}>✅ Paid out</button>
+              </div>
+            </div>
             <div className="form-actions" style={{marginTop:16}}>
-              <button className="btn" onClick={()=>{setSellItem(null);setSellFeeplatform(null);setCustomFeeRate('')}}>Cancel</button>
+              <button className="btn" onClick={()=>{setSellItem(null);setSellFeeplatform(null);setCustomFeeRate('');setPayoutStatus('pending')}}>Cancel</button>
               <button className="btn primary" onClick={markSold} disabled={saving||!salePrice}>{saving?'Saving...':'Confirm sale'}</button>
             </div>
           </div>
