@@ -373,7 +373,7 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem }) {
   function clearDiscrepancy(id) { setStatus(s => ({ ...s, [id]: undefined })); setNotes(n => ({ ...n, [id]: '' })) }
 
   function clearAll() {
-    if (!window.confirm('Clear the entire checklist? This cannot be undone.')) return
+    if (!window.confirm('Reset the entire checklist? This cannot be undone.')) return
     setStatus({}); setNotes({}); setRowData({}); setUnlisted([])
     try { localStorage.removeItem(STORAGE_KEY) } catch {}
   }
@@ -439,7 +439,7 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem }) {
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:16}}>
               <div className="chart-title" style={{margin:0}}>Stock Checklist</div>
               <div style={{display:'flex',gap:8}}>
-                <button className="btn sm danger" onClick={clearAll}>🗑 Clear all</button>
+                <button className="btn sm danger" onClick={clearAll}>🗑 Reset</button>
                 <button className="btn sm" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>setShowFlagForm(true)}>+ Flag unlisted item</button>
               </div>
             </div>
