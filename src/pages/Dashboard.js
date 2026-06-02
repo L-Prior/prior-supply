@@ -329,16 +329,35 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
 }
 
 function StockChecklist({ items, breaks, onAddItem, onEditItem }) {
-  const [selectedCategories, setSelectedCategories] = useState({
+  const STORAGE_KEY = 'stocktrack_checklist'
+
+  function loadSaved() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      return saved ? JSON.parse(saved) : null
+    } catch { return null }
+  }
+
+  function saveToStorage(state) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch {}
+  }
+
+  const saved = loadSaved()
+  const [selectedCategories, setSelectedCategories] = useState(saved?.selectedCategories || {
     Sneakers: true, 'Pokémon': true, Topps: true, Lego: true, Clothing: true, Miscellaneous: true, Breaker: false
   })
-  const [status, setStatus] = useState({}) // 'correct' | 'incorrect'
-  const [notes, setNotes] = useState({})
-  const [rowData, setRowData] = useState({}) // store row info for discrepancies
+  const [status, setStatus] = useState(saved?.status || {})
+  const [notes, setNotes] = useState(saved?.notes || {})
+  const [rowData, setRowData] = useState(saved?.rowData || {})
   const [checklistTab, setChecklistTab] = useState('checklist')
-  const [unlisted, setUnlisted] = useState([])
+  const [unlisted, setUnlisted] = useState(saved?.unlisted || [])
   const [showFlagForm, setShowFlagForm] = useState(false)
   const [flagNote, setFlagNote] = useState('')
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    saveToStorage({ selectedCategories, status, notes, rowData, unlisted })
+  }, [selectedCategories, status, notes, rowData, unlisted])
 
   function toggleCategory(cat) { setSelectedCategories(s => ({ ...s, [cat]: !s[cat] })) }
 
@@ -352,6 +371,12 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem }) {
   function addUnlisted() { if (!flagNote.trim()) return; setUnlisted(u => [...u, { id: Date.now(), note: flagNote.trim() }]); setFlagNote(''); setShowFlagForm(false) }
   function removeUnlisted(id) { setUnlisted(u => u.filter(i => i.id !== id)) }
   function clearDiscrepancy(id) { setStatus(s => ({ ...s, [id]: undefined })); setNotes(n => ({ ...n, [id]: '' })) }
+
+  function clearAll() {
+    if (!window.confirm('Clear the entire checklist? This cannot be undone.')) return
+    setStatus({}); setNotes({}); setRowData({}); setUnlisted([])
+    try { localStorage.removeItem(STORAGE_KEY) } catch {}
+  }
 
   const batchMap = {}
   items.filter(i => selectedCategories[i.category] && i.status === 'in_stock').forEach(i => {
@@ -413,7 +438,10 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem }) {
           <div className="chart-card checklist-sticky" style={{marginBottom:20}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:16}}>
               <div className="chart-title" style={{margin:0}}>Stock Checklist</div>
-              <button className="btn sm" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>setShowFlagForm(true)}>+ Flag unlisted item</button>
+              <div style={{display:'flex',gap:8}}>
+                <button className="btn sm danger" onClick={clearAll}>🗑 Clear all</button>
+                <button className="btn sm" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>setShowFlagForm(true)}>+ Flag unlisted item</button>
+              </div>
             </div>
             {showFlagForm&&(
               <div style={{background:'#fffbeb',border:'1px solid #f59e0b',borderRadius:'var(--radius)',padding:'12px 14px',marginBottom:16}}>
