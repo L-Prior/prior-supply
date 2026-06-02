@@ -13,6 +13,9 @@ const TOPPS_SEALED_TYPES = ['Hobby Box', 'Blaster Box', 'Mega Box', 'Tin', 'Pack
 const TOPPS_PARALLELS = ['Base', 'Gold', 'Refractor', 'Chrome', 'Prizm', 'Foil', 'Numbered', 'Auto', 'Other']
 const CONDITIONS = ['Sealed', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played']
 const SEALED_CONDITIONS = ['Sealed', 'Box Damaged', 'Ripped', 'Damaged']
+const COLLECTOR_SNEAKER_CONDITIONS = ['Deadstock', 'Very Near Deadstock', 'Excellent', 'Good', 'Worn']
+const COLLECTOR_POKEMON_CONDITIONS = ['Sealed', 'PSA/BGS Graded', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played']
+const COLLECTOR_MISC_CONDITIONS = ['Mint in Box', 'Excellent', 'Good', 'Fair']
 const GRADING_COMPANIES = ['PSA', 'BGS', 'CGC', 'ACE']
 
 // Fee platforms
@@ -1680,12 +1683,17 @@ export default function Dashboard({ session }) {
                 </select>
               </div>
               {collectorForm.category&&<>
-                {collectorForm.category!=='Pokémon'&&<div className="form-group full">
+                <div className="form-group full">
                   <label className="form-label">Condition</label>
                   <select className="form-input" value={collectorForm.item_condition} onChange={e=>setCollectorForm(f=>({...f,item_condition:e.target.value}))}>
-                    {ITEM_CONDITIONS.map(c=><option key={c} value={c}>{c}</option>)}
+                    <option value="">Select condition</option>
+                    {(collectorForm.category==='Sneakers'?COLLECTOR_SNEAKER_CONDITIONS:
+                      collectorForm.category==='Pokémon'?COLLECTOR_POKEMON_CONDITIONS:
+                      collectorForm.category==='Miscellaneous'?COLLECTOR_MISC_CONDITIONS:
+                      COLLECTOR_MISC_CONDITIONS
+                    ).map(c=><option key={c} value={c}>{c}</option>)}
                   </select>
-                </div>}
+                </div>
                 <CategoryForm form={collectorForm} setForm={setCollectorForm} editItem={editCollectorItem} updateUnit={(i,field,value)=>setCollectorForm(f=>{const units=[...f.units];units[i]={...units[i],[field]:value};return{...f,units}})} addUnit={()=>setCollectorForm(f=>({...f,units:[...f.units,{...EMPTY_UNIT}]}))} removeUnit={(i)=>setCollectorForm(f=>({...f,units:f.units.filter((_,idx)=>idx!==i)}))}/>
               </>}
             </div>
