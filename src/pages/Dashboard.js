@@ -331,7 +331,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
   return null
 }
 
-function StockChecklist({ items, breaks, onAddItem, onEditItem }) {
+function StockChecklist({ items, breaks, onAddItem, onEditItem, onSellItem }) {
   const STORAGE_KEY = 'stocktrack_checklist'
 
   function loadSaved() {
@@ -537,6 +537,7 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem }) {
                       </div>
                       <div style={{display:'flex',gap:8,flexShrink:0}}>
                         {row.itemId&&<button className="btn sm primary" onClick={()=>{const item=items.find(i=>i.id===row.itemId);if(item)onEditItem(item)}}>Edit item</button>}
+                        {row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="btn sm success" onClick={()=>{onSellItem(item)}}>Mark sold</button>:null})()}
                         <button className="btn sm" onClick={()=>clearDiscrepancy(id)}>Dismiss</button>
                       </div>
                     </div>
@@ -1474,7 +1475,7 @@ export default function Dashboard({ session }) {
               <button className={`type-btn ${toolTab==='checklist'?'active':''}`} onClick={()=>setToolTab('checklist')}>Stock Checklist</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
-            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{setPage('stock');setTimeout(()=>{openEdit(item);},100)}}/>}
+            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{setPage('stock');setTimeout(()=>{openEdit(item);},100)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
           </div>
         )}
 
