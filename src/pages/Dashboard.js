@@ -1148,7 +1148,7 @@ export default function Dashboard({ session }) {
     collectorItems.forEach(i => { const c = i.category||'Other'; if(!byCategory[c])byCategory[c]={count:0,value:0}; byCategory[c].count++; byCategory[c].value+=(i.purchase_price||0) })
     const categoryChartData = Object.entries(byCategory).map(([name,{count,value}])=>({name,value:count,totalValue:parseFloat(value.toFixed(2))}))
     const topItems = [...collectorItems].sort((a,b)=>(b.purchase_price||0)-(a.purchase_price||0)).slice(0,5)
-    const growthData = getLast(6).map(({key,label})=>({label,count:collectorItems.filter(i=>getMonthKey(i.created_at)===key).length}))
+    const growthData = getLast(6).map(({key,label})=>({label,count:collectorItems.filter(i=>getMonthKey(i.purchase_date)===key).length}))
     const avgValue = collectorItems.length ? totalValue / collectorItems.length : 0
     return { totalValue, byCategory, categoryChartData, topItems, growthData, total: collectorItems.length, avgValue }
   }, [collectorItems])
@@ -1373,14 +1373,14 @@ export default function Dashboard({ session }) {
                         </ResponsiveContainer>
                       </div>
                       <div className="chart-card half">
-                        <div className="chart-header"><div><div className="chart-title">Items Added</div><div className="chart-subtitle">Last 6 months</div></div></div>
+                        <div className="chart-header"><div><div className="chart-title">Collection Growth</div><div className="chart-subtitle">Items purchased per month</div></div></div>
                         <ResponsiveContainer width="100%" height={260}>
                           <BarChart data={collectorStats.growthData} margin={{top:10,right:10,left:0,bottom:0}}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/>
                             <XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
                             <YAxis tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} allowDecimals={false}/>
                             <Tooltip contentStyle={{borderRadius:8,border:'1px solid var(--border)'}}/>
-                            <Bar dataKey="count" name="Items added" fill="#16a34a" radius={[4,4,0,0]}/>
+                            <Bar dataKey="count" name="Items purchased" fill="#16a34a" radius={[4,4,0,0]}/>
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
