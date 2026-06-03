@@ -1475,7 +1475,7 @@ export default function Dashboard({ session }) {
               <button className={`type-btn ${toolTab==='checklist'?'active':''}`} onClick={()=>setToolTab('checklist')}>Stock Checklist</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
-            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{setPage('stock');setTimeout(()=>{openEdit(item);},100)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
+            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
           </div>
         )}
 
