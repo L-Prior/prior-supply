@@ -721,8 +721,15 @@ export default function Dashboard({ session }) {
       const totalUnits = batchUnits.length
       const batchCost = parseFloat(form.batch_total_cost) || 0
       const pricePerUnit = batchCost > 0 && totalUnits > 0 ? parseFloat((batchCost / totalUnits).toFixed(2)) : parseFloat(form.units[0]?.purchase_price) || 0
-      const payload = { ...base, purchase_price: pricePerUnit, size: form.units[0]?.size || '', long_term: form.long_term || false }
-      ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
+      // Don't overwrite status, sold_at, sale_price, selling_platform, fee_amount, payout_status
+      const { status: _s, sold_at: _sa, sale_price: _sp, selling_platform: _spl, fee_amount: _fa, payout_status: _ps, ...editBase } = base
+      const payload = { ...editBase, purchase_price: pricePerUnit, size: form.units[0]?.size || '', long_term: form.long_term || false }
+      // Update all units in the batch so metadata stays in sync
+      if (editItem.batch_id) {
+        ;({ error } = await supabase.from('stock').update(payload).eq('batch_id', editItem.batch_id))
+      } else {
+        ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
+      }
     } else {
       const rows = form.units.flatMap(u => {
         const qty = u.quantity === '10+' ? (parseInt(u.custom_qty) || 1) : (parseInt(u.quantity) || 1)
