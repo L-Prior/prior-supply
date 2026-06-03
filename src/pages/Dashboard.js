@@ -717,18 +717,44 @@ export default function Dashboard({ session }) {
     }
     let error
     if (editItem) {
-      const batchUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id) : [editItem]
-      const totalUnits = batchUnits.length
-      const batchCost = parseFloat(form.batch_total_cost) || 0
-      const pricePerUnit = batchCost > 0 && totalUnits > 0 ? parseFloat((batchCost / totalUnits).toFixed(2)) : parseFloat(form.units[0]?.purchase_price) || 0
-      // Don't overwrite status, sold_at, sale_price, selling_platform, fee_amount, payout_status
       const { status: _s, sold_at: _sa, sale_price: _sp, selling_platform: _spl, fee_amount: _fa, payout_status: _ps, ...editBase } = base
-      const payload = { ...editBase, purchase_price: pricePerUnit, size: form.units[0]?.size || '', long_term: form.long_term || false }
-      // Update all units in the batch so metadata stays in sync
+
+      // Get all in-stock units in this batch with the same size
+      const sameSize = form.units[0]?.size || ''
+      const batchUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id && i.size === (editItem.size||'') && i.status === 'in_stock') : [editItem].filter(i => i.status === 'in_stock')
+      const newQty = form.units[0]?.quantity === '10+' ? (parseInt(form.units[0]?.custom_qty) || 1) : (parseInt(form.units[0]?.quantity) || 1)
+      const currentQty = batchUnits.length
+
+      // Calculate new price per unit from total cost across ALL batch units (including other sizes)
+      const allBatchUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id) : [editItem]
+      const otherUnits = allBatchUnits.filter(i => i.size !== (editItem.size||''))
+      const batchCost = parseFloat(form.batch_total_cost) || 0
+      const newTotalUnits = otherUnits.length + newQty
+      const pricePerUnit = batchCost > 0 && newTotalUnits > 0 ? parseFloat((batchCost / newTotalUnits).toFixed(2)) : parseFloat(form.units[0]?.purchase_price) || 0
+
+      const payload = { ...editBase, purchase_price: pricePerUnit, size: sameSize, long_term: form.long_term || false }
+
+      // Update all existing units with new metadata
       if (editItem.batch_id) {
         ;({ error } = await supabase.from('stock').update(payload).eq('batch_id', editItem.batch_id))
       } else {
         ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
+      }
+      if (error) { setSaveError(error.message); setSaving(false); return }
+
+      // Handle quantity changes
+      if (newQty > currentQty) {
+        // Add more units
+        const newRows = Array.from({ length: newQty - currentQty }, () => ({
+          ...payload, status: 'in_stock', batch_id: editItem.batch_id || editItem.id, user_id: session.user.id
+        }))
+        ;({ error } = await supabase.from('stock').insert(newRows))
+      } else if (newQty < currentQty) {
+        // Remove excess units (delete from the end)
+        const toDelete = batchUnits.slice(newQty).map(u => u.id)
+        for (const id of toDelete) {
+          await supabase.from('stock').delete().eq('id', id)
+        }
       }
     } else {
       const rows = form.units.flatMap(u => {
