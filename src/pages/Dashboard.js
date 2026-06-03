@@ -717,7 +717,11 @@ export default function Dashboard({ session }) {
     }
     let error
     if (editItem) {
-      const payload = { ...base, purchase_price: parseFloat(form.units[0]?.purchase_price) || 0, size: form.units[0]?.size || '', long_term: form.long_term || false }
+      const batchUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id) : [editItem]
+      const totalUnits = batchUnits.length
+      const batchCost = parseFloat(form.batch_total_cost) || 0
+      const pricePerUnit = batchCost > 0 && totalUnits > 0 ? parseFloat((batchCost / totalUnits).toFixed(2)) : parseFloat(form.units[0]?.purchase_price) || 0
+      const payload = { ...base, purchase_price: pricePerUnit, size: form.units[0]?.size || '', long_term: form.long_term || false }
       ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
     } else {
       const rows = form.units.flatMap(u => {
@@ -1774,48 +1778,46 @@ export default function Dashboard({ session }) {
               {batchModal.purchase_platform&&<span className="detail-tag"><span className="detail-tag-label">From</span>{batchModal.purchase_platform}</span>}
             </div>
             {batchModal.notes&&<div className="detail-notes">📝 {batchModal.notes}</div>}
-            {(()=>{
-              const inStockUnits = batchModal.units.filter(u => u.status === 'in_stock')
-              return inStockUnits.length > 1 ? (
-                <div style={{marginBottom:12,padding:'10px 14px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'var(--radius)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <span style={{fontSize:13,color:'var(--green)',fontWeight:500}}>{inStockUnits.length} units in stock</span>
-                  <button className="btn sm success" onClick={()=>{setSellItem({...inStockUnits[0], _bulkIds: inStockUnits.map(u=>u.id)});setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}>Sell all {inStockUnits.length} units</button>
-                </div>
-              ) : null
-            })()}
             <div className="detail-units-title">Units</div>
             <div className="batch-units">
-              {batchModal.units.map(unit=>{
-                const pl=unit.status==='sold'&&unit.sale_price!=null?unit.sale_price-(unit.purchase_price||0):null
-                return (
-                  <div key={unit.id} className={`batch-unit-row ${unit.status==='sold'?'sold':''}`}>
-                    <div className="batch-unit-info">
-                      <div className="batch-unit-size">{unit.size?`UK ${unit.size}`:'No size'}</div>
-                      <div className="batch-unit-cost">{fmt(unit.purchase_price)}</div>
+              {(()=>{
+                const inStock = batchModal.units.filter(u => u.status === 'in_stock')
+                const sold = batchModal.units.filter(u => u.status === 'sold')
+                const groups = {}
+                batchModal.units.forEach(u => {
+                  const key = u.size || 'no-size'
+                  if (!groups[key]) groups[key] = { size: u.size, inStock: [], sold: [] }
+                  if (u.status === 'in_stock') groups[key].inStock.push(u)
+                  else groups[key].sold.push(u)
+                })
+                return Object.values(groups).map(g => (
+                  <div key={g.size||'no-size'} className="batch-unit-row">
+                    <div className="batch-unit-info" style={{flex:1}}>
+                      <div className="batch-unit-size">{g.size ? `UK ${g.size}` : 'No size'}</div>
+                      <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>
+                        {g.inStock.length > 0 && <span style={{marginRight:8}}>{g.inStock.length} in stock</span>}
+                        {g.sold.length > 0 && <span style={{color:'var(--green)'}}>{g.sold.length} sold</span>}
+                      </div>
                     </div>
-                    <div className="batch-unit-right">
-                      {unit.status==='sold'?(
-                        <div className="batch-unit-sold">
-                          <div style={{textAlign:'right'}}>
-                            <span className="badge sold">Sold{unit.selling_platform?` via ${unit.selling_platform}`:''}</span>
-                            {unit.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✅ Paid out</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Payout pending</span>}
-                            {unit.fee_amount>0&&<div style={{fontSize:11,color:'var(--muted)',marginTop:3}}>Fee: {fmt(unit.fee_amount)}</div>}
-                            <div className={`batch-unit-pl ${plColor(pl)}`} style={{marginTop:2}}>
-                              {pl!=null?fmt(pl-(unit.fee_amount||0)):'—'}
-                            </div>
-                          </div>
-                        </div>
-                      ):(
-                        <div style={{display:'flex',gap:6}}>
-                          <button className="btn sm success" onClick={()=>{setSellItem(unit);setSalePrice('');setSellingPlatform('')}}>Sell</button>
-                          <button className="btn sm" onClick={()=>{openEdit(unit);setBatchModal(null)}}>Edit</button>
-                          <button className="btn sm danger" onClick={()=>deleteItem(unit.id)}>Del</button>
-                        </div>
+                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                      {g.inStock.length > 0 && (
+                        <button className="btn sm success" onClick={()=>{
+                          const ids = g.inStock.map(u => u.id)
+                          setSellItem({ ...g.inStock[0], _bulkIds: ids, _maxQty: ids.length })
+                          setSalePrice(''); setSellingPlatform(''); setPayoutStatus('pending')
+                        }}>
+                          Sell {g.inStock.length > 1 ? `(${g.inStock.length})` : ''}
+                        </button>
                       )}
+                      <button className="btn sm" onClick={()=>{openEdit(g.inStock[0]||g.sold[0]);setBatchModal(null)}}>Edit</button>
+                      <button className="btn sm danger" onClick={()=>{
+                        if (!window.confirm(`Delete all ${g.inStock.length} in-stock units of this size?`)) return
+                        g.inStock.forEach(u => deleteItem(u.id))
+                      }}>Del</button>
                     </div>
                   </div>
-                )
-              })}
+                ))
+              })()}
             </div>
             <div className="form-actions" style={{marginTop:16}}>
               <button className="btn" onClick={()=>setBatchModal(null)}>Close</button>
@@ -1833,13 +1835,19 @@ export default function Dashboard({ session }) {
       {sellItem&&(
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setSellItem(null)}>
           <div className="modal">
-            <div className="modal-title">{sellItem._bulkIds ? `Sell all ${sellItem._bulkIds.length} units` : 'Mark as sold'}</div>
+            <div className="modal-title">{sellItem._bulkIds ? `Sell units` : 'Mark as sold'}</div>
             <div className="sell-info">
               <strong>{sellItem.brand} {sellItem.style}</strong>
               {sellItem.colourway&&` — ${sellItem.colourway}`}
               {sellItem.size&&` · Size ${sellItem.size}`}
               <div style={{marginTop:4}}>Cost price: <strong>{fmt(sellItem.purchase_price)}</strong></div>
             </div>
+            {sellItem._bulkIds&&(
+              <div className="form-group" style={{marginBottom:8}}>
+                <label className="form-label">Quantity to sell (max {sellItem._maxQty})</label>
+                <input className="form-input" type="number" min="1" max={sellItem._maxQty} value={sellItem._sellQty||sellItem._maxQty} onChange={e=>{const q=Math.min(parseInt(e.target.value)||1,sellItem._maxQty);setSellItem(s=>({...s,_bulkIds:s._bulkIds.slice(0,q),_sellQty:q}))}}/>
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Sale price (£)</label>
               <input className="form-input" type="number" step="0.01" placeholder="0.00" value={salePrice} onChange={e=>setSalePrice(e.target.value)} autoFocus/>
