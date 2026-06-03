@@ -1082,7 +1082,7 @@ export default function Dashboard({ session }) {
   const [toolTab, setToolTab] = useState('fee')
   const [metricsTab, setMetricsTab] = useState('reseller')
 
-  function switchToolTab(tab) { setToolTab(tab); window.scrollTo(0, 0) }
+  function switchToolTab(tab) { setToolTab(tab); setTimeout(()=>window.scrollTo({top:0,behavior:'instant'}),50) }
   const [userPlan, setUserPlan] = useState('pro') // default pro until Stripe is set up
   const FREE_LIMIT = 30
 
