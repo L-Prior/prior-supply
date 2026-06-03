@@ -1781,8 +1781,6 @@ export default function Dashboard({ session }) {
             <div className="detail-units-title">Units</div>
             <div className="batch-units">
               {(()=>{
-                const inStock = batchModal.units.filter(u => u.status === 'in_stock')
-                const sold = batchModal.units.filter(u => u.status === 'sold')
                 const groups = {}
                 batchModal.units.forEach(u => {
                   const key = u.size || 'no-size'
