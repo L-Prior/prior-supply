@@ -1081,6 +1081,8 @@ export default function Dashboard({ session }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toolTab, setToolTab] = useState('fee')
   const [metricsTab, setMetricsTab] = useState('reseller')
+
+  function switchToolTab(tab) { setToolTab(tab); window.scrollTo(0, 0) }
   const [userPlan, setUserPlan] = useState('pro') // default pro until Stripe is set up
   const FREE_LIMIT = 30
 
@@ -1179,7 +1181,7 @@ export default function Dashboard({ session }) {
         <div className="topbar-brand"><span className="brand-mark" />StockTrack</div>
         <nav className="topbar-nav">
           {NAV_ITEMS.map(n=>(
-            <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>{n.label}</button>
+            <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>{setPage(n.id);window.scrollTo(0,0)}}>{n.label}</button>
           ))}
         </nav>
         <div style={{position:'relative'}}>
@@ -1199,7 +1201,7 @@ export default function Dashboard({ session }) {
           {mobileMenuOpen && (
             <div className="mobile-menu">
               {NAV_ITEMS.map(n=>(
-                <button key={n.id} className={`mobile-menu-item ${page===n.id?'active':''}`} onClick={()=>{setPage(n.id);setMobileMenuOpen(false)}}>
+                <button key={n.id} className={`mobile-menu-item ${page===n.id?'active':''}`} onClick={()=>{setPage(n.id);setMobileMenuOpen(false);window.scrollTo(0,0)}}>
                   {n.label}
                 </button>
               ))}
@@ -1491,8 +1493,8 @@ export default function Dashboard({ session }) {
           <div>
             <div className="page-header"><h1 className="page-title">Tools</h1><p className="page-subtitle">Calculators and utilities</p></div>
             <div style={{display:'flex',gap:8,marginBottom:24}}>
-              <button className={`type-btn ${toolTab==='fee'?'active':''}`} onClick={()=>setToolTab('fee')}>Fee Calculator</button>
-              <button className={`type-btn ${toolTab==='checklist'?'active':''}`} onClick={()=>setToolTab('checklist')}>Stock Checklist</button>
+              <button className={`type-btn ${toolTab==='fee'?'active':''}`} onClick={()=>switchToolTab('fee')}>Fee Calculator</button>
+              <button className={`type-btn ${toolTab==='checklist'?'active':''}`} onClick={()=>switchToolTab('checklist')}>Stock Checklist</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
             {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
