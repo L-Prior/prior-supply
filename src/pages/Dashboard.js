@@ -742,7 +742,7 @@ export default function Dashboard({ session }) {
   function openEdit(item) {
     // Calculate total batch cost from all units in the same batch
     const batchUnits = item.batch_id ? items.filter(i => i.batch_id === item.batch_id) : [item]
-    const totalCost = batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0)
+    const totalCost = parseFloat(batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
     const sameSize = batchUnits.filter(u => u.size === item.size)
     const qty = sameSize.length > 1 ? sameSize.length : 1
     setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
@@ -823,17 +823,21 @@ export default function Dashboard({ session }) {
     setSaving(true)
     const feeAmt = calcFee(salePrice, sellFeeplatform, customFeeRate)
     const platformName = sellFeeplatform ? sellFeeplatform.name : sellingPlatform
-    await supabase.from('stock').update({
-      status: 'sold', sale_price: parseFloat(salePrice),
-      selling_platform: platformName,
-      fee_amount: feeAmt || null,
-      payout_status: payoutStatus,
-      sold_at: new Date().toISOString()
-    }).eq('id', sellItem.id)
+    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, payout_status: payoutStatus, sold_at: new Date().toISOString() }
+    if (sellItem._bulkIds) {
+      // Bulk sell — update all units
+      const perUnitFee = feeAmt / sellItem._bulkIds.length
+      for (const id of sellItem._bulkIds) {
+        await supabase.from('stock').update({ ...updatePayload, fee_amount: parseFloat(perUnitFee.toFixed(2)) || null }).eq('id', id)
+      }
+    } else {
+      await supabase.from('stock').update(updatePayload).eq('id', sellItem.id)
+    }
     setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate(''); setPayoutStatus('pending')
     fetchItems()
     if (batchModal) {
-      const updated = batchModal.units.map(u => u.id === sellItem.id ? { ...u, status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt } : u)
+      const ids = sellItem._bulkIds || [sellItem.id]
+      const updated = batchModal.units.map(u => ids.includes(u.id) ? { ...u, status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt } : u)
       setBatchModal({ ...batchModal, units: updated })
     }
   }
@@ -1272,9 +1276,14 @@ export default function Dashboard({ session }) {
                           {(()=>{
                             const now = new Date()
                             const isLongTerm = batch.units.some(u => u.long_term)
-                            const isStale = !isLongTerm && batch.units.some(u => u.status==='in_stock' && u.purchase_date && ((now-new Date(u.purchase_date))/86400000)>STALE_DAYS)
+                            const daysInStock = batch.units.reduce((max, u) => {
+                              if (u.status !== 'in_stock' || !u.purchase_date) return max
+                              const days = (now - new Date(u.purchase_date)) / 86400000
+                              return Math.max(max, days)
+                            }, 0)
                             if (isLongTerm) return <span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();unmarkLongTerm(batch)}} title="Click to remove long-term hold">📌 Long-term</span>
-                            if (isStale) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="Click to mark as long-term hold">⚠ {STALE_DAYS}+ days</span>
+                            if (daysInStock > 30) return <span style={{fontSize:10,fontWeight:600,color:'#dc2626',background:'#fee2e2',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="30+ days — no return window. Click to mark as long-term hold">🔴 30+ days</span>
+                            if (daysInStock > STALE_DAYS) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="Click to mark as long-term hold">⚠ {STALE_DAYS}+ days</span>
                             return null
                           })()}
                           <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
@@ -1765,6 +1774,15 @@ export default function Dashboard({ session }) {
               {batchModal.purchase_platform&&<span className="detail-tag"><span className="detail-tag-label">From</span>{batchModal.purchase_platform}</span>}
             </div>
             {batchModal.notes&&<div className="detail-notes">📝 {batchModal.notes}</div>}
+            {(()=>{
+              const inStockUnits = batchModal.units.filter(u => u.status === 'in_stock')
+              return inStockUnits.length > 1 ? (
+                <div style={{marginBottom:12,padding:'10px 14px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'var(--radius)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:13,color:'var(--green)',fontWeight:500}}>{inStockUnits.length} units in stock</span>
+                  <button className="btn sm success" onClick={()=>{setSellItem({...inStockUnits[0], _bulkIds: inStockUnits.map(u=>u.id)});setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}>Sell all {inStockUnits.length} units</button>
+                </div>
+              ) : null
+            })()}
             <div className="detail-units-title">Units</div>
             <div className="batch-units">
               {batchModal.units.map(unit=>{
@@ -1815,7 +1833,7 @@ export default function Dashboard({ session }) {
       {sellItem&&(
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setSellItem(null)}>
           <div className="modal">
-            <div className="modal-title">Mark as sold</div>
+            <div className="modal-title">{sellItem._bulkIds ? `Sell all ${sellItem._bulkIds.length} units` : 'Mark as sold'}</div>
             <div className="sell-info">
               <strong>{sellItem.brand} {sellItem.style}</strong>
               {sellItem.colourway&&` — ${sellItem.colourway}`}
