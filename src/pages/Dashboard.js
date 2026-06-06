@@ -537,7 +537,7 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem, onSellItem }) {
                       </div>
                       <div style={{display:'flex',gap:8,flexShrink:0}}>
                         {row.itemId&&<button className="btn sm primary" onClick={()=>{const item=items.find(i=>i.id===row.itemId);if(item)onEditItem(item)}}>Edit item</button>}
-                        {row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="btn sm success" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>Sell ({items.filter(i=>(item.batch_id?i.batch_id===item.batch_id:i.id===item.id)&&i.status==='in_stock').length})</button>:null})()}
+                        {row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="btn sm success" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>Sell</button>:null})()}
                         <button className="btn sm" onClick={()=>clearDiscrepancy(id)}>Dismiss</button>
                       </div>
                     </div>
@@ -1839,7 +1839,7 @@ export default function Dashboard({ session }) {
                           setSellItem({ ...g.inStock[0], _bulkIds: [g.inStock[0].id], _allIds: ids, _maxQty: ids.length, _sellQty: 1 })
                           setSalePrice(''); setSellingPlatform(''); setPayoutStatus('pending')
                         }}>
-                          Sell {g.inStock.length > 1 ? `(${g.inStock.length})` : ''}
+                          Sell
                         </button>
                       )}
                       <button className="btn sm" onClick={()=>{openEdit(g.inStock[0]||g.sold[0]);setBatchModal(null)}}>Edit</button>
