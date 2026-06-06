@@ -119,7 +119,7 @@ function UnitSection({ form, editItem, updateUnit, addUnit, removeUnit, label = 
       <div className="units-section">
         <div className="units-header">
           <span className="form-label">{label}</span>
-          {!editItem && <button className="btn sm" onClick={addUnit}>{addLabel}</button>}
+          <button className="btn sm" onClick={addUnit}>{editItem ? '+ Add size' : addLabel}</button>
         </div>
         {form.units.map((unit, i) => {
           const unitQty = unit.quantity === '10+' ? (parseInt(unit.custom_qty) || 1) : (parseInt(unit.quantity) || 1)
@@ -168,7 +168,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
       <div className="form-group"><label className="form-label">Purchase Platform</label><input className="form-input" placeholder="e.g. JD, SNKRS, eBay" value={form.purchase_platform} onChange={e=>setForm(f=>({...f,purchase_platform:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">Total Cost (£) *</label><input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.batch_total_cost||''} onChange={e=>setForm(f=>({...f,batch_total_cost:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">Notes</label><input className="form-input" placeholder="Any additional notes..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
-      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes & Quantities *</span>{!editItem&&<button className="btn sm" onClick={addUnit}>+ Add Size</button>}</div>{form.units.map((unit,i)=>{
+      <div className="form-group full"><div className="units-section"><div className="units-header"><span className="form-label">Sizes & Quantities *</span><button className="btn sm" onClick={addUnit}>+ Add Size</button></div>{form.units.map((unit,i)=>{
         const totalUnits = form.units.reduce((s,u2)=>{
           const q = u2.quantity==='10+'?(parseInt(u2.custom_qty)||1):(parseInt(u2.quantity)||1)
           return s+q
@@ -742,19 +742,30 @@ export default function Dashboard({ session }) {
       }
       if (error) { setSaveError(error.message); setSaving(false); return }
 
-      // Handle quantity changes
+      // Handle quantity changes for the edited size
       if (newQty > currentQty) {
-        // Add more units
         const newRows = Array.from({ length: newQty - currentQty }, () => ({
           ...payload, status: 'in_stock', batch_id: editItem.batch_id || editItem.id, user_id: session.user.id
         }))
         ;({ error } = await supabase.from('stock').insert(newRows))
       } else if (newQty < currentQty) {
-        // Remove excess units (delete from the end)
         const toDelete = batchUnits.slice(newQty).map(u => u.id)
         for (const id of toDelete) {
           await supabase.from('stock').delete().eq('id', id)
         }
+      }
+
+      // Insert any additional new sizes added during edit
+      const additionalUnits = form.units.slice(1)
+      if (additionalUnits.length > 0) {
+        const additionalRows = additionalUnits.flatMap(u => {
+          const qty = u.quantity === '10+' ? (parseInt(u.custom_qty)||1) : (parseInt(u.quantity)||1)
+          return Array.from({ length: qty }, () => ({
+            ...payload, size: u.size, purchase_price: pricePerUnit,
+            status: 'in_stock', batch_id: editItem.batch_id || editItem.id, user_id: session.user.id
+          }))
+        })
+        await supabase.from('stock').insert(additionalRows)
       }
     } else {
       const rows = form.units.flatMap(u => {
