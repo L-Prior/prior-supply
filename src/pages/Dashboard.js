@@ -537,7 +537,7 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem, onSellItem }) {
                       </div>
                       <div style={{display:'flex',gap:8,flexShrink:0}}>
                         {row.itemId&&<button className="btn sm primary" onClick={()=>{const item=items.find(i=>i.id===row.itemId);if(item)onEditItem(item)}}>Edit item</button>}
-                        {row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="btn sm success" onClick={()=>{onSellItem(item)}}>Mark sold</button>:null})()}
+                        {row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="btn sm success" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>Sell ({items.filter(i=>(item.batch_id?i.batch_id===item.batch_id:i.id===item.id)&&i.status==='in_stock').length})</button>:null})()}
                         <button className="btn sm" onClick={()=>clearDiscrepancy(id)}>Dismiss</button>
                       </div>
                     </div>
@@ -862,10 +862,10 @@ export default function Dashboard({ session }) {
     const platformName = sellFeeplatform ? sellFeeplatform.name : sellingPlatform
     const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, payout_status: payoutStatus, sold_at: new Date().toISOString() }
     if (sellItem._bulkIds) {
-      // Bulk sell — update all units
-      const perUnitFee = feeAmt / sellItem._bulkIds.length
-      for (const id of sellItem._bulkIds) {
-        await supabase.from('stock').update({ ...updatePayload, fee_amount: parseFloat(perUnitFee.toFixed(2)) || null }).eq('id', id)
+      const idsToSell = sellItem._bulkIds
+      const perUnitFee = parseFloat((feeAmt / idsToSell.length).toFixed(2))
+      for (const id of idsToSell) {
+        await supabase.from('stock').update({ ...updatePayload, fee_amount: perUnitFee || null }).eq('id', id)
       }
     } else {
       await supabase.from('stock').update(updatePayload).eq('id', sellItem.id)
@@ -1836,7 +1836,7 @@ export default function Dashboard({ session }) {
                       {g.inStock.length > 0 && (
                         <button className="btn sm success" onClick={()=>{
                           const ids = g.inStock.map(u => u.id)
-                          setSellItem({ ...g.inStock[0], _bulkIds: ids, _maxQty: ids.length })
+                          setSellItem({ ...g.inStock[0], _bulkIds: [g.inStock[0].id], _allIds: ids, _maxQty: ids.length, _sellQty: 1 })
                           setSalePrice(''); setSellingPlatform(''); setPayoutStatus('pending')
                         }}>
                           Sell {g.inStock.length > 1 ? `(${g.inStock.length})` : ''}
@@ -1878,7 +1878,7 @@ export default function Dashboard({ session }) {
             {sellItem._bulkIds&&(
               <div className="form-group" style={{marginBottom:8}}>
                 <label className="form-label">Quantity to sell (max {sellItem._maxQty})</label>
-                <input className="form-input" type="number" min="1" max={sellItem._maxQty} value={sellItem._sellQty||sellItem._maxQty} onChange={e=>{const q=Math.min(parseInt(e.target.value)||1,sellItem._maxQty);setSellItem(s=>({...s,_bulkIds:s._bulkIds.slice(0,q),_sellQty:q}))}}/>
+                <input className="form-input" type="number" min="1" max={sellItem._maxQty} value={sellItem._sellQty||1} onChange={e=>{const q=Math.min(parseInt(e.target.value)||1,sellItem._maxQty);setSellItem(s=>({...s,_bulkIds:s._allIds.slice(0,q),_sellQty:q}))}}/>
               </div>
             )}
             <div className="form-group">
