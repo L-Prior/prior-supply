@@ -24,7 +24,7 @@ const RESELLER_PLATFORMS = [
   { id: 'depop', name: 'Depop (UK)', type: 'percent_plus_fixed', rate: 2.9, fixed: 0.30 },
   { id: 'vinted', name: 'Vinted', type: 'flat', rate: 0 },
   { id: 'vinted_pro', name: 'Vinted Pro', type: 'percent', rate: 5 },
-  { id: 'ebay_private', name: 'eBay (Private)', type: 'fixed', rate: 0.40 },
+  { id: 'ebay_private', name: 'eBay (Private)', type: 'flat', rate: 0 },
   { id: 'ebay_business', name: 'eBay (Business)', type: 'percent_plus_fixed', rate: 12.8, fixed: 0.40 },
   { id: 'laced', name: 'Laced', type: 'percent', rate: 15 },
   { id: 'stockx_l1', name: 'StockX — Level 1 (0–11 sales)', type: 'percent', rate: 12 },
