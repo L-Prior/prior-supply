@@ -1186,10 +1186,36 @@ export default function Dashboard({ session }) {
   function removeInvLine(i) { setInvLines(l=>l.filter((_,idx)=>idx!==i)) }
   function updateInvLine(i,field,value) { setInvLines(l=>{const n=[...l];n[i]={...n[i],[field]:value};return n}) }
   function printInvoice() {
+    const bizDetails = {...blankBiz,...invBiz}
+    const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
     const next = parseInt(invNumber||'0')+1
-    localStorage.setItem(INV_NUM_KEY, String(parseInt(invNumber||'0')))
-    setInvNumber(String(next).padStart(4,'0'))
-    window.print()
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #${invNumber}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:800px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:48px}.invoice-label{font-size:36px;font-weight:800;color:#16a34a;margin-bottom:12px}.biz-name{font-size:16px;font-weight:600;margin-bottom:6px}.biz-detail{font-size:13px;color:#666;line-height:1.7}.meta{text-align:right}.meta-row{display:flex;justify-content:flex-end;gap:16px;font-size:13px;margin-bottom:6px}.meta-label{color:#888}.meta-value{font-weight:600;min-width:90px;text-align:right}.bill-to{margin-bottom:32px}.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:8px}.bill-name{font-size:15px;font-weight:600;margin-bottom:4px}.bill-detail{font-size:13px;color:#555;line-height:1.6}table{width:100%;border-collapse:collapse;margin-bottom:24px}th{text-align:left;padding:10px 0;border-bottom:2px solid #e2e8f0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888}.right{text-align:right}td{padding:12px 0;border-bottom:1px solid #f0f4f8;font-size:14px}.total-row td{border-bottom:none;border-top:2px solid #1a2332;font-weight:700;font-size:16px;padding-top:16px}.notes{margin-top:32px;padding-top:24px;border-top:1px solid #e2e8f0}.notes p{font-size:13px;color:#555;line-height:1.7;white-space:pre-wrap}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="invoice-label">INVOICE</div>${bizDetails.name?`<div class="biz-name">${bizDetails.name}</div>`:''}<div class="biz-detail">${[bizDetails.address,bizDetails.email,bizDetails.phone,bizDetails.vatNumber?`VAT: ${bizDetails.vatNumber}`:''].filter(Boolean).join('<br>')}</div></div><div class="meta"><div class="meta-row"><span class="meta-label">Invoice #</span><span class="meta-value">${invNumber}</span></div><div class="meta-row"><span class="meta-label">Date</span><span class="meta-value">${invDate}</span></div>${invDueDate?`<div class="meta-row"><span class="meta-label">Due</span><span class="meta-value">${invDueDate}</span></div>`:''}</div></div>${invCustomer.name||invCustomer.address?`<div class="bill-to"><div class="section-label">Bill to</div>${invCustomer.name?`<div class="bill-name">${invCustomer.name}</div>`:''}<div class="bill-detail">${[invCustomer.address,invCustomer.email].filter(Boolean).join('<br>')}</div></div>`:''}<table><thead><tr><th>Description</th><th class="right" style="width:60px">Qty</th><th class="right" style="width:100px">Unit price</th><th class="right" style="width:100px">Total</th></tr></thead><tbody>${invLines.filter(l=>l.description||l.unitPrice).map(l=>`<tr><td>${l.description||''}</td><td class="right">${l.qty||1}</td><td class="right">£${parseFloat(l.unitPrice||0).toFixed(2)}</td><td class="right">£${((parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0)).toFixed(2)}</td></tr>`).join('')}<tr class="total-row"><td colspan="3" class="right">Total</td><td class="right">£${invTotal.toFixed(2)}</td></tr></tbody></table>${invNotes?`<div class="notes"><div class="section-label">Notes</div><p>${invNotes.replace(/\n/g,'<br>')}</p></div>`:''}</body></html>`
+    const win = window.open('','_blank','width=900,height=700')
+    win.document.write(html); win.document.close(); win.focus()
+    setTimeout(()=>{ win.print(); localStorage.setItem(INV_NUM_KEY, String(parseInt(invNumber||'0'))); setInvNumber(String(next).padStart(4,'0')) }, 400)
+  }
+
+  const TAX_UTR_KEY = 'stocktrack_utr'
+  const [taxUTR, setTaxUTR] = useState(()=>{ try { return localStorage.getItem(TAX_UTR_KEY)||'' } catch { return '' } })
+
+  const [skuQuery, setSkuQuery] = useState('')
+  const [skuResults, setSkuResults] = useState(null)
+  const [skuLoading, setSkuLoading] = useState(false)
+  const [skuError, setSkuError] = useState('')
+
+  async function lookupSKU() {
+    if (!skuQuery.trim()) return
+    setSkuLoading(true); setSkuError(''); setSkuResults(null)
+    try {
+      const res = await fetch(`https://api.thesneakerdatabase.com/v1/sneakers?limit=6&search=${encodeURIComponent(skuQuery)}`)
+      if (!res.ok) throw new Error('API error')
+      const data = await res.json()
+      setSkuResults(data.results || [])
+    } catch {
+      setSkuResults([])
+      setSkuError('Live lookup unavailable — use the platform links below to search manually')
+    }
+    setSkuLoading(false)
   }
   const [selectedTaxYear, setSelectedTaxYear] = useState(currentTaxYear)
 
@@ -1585,6 +1611,26 @@ export default function Dashboard({ session }) {
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Top Brands by Profit</div><div className="chart-subtitle">All-time</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={brandData} layout="vertical" margin={{top:10,right:20,left:10,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false}/><XAxis type="number" tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="brand" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} width={70}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Bar dataKey="pl" name="Profit" fill="#16a34a" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Avg Profit per Sale</div><div className="chart-subtitle">Last 6 months</div></div></div><ResponsiveContainer width="100%" height={260}><LineChart data={avgPLData} margin={{top:10,right:20,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Line type="monotone" dataKey="avg" name="Avg P&L" stroke="#16a34a" strokeWidth={2} dot={{fill:'#16a34a',r:4}}/></LineChart></ResponsiveContainer></div>
               <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Best & Worst Performers</div><div className="chart-subtitle">Top and bottom 5 sold items by profit</div></div></div><div className="two-col"><div><div className="perf-label green">🏆 Best performers</div>{bestWorst.best.length===0?<div className="td-muted" style={{fontSize:13}}>No sold items yet</div>:bestWorst.best.map((item,i)=>(<div key={item.id} className="perf-row"><div className="perf-rank">{i+1}</div><div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div></div><div className="perf-pl pos">+{fmt(item.pl)}</div></div>))}</div><div><div className="perf-label red">📉 Worst performers</div>{bestWorst.worst.length===0?<div className="td-muted" style={{fontSize:13}}>No sold items yet</div>:bestWorst.worst.map((item,i)=>(<div key={item.id} className="perf-row"><div className="perf-rank">{i+1}</div><div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div></div><div className={`perf-pl ${item.pl>=0?'pos':'neg'}`}>{item.pl>=0?'+':''}{fmt(item.pl)}</div></div>))}</div></div></div>
+              {expenses.length>0&&(()=>{
+                const byCategory = {}
+                expenses.forEach(e=>{if(!byCategory[e.category])byCategory[e.category]=0;byCategory[e.category]+=(e.amount||0)})
+                const expCatData = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).map(([name,value])=>({name,value}))
+                const totalExp = expenses.reduce((s,e)=>s+(e.amount||0),0)
+                return (
+                  <div className="chart-card full">
+                    <div className="chart-header"><div><div className="chart-title">Business Expenses</div><div className="chart-subtitle">By category — all time</div></div><div style={{fontWeight:700,fontSize:16,color:'var(--red)'}}>−{fmt(totalExp)}</div></div>
+                    <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:8}}>
+                      {expCatData.map(c=>(
+                        <div key={c.name} style={{flex:'1 1 140px',background:'var(--surface2)',borderRadius:8,padding:'10px 14px'}}>
+                          <div style={{fontSize:11,color:'var(--muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:4}}>{c.name}</div>
+                          <div style={{fontWeight:700,fontSize:16,color:'var(--red)'}}>−{fmt(c.value)}</div>
+                          <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{((c.value/totalExp)*100).toFixed(0)}% of total</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
             </div>
             )}
@@ -1709,8 +1755,19 @@ export default function Dashboard({ session }) {
                       </div>
                     </div>
                   </div>
+                  <div className="chart-card" style={{marginBottom:16}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                      <div style={{fontSize:13,fontWeight:600}}>Your UTR (Unique Taxpayer Reference)</div>
+                      {taxUTR&&<span style={{fontSize:11,color:'var(--green)'}}>✓ Saved</span>}
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <input className="form-input" style={{margin:0,flex:1,fontFamily:'monospace',letterSpacing:'0.08em'}} placeholder="10-digit UTR e.g. 1234567890" value={taxUTR} onChange={e=>setTaxUTR(e.target.value)} maxLength={10}/>
+                      <button className="btn sm primary" onClick={()=>{ try { localStorage.setItem(TAX_UTR_KEY, taxUTR) } catch {} }}>Save</button>
+                    </div>
+                    <div style={{fontSize:11,color:'var(--muted)',marginTop:6}}>Your UTR is shown on previous tax returns and HMRC correspondence. Stored locally, never sent anywhere.</div>
+                  </div>
                   <div style={{fontSize:12,color:'var(--muted)',background:'var(--surface2)',padding:'10px 14px',borderRadius:'var(--radius)'}}>
-                    ⚠️ This is an estimate only, based on sole trader tax rates for {selectedTaxYear}/{selectedTaxYear+1}. It does not account for other income sources, trading allowance, or relief claims. Consult a qualified accountant for your Self Assessment return.
+                    ⚠️ Estimate only, based on sole trader rates for {selectedTaxYear}/{selectedTaxYear+1}. Does not account for other income, trading allowance, or other reliefs. Always confirm with a qualified accountant before submitting your Self Assessment.
                   </div>
                 </div>
               )
@@ -1783,6 +1840,7 @@ export default function Dashboard({ session }) {
                 {(()=>{const n=items.filter(i=>i.status==='sold'&&i.payout_status==='pending').length;return n>0?<span style={{marginLeft:4,background:'#fef3c7',color:'#d97706',borderRadius:10,padding:'1px 6px',fontSize:11}}>{n}</span>:null})()}
               </button>
               <button className={`type-btn ${toolTab==='invoice'?'active':''}`} onClick={()=>switchToolTab('invoice')}>Invoice Generator</button>
+              <button className={`type-btn ${toolTab==='sku'?'active':''}`} onClick={()=>switchToolTab('sku')}>SKU Lookup</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
             {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
@@ -1841,7 +1899,8 @@ export default function Dashboard({ session }) {
               const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
               const bizDetails = {...blankBiz,...invBiz}
               return (
-                <div style={{maxWidth:720}}>
+                <div style={{maxWidth:700}}>
+                  {/* Business details */}
                   <div className="chart-card" style={{marginBottom:16}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:editingBiz?16:0}}>
                       <div className="chart-title" style={{margin:0}}>Your Business Details</div>
@@ -1859,110 +1918,176 @@ export default function Dashboard({ session }) {
                         <div className="form-actions"><button className="btn primary" onClick={saveBizDetails}>Save details</button></div>
                       </div>
                     ):(
-                      bizDetails.name?<div style={{fontSize:13,color:'var(--muted)',marginTop:8}}>{bizDetails.name} · {bizDetails.address} · {bizDetails.email}</div>:
-                      <div style={{fontSize:13,color:'var(--muted)',marginTop:8}}>No business details saved yet — click Edit to add them.</div>
+                      bizDetails.name
+                        ? <div style={{fontSize:13,color:'var(--muted)',marginTop:8}}>{bizDetails.name}{bizDetails.address?` · ${bizDetails.address}`:''}{bizDetails.email?` · ${bizDetails.email}`:''}</div>
+                        : <div style={{fontSize:13,color:'var(--muted)',marginTop:8}}>No business details saved — click Edit to add them.</div>
                     )}
                   </div>
-                  <div id="invoice-print" className="chart-card" style={{marginBottom:16}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24,flexWrap:'wrap',gap:12}}>
-                      <div>
-                        <div style={{fontSize:22,fontWeight:800,color:'var(--green)',marginBottom:4}}>INVOICE</div>
-                        {bizDetails.name&&<div style={{fontWeight:600,fontSize:15}}>{bizDetails.name}</div>}
-                        {bizDetails.address&&<div style={{fontSize:12,color:'var(--muted)'}}>{bizDetails.address}</div>}
-                        {bizDetails.email&&<div style={{fontSize:12,color:'var(--muted)'}}>{bizDetails.email}</div>}
-                        {bizDetails.vatNumber&&<div style={{fontSize:12,color:'var(--muted)'}}>VAT: {bizDetails.vatNumber}</div>}
+
+                  {/* Invoice form */}
+                  <div className="chart-card" style={{marginBottom:16}}>
+                    <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
+                      <div className="form-group" style={{margin:0,flex:'0 0 120px'}}>
+                        <label className="form-label">Invoice #</label>
+                        <input className="form-input" value={invNumber} onChange={e=>setInvNumber(e.target.value)}/>
                       </div>
-                      <div style={{textAlign:'right'}}>
-                        <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginBottom:4}}>
-                          <span style={{color:'var(--muted)',fontSize:13}}>Invoice #</span>
-                          <input style={{width:80,textAlign:'right',fontWeight:700,fontSize:14,border:'1px solid var(--border)',borderRadius:4,padding:'2px 6px'}} value={invNumber} onChange={e=>setInvNumber(e.target.value)}/>
-                        </div>
-                        <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginBottom:4}}>
-                          <span style={{color:'var(--muted)',fontSize:13}}>Date</span>
-                          <input type="date" style={{fontSize:13,border:'1px solid var(--border)',borderRadius:4,padding:'2px 6px'}} value={invDate} onChange={e=>setInvDate(e.target.value)}/>
-                        </div>
-                        <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-                          <span style={{color:'var(--muted)',fontSize:13}}>Due date</span>
-                          <input type="date" style={{fontSize:13,border:'1px solid var(--border)',borderRadius:4,padding:'2px 6px'}} value={invDueDate} onChange={e=>setInvDueDate(e.target.value)}/>
-                        </div>
+                      <div className="form-group" style={{margin:0,flex:'1 1 150px'}}>
+                        <label className="form-label">Invoice date</label>
+                        <input className="form-input" type="date" value={invDate} onChange={e=>setInvDate(e.target.value)}/>
+                      </div>
+                      <div className="form-group" style={{margin:0,flex:'1 1 150px'}}>
+                        <label className="form-label">Due date</label>
+                        <input className="form-input" type="date" value={invDueDate} onChange={e=>setInvDueDate(e.target.value)}/>
                       </div>
                     </div>
-                    <div style={{marginBottom:20}}>
-                      <div style={{fontSize:11,fontWeight:600,color:'var(--muted)',textTransform:'uppercase',marginBottom:8}}>Bill to</div>
-                      <input className="form-input" style={{marginBottom:6}} placeholder="Customer name" value={invCustomer.name} onChange={e=>setInvCustomer(c=>({...c,name:e.target.value}))}/>
-                      <input className="form-input" style={{marginBottom:6}} placeholder="Address" value={invCustomer.address} onChange={e=>setInvCustomer(c=>({...c,address:e.target.value}))}/>
-                      <input className="form-input" type="email" placeholder="Email" value={invCustomer.email} onChange={e=>setInvCustomer(c=>({...c,email:e.target.value}))}/>
+
+                    <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em',marginBottom:10}}>Bill to</div>
+                    <div className="form-grid" style={{marginBottom:20}}>
+                      <div className="form-group"><label className="form-label">Customer name</label><input className="form-input" placeholder="John Smith" value={invCustomer.name} onChange={e=>setInvCustomer(c=>({...c,name:e.target.value}))}/></div>
+                      <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" placeholder="john@example.com" value={invCustomer.email} onChange={e=>setInvCustomer(c=>({...c,email:e.target.value}))}/></div>
+                      <div className="form-group full"><label className="form-label">Address</label><input className="form-input" placeholder="123 High St, London, SW1A 1AA" value={invCustomer.address} onChange={e=>setInvCustomer(c=>({...c,address:e.target.value}))}/></div>
                     </div>
-                    <table style={{width:'100%',borderCollapse:'collapse',marginBottom:16}}>
-                      <thead><tr style={{borderBottom:'2px solid var(--border)',fontSize:12,color:'var(--muted)',textTransform:'uppercase'}}>
-                        <th style={{textAlign:'left',padding:'6px 0',fontWeight:600}}>Description</th>
-                        <th style={{textAlign:'right',padding:'6px 8px',fontWeight:600,width:60}}>Qty</th>
-                        <th style={{textAlign:'right',padding:'6px 8px',fontWeight:600,width:90}}>Unit price</th>
-                        <th style={{textAlign:'right',padding:'6px 0',fontWeight:600,width:90}}>Total</th>
+
+                    <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em',marginBottom:10}}>Line items</div>
+                    <table style={{width:'100%',borderCollapse:'collapse',marginBottom:10}}>
+                      <thead><tr style={{borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--muted)',textTransform:'uppercase'}}>
+                        <th style={{textAlign:'left',padding:'6px 0',fontWeight:700,letterSpacing:'0.05em'}}>Description</th>
+                        <th style={{textAlign:'right',padding:'6px 8px',fontWeight:700,width:60,letterSpacing:'0.05em'}}>Qty</th>
+                        <th style={{textAlign:'right',padding:'6px 8px',fontWeight:700,width:100,letterSpacing:'0.05em'}}>Unit (£)</th>
+                        <th style={{textAlign:'right',padding:'6px 0',fontWeight:700,width:90,letterSpacing:'0.05em'}}>Total</th>
                         <th style={{width:32}}></th>
                       </tr></thead>
                       <tbody>
                         {invLines.map((l,i)=>(
                           <tr key={i} style={{borderBottom:'1px solid var(--border)'}}>
-                            <td style={{padding:'8px 0'}}><input className="form-input" style={{margin:0}} placeholder="Item description" value={l.description} onChange={e=>updateInvLine(i,'description',e.target.value)}/></td>
-                            <td style={{padding:'8px 8px'}}><input className="form-input" style={{margin:0,textAlign:'right',width:55}} type="number" min="1" value={l.qty} onChange={e=>updateInvLine(i,'qty',e.target.value)}/></td>
-                            <td style={{padding:'8px 8px'}}><input className="form-input" style={{margin:0,textAlign:'right',width:80}} type="number" step="0.01" min="0" placeholder="0.00" value={l.unitPrice} onChange={e=>updateInvLine(i,'unitPrice',e.target.value)}/></td>
-                            <td style={{padding:'8px 0',textAlign:'right',fontWeight:500}}>{fmt((parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0))}</td>
-                            <td style={{padding:'8px 0',textAlign:'right'}}>{invLines.length>1&&<button className="btn sm danger" onClick={()=>removeInvLine(i)} style={{padding:'2px 6px',fontSize:11}}>✕</button>}</td>
+                            <td style={{padding:'6px 0'}}><input className="form-input" style={{margin:0}} placeholder="Item or service description" value={l.description} onChange={e=>updateInvLine(i,'description',e.target.value)}/></td>
+                            <td style={{padding:'6px 8px'}}><input className="form-input" style={{margin:0,textAlign:'right',width:52}} type="number" min="1" value={l.qty} onChange={e=>updateInvLine(i,'qty',e.target.value)}/></td>
+                            <td style={{padding:'6px 8px'}}><input className="form-input" style={{margin:0,textAlign:'right',width:80}} type="number" step="0.01" min="0" placeholder="0.00" value={l.unitPrice} onChange={e=>updateInvLine(i,'unitPrice',e.target.value)}/></td>
+                            <td style={{padding:'6px 0',textAlign:'right',fontWeight:600,fontSize:14}}>{fmt((parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0))}</td>
+                            <td style={{padding:'6px 0',textAlign:'right'}}>{invLines.length>1&&<button onClick={()=>removeInvLine(i)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:16,lineHeight:1}}>✕</button>}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    <button className="btn sm" onClick={addInvLine} style={{marginBottom:16}}>+ Add line</button>
-                    <div style={{display:'flex',justifyContent:'flex-end',marginBottom:16}}>
-                      <div style={{width:220}}>
-                        <div style={{display:'flex',justifyContent:'space-between',padding:'4px 0',fontSize:14,fontWeight:700,borderTop:'2px solid var(--border)',marginTop:4}}><span>Total</span><span>{fmt(invTotal)}</span></div>
+                    <button className="btn sm" onClick={addInvLine} style={{marginBottom:20}}>+ Add line</button>
+
+                    <div style={{display:'flex',justifyContent:'flex-end',marginBottom:20}}>
+                      <div style={{width:240,borderTop:'2px solid var(--border)',paddingTop:12}}>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:700}}><span>Total</span><span>{fmt(invTotal)}</span></div>
                       </div>
                     </div>
-                    {(invNotes||true)&&<div><div style={{fontSize:11,fontWeight:600,color:'var(--muted)',textTransform:'uppercase',marginBottom:4}}>Notes</div><textarea className="form-input" rows={2} placeholder="Payment terms, bank details, thank you note..." value={invNotes} onChange={e=>setInvNotes(e.target.value)}/></div>}
+
+                    <div className="form-group" style={{margin:0}}>
+                      <label className="form-label">Notes (payment terms, bank details, etc.)</label>
+                      <textarea className="form-input" rows={3} placeholder="e.g. Bank: Monzo · Sort: 00-00-00 · Acc: 12345678 · Payment within 14 days" value={invNotes} onChange={e=>setInvNotes(e.target.value)}/>
+                    </div>
                   </div>
+
                   <div style={{display:'flex',gap:8}}>
-                    <button className="btn primary" onClick={printInvoice}>🖨️ Print / Save as PDF</button>
-                    <button className="btn" onClick={()=>{setInvCustomer({name:'',address:'',email:''});setInvLines([{description:'',qty:'1',unitPrice:''}]);setInvNotes('')}}>Clear</button>
+                    <button className="btn primary" onClick={printInvoice}>🖨️ Preview &amp; Print</button>
+                    <button className="btn" onClick={()=>{setInvCustomer({name:'',address:'',email:''});setInvLines([{description:'',qty:'1',unitPrice:''}]);setInvNotes('')}}>Clear form</button>
                   </div>
+                  <div style={{fontSize:12,color:'var(--muted)',marginTop:10}}>Opens a print-ready invoice in a new tab — use your browser's "Save as PDF" option to export.</div>
                 </div>
               )
             })()}
+            {toolTab==='sku'&&(
+              <div style={{maxWidth:680}}>
+                <div className="chart-card" style={{marginBottom:20}}>
+                  <div className="chart-title" style={{marginBottom:4}}>SKU / Product Lookup</div>
+                  <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Enter a SKU, model name, or style code to look up product details and pricing.</div>
+                  <div style={{display:'flex',gap:8}}>
+                    <input className="form-input" style={{flex:1,margin:0}} placeholder="e.g. DZ5485-612 or Air Jordan 4 Red Thunder" value={skuQuery} onChange={e=>setSkuQuery(e.target.value)} onKeyDown={e=>e.key==='Enter'&&lookupSKU()}/>
+                    <button className="btn primary" onClick={lookupSKU} disabled={skuLoading||!skuQuery.trim()}>{skuLoading?'Searching...':'Search'}</button>
+                  </div>
+                </div>
+                {skuLoading&&<div className="loading">Looking up product…</div>}
+                {skuError&&<div style={{background:'#fffbeb',border:'1px solid #f59e0b',borderRadius:'var(--radius)',padding:'10px 14px',fontSize:13,color:'#92400e',marginBottom:16}}>{skuError}</div>}
+                {skuResults&&skuResults.length>0&&(
+                  <div>
+                    <div style={{fontWeight:600,fontSize:13,color:'var(--muted)',marginBottom:12}}>{skuResults.length} result{skuResults.length!==1?'s':''} found</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                      {skuResults.map(r=>(
+                        <div key={r.id} className="chart-card" style={{display:'flex',gap:16,alignItems:'flex-start',padding:'16px'}}>
+                          {r.media?.imageUrl&&<img src={r.media.imageUrl} alt={r.title} style={{width:80,height:80,objectFit:'contain',borderRadius:8,background:'#f8fafc',flexShrink:0}}/>}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{r.title}</div>
+                            <div style={{fontSize:12,color:'var(--muted)',marginBottom:8}}>{[r.brand,r.colorway,r.styleId].filter(Boolean).join(' · ')}</div>
+                            <div style={{display:'flex',gap:16,flexWrap:'wrap',marginBottom:10}}>
+                              {r.retailPrice&&<div><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em'}}>Retail</div><div style={{fontWeight:600,fontSize:14}}>{fmt(r.retailPrice)}</div></div>}
+                              {r.year&&<div><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em'}}>Year</div><div style={{fontWeight:600,fontSize:14}}>{r.year}</div></div>}
+                              {r.styleId&&<div><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em'}}>SKU</div><div style={{fontWeight:600,fontSize:14}}>{r.styleId}</div></div>}
+                            </div>
+                            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                              {r.links?.stockX&&<a href={r.links.stockX} target="_blank" rel="noopener noreferrer" className="btn sm" style={{textDecoration:'none',fontSize:11}}>StockX ↗</a>}
+                              <a href={`https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent((r.title||'')+(r.styleId?` ${r.styleId}`:''))}`} target="_blank" rel="noopener noreferrer" className="btn sm" style={{textDecoration:'none',fontSize:11}}>eBay ↗</a>
+                              <a href={`https://www.google.com/search?q=${encodeURIComponent((r.title||'')+' price UK')}`} target="_blank" rel="noopener noreferrer" className="btn sm" style={{textDecoration:'none',fontSize:11}}>Google ↗</a>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {skuResults&&skuResults.length===0&&!skuError&&(
+                  <div>
+                    <div className="empty" style={{marginBottom:20}}><div className="empty-icon">🔍</div><div className="empty-title">No results found</div><div style={{marginTop:6}}>Try a different SKU or product name</div></div>
+                  </div>
+                )}
+                {(skuResults!==null||skuError)&&(
+                  <div className="chart-card" style={{marginTop:16}}>
+                    <div style={{fontWeight:600,fontSize:13,marginBottom:12}}>Search manually on platforms</div>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                      {[
+                        {label:'StockX',url:`https://www.stockx.com/search?s=${encodeURIComponent(skuQuery)}`},
+                        {label:'GOAT',url:`https://www.goat.com/search?query=${encodeURIComponent(skuQuery)}`},
+                        {label:'Laced',url:`https://www.laced.com/products?q=${encodeURIComponent(skuQuery)}`},
+                        {label:'eBay',url:`https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(skuQuery)}`},
+                        {label:'Alias',url:`https://www.alias.co.uk/search?q=${encodeURIComponent(skuQuery)}`},
+                        {label:'Google',url:`https://www.google.com/search?q=${encodeURIComponent(skuQuery+' price UK')}`},
+                      ].map(l=><a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" className="btn sm" style={{textDecoration:'none'}}>{l.label} ↗</a>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {page==='expenses'&&(
           <div>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24,flexWrap:'wrap',gap:12}}>
-              <div className="page-header" style={{margin:0}}><h1 className="page-title">Expenses</h1><p className="page-subtitle">Track business costs for tax purposes</p></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+              <div><h1 className="page-title">Expenses</h1><p className="page-subtitle">Track business costs for tax purposes</p></div>
               <button className="btn primary" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add expense</button>
             </div>
             {showExpenseForm&&(
-              <div className="chart-card" style={{marginBottom:20,maxWidth:540}}>
-                <div className="chart-title" style={{marginBottom:16}}>New expense</div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Date</label>
-                    <input className="form-input" type="date" value={expenseForm.date} onChange={e=>setExpenseForm(f=>({...f,date:e.target.value}))}/>
+              <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowExpenseForm(false)}>
+                <div className="modal" style={{maxWidth:480}}>
+                  <div className="modal-title">New expense</div>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label className="form-label">Date</label>
+                      <input className="form-input" type="date" value={expenseForm.date} onChange={e=>setExpenseForm(f=>({...f,date:e.target.value}))}/>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Amount (£)</label>
+                      <input className="form-input" type="number" step="0.01" min="0" placeholder="0.00" value={expenseForm.amount} onChange={e=>setExpenseForm(f=>({...f,amount:e.target.value}))} autoFocus/>
+                    </div>
+                    <div className="form-group full">
+                      <label className="form-label">Category</label>
+                      <select className="form-input" value={expenseForm.category} onChange={e=>setExpenseForm(f=>({...f,category:e.target.value}))}>
+                        {EXPENSE_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group full">
+                      <label className="form-label">Description</label>
+                      <input className="form-input" placeholder="e.g. Bubble wrap rolls x 200" value={expenseForm.description} onChange={e=>setExpenseForm(f=>({...f,description:e.target.value}))}/>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Amount (£)</label>
-                    <input className="form-input" type="number" step="0.01" min="0" placeholder="0.00" value={expenseForm.amount} onChange={e=>setExpenseForm(f=>({...f,amount:e.target.value}))}/>
+                  <div className="form-actions">
+                    <button className="btn" onClick={()=>setShowExpenseForm(false)}>Cancel</button>
+                    <button className="btn primary" onClick={saveExpense} disabled={expenseSaving||!expenseForm.date||!expenseForm.amount}>{expenseSaving?'Saving...':'Save expense'}</button>
                   </div>
-                  <div className="form-group full">
-                    <label className="form-label">Category</label>
-                    <select className="form-input" value={expenseForm.category} onChange={e=>setExpenseForm(f=>({...f,category:e.target.value}))}>
-                      {EXPENSE_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group full">
-                    <label className="form-label">Description</label>
-                    <input className="form-input" placeholder="e.g. Bubble wrap rolls x 200" value={expenseForm.description} onChange={e=>setExpenseForm(f=>({...f,description:e.target.value}))}/>
-                  </div>
-                </div>
-                <div className="form-actions">
-                  <button className="btn" onClick={()=>setShowExpenseForm(false)}>Cancel</button>
-                  <button className="btn primary" onClick={saveExpense} disabled={expenseSaving||!expenseForm.date||!expenseForm.amount}>{expenseSaving?'Saving...':'Save expense'}</button>
                 </div>
               </div>
             )}
@@ -1999,7 +2124,7 @@ export default function Dashboard({ session }) {
                           <td style={{padding:'10px 8px'}}><span style={{background:'var(--surface2)',borderRadius:4,padding:'2px 8px',fontSize:11}}>{e.category}</span></td>
                           <td style={{padding:'10px 8px',color:'var(--text)'}}>{e.description||'—'}</td>
                           <td style={{padding:'10px 0 10px 8px',textAlign:'right',fontWeight:600,color:'var(--red)'}}>−{fmt(e.amount)}</td>
-                          <td style={{padding:'10px 0 10px 8px',textAlign:'right'}}><button className="btn sm danger" onClick={()=>deleteExpense(e.id)}>Del</button></td>
+                          <td style={{padding:'10px 0 10px 8px',textAlign:'right'}}><button className="btn sm danger" onClick={()=>deleteExpense(e.id)}>Delete</button></td>
                         </tr>
                       ))}
                     </tbody>
