@@ -67,6 +67,7 @@ const EMPTY_FORM = {
   item_name: '', description: '',
   topps_type: '', topps_card_name: '', topps_set: '', topps_year: '', topps_card_number: '', topps_parallel: '', topps_print_run: '', topps_sealed_type: '', topps_product_name: '',
   purchase_platform: '', purchase_date: '', notes: '', long_term: false,
+  shipping_cost: '', target_price: '',
   units: [{ ...EMPTY_UNIT }]
 }
 
@@ -659,6 +660,8 @@ export default function Dashboard({ session }) {
   const [sellFeeplatform, setSellFeeplatform] = useState(null)
   const [customFeeRate, setCustomFeeRate] = useState('')
   const [payoutStatus, setPayoutStatus] = useState('pending')
+  const [shippingFee, setShippingFee] = useState('')
+  const [stockTab, setStockTab] = useState('inventory')
   const [form, setForm] = useState(EMPTY_FORM)
   const [search, setSearch] = useState('')
   const [filterBrand, setFilterBrand] = useState('')
@@ -705,6 +708,7 @@ export default function Dashboard({ session }) {
     const base = {
       category: form.category, brand, style, colourway, sku,
       item_condition: form.item_condition || 'Brand New',
+      target_price: parseFloat(form.target_price) || null,
       purchase_platform: form.purchase_platform, purchase_date: form.purchase_date || null, notes: form.notes,
       pokemon_type: form.pokemon_type || null, card_name: form.card_name || null, set_name: form.set_name || null,
       card_number: form.card_number || null, condition: form.condition || null, graded: form.graded || false,
@@ -774,7 +778,7 @@ export default function Dashboard({ session }) {
           const q = u2.quantity === '10+' ? (parseInt(u2.custom_qty)||1) : (parseInt(u2.quantity)||1)
           return s + q
         }, 0)
-        const batchCost = parseFloat(form.batch_total_cost) || 0
+        const batchCost = (parseFloat(form.batch_total_cost) || 0) + (parseFloat(form.shipping_cost) || 0)
         const pricePerUnit = batchCost > 0 && totalUnits > 0
           ? parseFloat((batchCost / totalUnits).toFixed(2))
           : parseFloat(u.purchase_price) || 0
@@ -793,7 +797,7 @@ export default function Dashboard({ session }) {
     const totalCost = parseFloat(batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
     const sameSize = batchUnits.filter(u => u.size === item.size)
     const qty = sameSize.length > 1 ? sameSize.length : 1
-    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
+    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, target_price: item.target_price||'', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
     setEditItem(item); setShowAdd(true)
   }
 
@@ -871,23 +875,52 @@ export default function Dashboard({ session }) {
     setSaving(true)
     const feeAmt = calcFee(salePrice, sellFeeplatform, customFeeRate)
     const platformName = sellFeeplatform ? sellFeeplatform.name : sellingPlatform
-    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, payout_status: payoutStatus, sold_at: new Date().toISOString() }
+    const shipAmt = parseFloat(shippingFee) || null
+    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, shipping_fee: shipAmt, payout_status: payoutStatus, sold_at: new Date().toISOString() }
     if (sellItem._bulkIds) {
       const idsToSell = sellItem._bulkIds
       const perUnitFee = parseFloat((feeAmt / idsToSell.length).toFixed(2))
+      const perUnitShip = shipAmt ? parseFloat((shipAmt / idsToSell.length).toFixed(2)) : null
       for (const id of idsToSell) {
-        await supabase.from('stock').update({ ...updatePayload, fee_amount: perUnitFee || null }).eq('id', id)
+        await supabase.from('stock').update({ ...updatePayload, fee_amount: perUnitFee || null, shipping_fee: perUnitShip }).eq('id', id)
       }
     } else {
       await supabase.from('stock').update(updatePayload).eq('id', sellItem.id)
     }
-    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate(''); setPayoutStatus('pending')
+    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate(''); setPayoutStatus('pending'); setShippingFee('')
     fetchItems()
     if (batchModal) {
       const ids = sellItem._bulkIds || [sellItem.id]
       const updated = batchModal.units.map(u => ids.includes(u.id) ? { ...u, status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt } : u)
       setBatchModal({ ...batchModal, units: updated })
     }
+  }
+
+  function exportCSV() {
+    const headers = ['Category','Brand','Style','Colourway','SKU','Size','Condition','Status','Purchase Date','Purchase Platform','Cost (£)','Target Price (£)','Sale Date','Sale Price (£)','Platform Fee (£)','Postage (£)','Net Proceeds (£)','Profit (£)','Payout Status','Notes']
+    const rows = items.map(i => {
+      const fee = i.fee_amount || 0
+      const ship = i.shipping_fee || 0
+      const net = i.status === 'sold' ? ((i.sale_price||0) - fee - ship) : ''
+      const profit = i.status === 'sold' ? (Number(net) - (i.purchase_price||0)) : ''
+      return [
+        i.category||'', i.brand||'', i.style||'', i.colourway||'', i.sku||'',
+        i.size||'', i.condition||i.item_condition||'', i.status||'',
+        i.purchase_date||'', i.purchase_platform||'',
+        i.purchase_price||'', i.target_price||'',
+        i.sold_at ? new Date(i.sold_at).toLocaleDateString('en-GB') : '',
+        i.sale_price||'', fee||'', ship||'',
+        typeof net === 'number' ? net.toFixed(2) : '',
+        typeof profit === 'number' ? profit.toFixed(2) : '',
+        i.payout_status||'', i.notes||''
+      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')
+    })
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `stocktrack-${new Date().toISOString().slice(0,10)}.csv`
+    a.click(); URL.revokeObjectURL(url)
   }
 
   const batches = useMemo(() => {
@@ -947,11 +980,12 @@ export default function Dashboard({ session }) {
     const stockValue = inStock.reduce((s, i) => s + (i.purchase_price || 0), 0)
     const revenue = sold.reduce((s, i) => s + (i.sale_price || 0), 0)
     const soldCost = sold.reduce((s, i) => s + (i.purchase_price || 0), 0)
-    const pl = revenue - soldCost
+    const soldFees = sold.reduce((s, i) => s + (i.fee_amount || 0) + (i.shipping_fee || 0), 0)
+    const pl = revenue - soldCost - soldFees
     const now = new Date()
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const monthSold = sold.filter(i => getMonthKey(i.sold_at) === thisMonth)
-    const monthPL = monthSold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0)), 0)
+    const monthPL = monthSold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0) - (i.fee_amount || 0) - (i.shipping_fee || 0)), 0)
     return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl, monthPL }
   }, [items])
 
@@ -982,7 +1016,7 @@ export default function Dashboard({ session }) {
     let pl = 0, revenue = 0, cost = 0
     if (metricsSources.reseller) {
       const sold = items.filter(i => i.status === 'sold' && getMonthKey(i.sold_at) === key)
-      const soldPL = sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)),0)
+      const soldPL = sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)),0)
       const soldRev = sold.reduce((s,i)=>s+(i.sale_price||0),0)
       const soldCost = sold.reduce((s,i)=>s+(i.purchase_price||0),0)
       pl += soldPL; revenue += soldRev; cost += soldCost
@@ -1015,10 +1049,10 @@ export default function Dashboard({ session }) {
     }
     return Object.entries(map).map(([name,value])=>({name,value}))
   }, [items, breaks, metricsSources])
-  const brandData = useMemo(() => { const map = {}; items.filter(i=>i.status==='sold').forEach(i => { const b=i.brand||'Unknown'; if(!map[b])map[b]=0; map[b]+=(i.sale_price||0)-(i.purchase_price||0) }); return Object.entries(map).map(([brand,pl])=>({brand,pl:parseFloat(pl.toFixed(2))})).sort((a,b)=>b.pl-a.pl).slice(0,8) }, [items])
-  const avgPLData = useMemo(() => getLast(6).map(({ key, label }) => { const sold = items.filter(i=>i.status==='sold'&&getMonthKey(i.sold_at)===key); const avg = sold.length ? sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)),0)/sold.length : 0; return { label, avg: parseFloat(avg.toFixed(2)) } }), [items])
+  const brandData = useMemo(() => { const map = {}; items.filter(i=>i.status==='sold').forEach(i => { const b=i.brand||'Unknown'; if(!map[b])map[b]=0; map[b]+=(i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0) }); return Object.entries(map).map(([brand,pl])=>({brand,pl:parseFloat(pl.toFixed(2))})).sort((a,b)=>b.pl-a.pl).slice(0,8) }, [items])
+  const avgPLData = useMemo(() => getLast(6).map(({ key, label }) => { const sold = items.filter(i=>i.status==='sold'&&getMonthKey(i.sold_at)===key); const avg = sold.length ? sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)),0)/sold.length : 0; return { label, avg: parseFloat(avg.toFixed(2)) } }), [items])
   const sellThroughData = useMemo(() => { const map = {}; items.forEach(i => { const cat=i.category||'Other'; if(!map[cat])map[cat]={total:0,sold:0}; map[cat].total++; if(i.status==='sold')map[cat].sold++ }); return Object.entries(map).map(([cat,{total,sold}])=>({cat,rate:parseFloat(((sold/total)*100).toFixed(1))})) }, [items])
-  const bestWorst = useMemo(() => { const sold = items.filter(i=>i.status==='sold'&&i.sale_price!=null).map(i=>({...i,pl:(i.sale_price||0)-(i.purchase_price||0)})).sort((a,b)=>b.pl-a.pl); return { best: sold.slice(0,5), worst: sold.slice(-5).reverse() } }, [items])
+  const bestWorst = useMemo(() => { const sold = items.filter(i=>i.status==='sold'&&i.sale_price!=null).map(i=>({...i,pl:(i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)})).sort((a,b)=>b.pl-a.pl); return { best: sold.slice(0,5), worst: sold.slice(-5).reverse() } }, [items])
 
   const username = session?.user?.email?.split('@')[0] || 'there'
 
@@ -1097,6 +1131,13 @@ export default function Dashboard({ session }) {
     fetchBreaks()
   }
 
+  async function markPayoutPaid(ids) {
+    for (const id of ids) {
+      await supabase.from('stock').update({ payout_status: 'paid' }).eq('id', id)
+    }
+    fetchItems()
+  }
+
   function openEditBreak(b) {
     setBreakForm({
       type: b.type||'break', name: b.name||'', cost: b.cost||'', spots_total: b.spots_total||'', spots_sold: b.spots_sold||'', spot_price: b.spot_price||'',
@@ -1155,6 +1196,8 @@ export default function Dashboard({ session }) {
     let brand = '', style = '', colourway = '', sku = ''
     if (collectorForm.category === 'Sneakers') { brand = collectorForm.brand; style = collectorForm.style; colourway = collectorForm.colourway; sku = collectorForm.sku }
     else if (collectorForm.category === 'Pokémon') { brand = 'Pokémon'; style = collectorForm.pokemon_type === 'singles' ? collectorForm.card_name : collectorForm.product_name; colourway = collectorForm.set_name; sku = collectorForm.card_number }
+    else if (collectorForm.category === 'Topps') { brand = 'Topps'; style = collectorForm.topps_type === 'singles' ? collectorForm.topps_card_name : collectorForm.topps_product_name; colourway = collectorForm.topps_set; sku = collectorForm.topps_card_number }
+    else if (collectorForm.category === 'Lego') { brand = 'Lego'; style = collectorForm.lego_set_name; colourway = collectorForm.theme; sku = collectorForm.set_number }
     else if (collectorForm.category === 'Clothing') { brand = collectorForm.clothing_brand; style = collectorForm.item; colourway = collectorForm.colour }
     else if (collectorForm.category === 'Miscellaneous') { brand = collectorForm.item_name; style = collectorForm.description }
     const base = {
@@ -1167,6 +1210,13 @@ export default function Dashboard({ session }) {
       card_number: collectorForm.card_number || null, graded: collectorForm.graded || false,
       grading_company: collectorForm.grading_company || null, grade: collectorForm.grade || null,
       product_name: collectorForm.product_name || null, pokemon_sealed_type: collectorForm.pokemon_sealed_type || null,
+      topps_type: collectorForm.topps_type || null, topps_card_name: collectorForm.topps_card_name || null,
+      topps_set: collectorForm.topps_set || null, topps_year: collectorForm.topps_year || null,
+      topps_card_number: collectorForm.topps_card_number || null, topps_parallel: collectorForm.topps_parallel || null,
+      topps_print_run: collectorForm.topps_print_run || null, topps_sealed_type: collectorForm.topps_sealed_type || null,
+      topps_product_name: collectorForm.topps_product_name || null,
+      lego_set_name: collectorForm.lego_set_name || null, set_number: collectorForm.set_number || null,
+      theme: collectorForm.theme || null, lego_condition: collectorForm.lego_condition || null,
       clothing_brand: collectorForm.clothing_brand || null, item: collectorForm.item || null, colour: collectorForm.colour || null,
       item_name: collectorForm.item_name || null, description: collectorForm.description || null,
       batch_id: batchId, user_id: session.user.id
@@ -1196,7 +1246,7 @@ export default function Dashboard({ session }) {
   }
 
   function openEditCollector(item) {
-    setCollectorForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', clothing_brand: item.clothing_brand||'', item: item.item||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', batch_total_cost: item.purchase_price||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: '1', custom_qty: '' }] })
+    setCollectorForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', batch_total_cost: item.purchase_price||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: '1', custom_qty: '' }] })
     setEditCollectorItem(item); setShowCollectorAdd(true)
   }
 
@@ -1290,88 +1340,156 @@ export default function Dashboard({ session }) {
               <div className="stat-card"><div className="stat-label">Revenue</div><div className="stat-value">{fmt(stats.revenue)}</div></div>
               <div className="stat-card"><div className="stat-label">Net P&L</div><div className={`stat-value ${stats.pl>0?'pos':stats.pl<0?'neg':''}`}>{stats.pl>=0?'+':''}{fmt(stats.pl)}</div></div>
             </div>
-            <div className="filters">
-              <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180}}/>
-              <select className="filter-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}><option value="">All categories</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select>
-              <select className="filter-select" value={filterBrand} onChange={e=>setFilterBrand(e.target.value)}><option value="">All brands</option>{[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=><option key={b} value={b}>{b}</option>)}</select>
-              <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="stale">⚠ Stale ({STALE_DAYS}+ days)</option><option value="long_term">📌 Long-term holds</option></select>
-              <select className="filter-select" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="brand">Brand A–Z</option>
-                <option value="cost_high">Cost: high–low</option>
-                <option value="cost_low">Cost: low–high</option>
-                <option value="stale">Longest in stock</option>
-              </select>
-              {(search||filterBrand||filterStatus||filterCategory)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('')}}>Clear</button>}
-              <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
+            <div style={{display:'flex',gap:8,marginBottom:16}}>
+              <button className={`type-btn ${stockTab==='inventory'?'active':''}`} onClick={()=>setStockTab('inventory')}>
+                Inventory <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{stats.inStock}</span>
+              </button>
+              <button className={`type-btn ${stockTab==='history'?'active':''}`} onClick={()=>setStockTab('history')}>
+                Sold History <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{stats.sold}</span>
+              </button>
             </div>
-            {loading?<div className="loading">Loading stock...</div>:filteredBatches.length===0?(
-              <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">{items.length===0?'No stock yet':'No results'}</div><div style={{marginTop:6}}>{items.length===0?'Add your first item to get started':'Try adjusting your filters'}</div></div>
-            ):(
-              <div className="card-grid">
-                {filteredBatches.map(batch=>{
-                  const inStockUnits=batch.units.filter(u=>u.status==='in_stock')
-                  const soldUnits=batch.units.filter(u=>u.status==='sold')
-                  const totalCost=inStockUnits.reduce((s,u)=>s+(u.purchase_price||0),0)
-                  const avgCost=inStockUnits.length?totalCost/inStockUnits.length:0
-                  const totalPL=soldUnits.reduce((s,u)=>s+((u.sale_price||0)-(u.purchase_price||0)),0)
-                  const allSold=inStockUnits.length===0
-                  const isSingle=batch.units.length===1
-                  return (
-                    <div key={batch.key} className="item-card" onClick={()=>setBatchModal(batch)} style={{cursor:'pointer'}}>
-                      <div className="item-card-header">
-                        <div className="item-card-category">{batch.category||'Uncategorised'}</div>
-                        <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                          {(()=>{
-                            const now = new Date()
-                            const isLongTerm = batch.units.some(u => u.long_term)
-                            const daysInStock = batch.units.reduce((max, u) => {
-                              if (u.status !== 'in_stock' || !u.purchase_date) return max
-                              const days = (now - new Date(u.purchase_date)) / 86400000
-                              return Math.max(max, days)
-                            }, 0)
-                            if (isLongTerm) return <span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();unmarkLongTerm(batch)}} title="Click to remove long-term hold">📌 Long-term</span>
-                            if (daysInStock > 30) return <span style={{fontSize:10,fontWeight:600,color:'#dc2626',background:'#fee2e2',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="30+ days — no return window. Click to mark as long-term hold">🔴 30+ days</span>
-                            if (daysInStock > STALE_DAYS) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="Click to mark as long-term hold">⚠ {STALE_DAYS}+ days</span>
-                            return null
-                          })()}
-                          <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
-                        </div>
-                      </div>
-                      <div className="item-card-body">
-                        <div className="item-card-brand">{batch.brand||'—'}</div>
-                        <div className="item-card-style">{batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?[batch.style,batch.units[0]?.card_number,batch.colourway].filter(Boolean).join(' · '):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='sealed'?[batch.colourway,batch.units[0]?.pokemon_sealed_type,batch.style].filter(Boolean).join(' · ')||'—':[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
-                      </div>
-                      <div className="item-card-stats">
-                        <div className="item-card-stat">
-                          <div className="item-card-stat-label">
-                            {batch.category==='Sneakers'||batch.category==='Clothing'?'Size':'Condition'}
+
+            {stockTab==='inventory'&&(
+              <div>
+                <div className="filters">
+                  <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180}}/>
+                  <select className="filter-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}><option value="">All categories</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select>
+                  <select className="filter-select" value={filterBrand} onChange={e=>setFilterBrand(e.target.value)}><option value="">All brands</option>{[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=><option key={b} value={b}>{b}</option>)}</select>
+                  <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="stale">⚠ Stale ({STALE_DAYS}+ days)</option><option value="long_term">📌 Long-term holds</option></select>
+                  <select className="filter-select" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="brand">Brand A–Z</option>
+                    <option value="cost_high">Cost: high–low</option>
+                    <option value="cost_low">Cost: low–high</option>
+                    <option value="stale">Longest in stock</option>
+                  </select>
+                  {(search||filterBrand||filterStatus||filterCategory)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('')}}>Clear</button>}
+                  <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
+                </div>
+                {loading?<div className="loading">Loading stock...</div>:filteredBatches.length===0?(
+                  <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">{items.length===0?'No stock yet':'No results'}</div><div style={{marginTop:6}}>{items.length===0?'Add your first item to get started':'Try adjusting your filters'}</div></div>
+                ):(
+                  <div className="card-grid">
+                    {filteredBatches.map(batch=>{
+                      const inStockUnits=batch.units.filter(u=>u.status==='in_stock')
+                      const soldUnits=batch.units.filter(u=>u.status==='sold')
+                      const totalCost=inStockUnits.reduce((s,u)=>s+(u.purchase_price||0),0)
+                      const avgCost=inStockUnits.length?totalCost/inStockUnits.length:0
+                      const totalPL=soldUnits.reduce((s,u)=>s+((u.sale_price||0)-(u.purchase_price||0)-(u.fee_amount||0)-(u.shipping_fee||0)),0)
+                      const allSold=inStockUnits.length===0
+                      const isSingle=batch.units.length===1
+                      return (
+                        <div key={batch.key} className="item-card" onClick={()=>setBatchModal(batch)} style={{cursor:'pointer'}}>
+                          <div className="item-card-header">
+                            <div className="item-card-category">{batch.category||'Uncategorised'}</div>
+                            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                              {(()=>{
+                                const now = new Date()
+                                const isLongTerm = batch.units.some(u => u.long_term)
+                                const daysInStock = batch.units.reduce((max, u) => {
+                                  if (u.status !== 'in_stock' || !u.purchase_date) return max
+                                  const days = (now - new Date(u.purchase_date)) / 86400000
+                                  return Math.max(max, days)
+                                }, 0)
+                                if (isLongTerm) return <span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();unmarkLongTerm(batch)}} title="Click to remove long-term hold">📌 Long-term</span>
+                                if (daysInStock > 30) return <span style={{fontSize:10,fontWeight:600,color:'#dc2626',background:'#fee2e2',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="30+ days — no return window. Click to mark as long-term hold">🔴 30+ days</span>
+                                if (daysInStock > STALE_DAYS) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 6px',borderRadius:10,cursor:'pointer'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="Click to mark as long-term hold">⚠ {STALE_DAYS}+ days</span>
+                                return null
+                              })()}
+                              <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                            </div>
                           </div>
-                          <div className="item-card-stat-value">
-                            {batch.category==='Sneakers'||batch.category==='Clothing'?(
-                              isSingle?(batch.units[0].size?`UK ${batch.units[0].size}`:'—'):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`
-                            ):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'&&batch.units[0]?.graded?
-                              `${batch.units[0]?.grading_company||''} ${batch.units[0]?.grade||''}`.trim():
-                              batch.units[0]?.condition||batch.units[0]?.item_condition||'—'}
+                          <div className="item-card-body">
+                            <div className="item-card-brand">{batch.brand||'—'}</div>
+                            <div className="item-card-style">{batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?[batch.style,batch.units[0]?.card_number,batch.colourway].filter(Boolean).join(' · '):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='sealed'?[batch.colourway,batch.units[0]?.pokemon_sealed_type,batch.style].filter(Boolean).join(' · ')||'—':[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
+                          </div>
+                          <div className="item-card-stats">
+                            <div className="item-card-stat">
+                              <div className="item-card-stat-label">
+                                {batch.category==='Sneakers'||batch.category==='Clothing'?'Size':'Condition'}
+                              </div>
+                              <div className="item-card-stat-value">
+                                {batch.category==='Sneakers'||batch.category==='Clothing'?(
+                                  isSingle?(batch.units[0].size?`UK ${batch.units[0].size}`:'—'):`${inStockUnits.length} unit${inStockUnits.length!==1?'s':''}`
+                                ):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'&&batch.units[0]?.graded?
+                                  `${batch.units[0]?.grading_company||''} ${batch.units[0]?.grade||''}`.trim():
+                                  batch.units[0]?.condition||batch.units[0]?.item_condition||'—'}
+                              </div>
+                            </div>
+                            <div className="item-card-stat"><div className="item-card-stat-label">Cost</div><div className="item-card-stat-value">{fmt(totalCost)}</div>{!isSingle&&inStockUnits.length>0&&<div className="item-card-stat-avg">avg {fmt(avgCost)}</div>}</div>
+                            <div className="item-card-stat"><div className="item-card-stat-label">P&L</div><div className={`item-card-stat-value ${plColor(soldUnits.length?totalPL:null)}`}>{soldUnits.length?fmt(totalPL):'—'}</div></div>
+                            <div className="item-card-stat"><div className="item-card-stat-label">Sold</div><div className="item-card-stat-value">{batch.units.length>1?`${soldUnits.length}/${batch.units.length}`:(soldUnits.length?'✓':'—')}</div></div>
+                          </div>
+                          <div className="item-card-actions" onClick={e=>e.stopPropagation()}>
+                            {isSingle&&batch.units[0].status==='in_stock'&&<button className="btn sm success" style={{flex:1}} onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
+                            {!isSingle&&!allSold&&<button className="btn sm success" style={{flex:1}} onClick={()=>setBatchModal(batch)}>View units</button>}
+                            {isSingle&&<button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
+                            <button className="btn sm" onClick={()=>duplicateItem(batch)}>Copy</button>
+                            {isSingle?<button className="btn sm danger" onClick={()=>deleteItem(batch.units[0].id)}>Del</button>:<button className="btn sm danger" onClick={()=>deleteBatch(batch.key)}>Del all</button>}
                           </div>
                         </div>
-                        <div className="item-card-stat"><div className="item-card-stat-label">Cost</div><div className="item-card-stat-value">{fmt(totalCost)}</div>{!isSingle&&inStockUnits.length>0&&<div className="item-card-stat-avg">avg {fmt(avgCost)}</div>}</div>
-                        <div className="item-card-stat"><div className="item-card-stat-label">P&L</div><div className={`item-card-stat-value ${plColor(soldUnits.length?totalPL:null)}`}>{soldUnits.length?fmt(totalPL):'—'}</div></div>
-                        <div className="item-card-stat"><div className="item-card-stat-label">Sold</div><div className="item-card-stat-value">{batch.units.length>1?`${soldUnits.length}/${batch.units.length}`:(soldUnits.length?'✓':'—')}</div></div>
-                      </div>
-                      <div className="item-card-actions" onClick={e=>e.stopPropagation()}>
-                        {isSingle&&batch.units[0].status==='in_stock'&&<button className="btn sm success" style={{flex:1}} onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
-                        {!isSingle&&!allSold&&<button className="btn sm success" style={{flex:1}} onClick={()=>setBatchModal(batch)}>View units</button>}
-                        {isSingle&&<button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
-                        <button className="btn sm" onClick={()=>duplicateItem(batch)}>Copy</button>
-                        {isSingle?<button className="btn sm danger" onClick={()=>deleteItem(batch.units[0].id)}>Del</button>:<button className="btn sm danger" onClick={()=>deleteBatch(batch.key)}>Del all</button>}
-                      </div>
-                    </div>
-                  )
-                })}
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
+
+            {stockTab==='history'&&(()=>{
+              const soldItems = items.filter(i=>i.status==='sold').sort((a,b)=>new Date(b.sold_at)-new Date(a.sold_at))
+              if (soldItems.length===0) return <div className="empty"><div className="empty-icon">📋</div><div className="empty-title">No sold items yet</div><div style={{marginTop:6}}>Sales will appear here once you mark items as sold</div></div>
+              const groups = {}
+              soldItems.forEach(i => {
+                const key = getMonthKey(i.sold_at) || 'unknown'
+                if (!groups[key]) groups[key] = []
+                groups[key].push(i)
+              })
+              return (
+                <div>
+                  <div style={{display:'flex',justifyContent:'flex-end',marginBottom:16}}>
+                    <button className="btn sm" onClick={exportCSV}>↓ Export CSV</button>
+                  </div>
+                  {Object.entries(groups).map(([key, gItems]) => {
+                    const mRevenue = gItems.reduce((s,i)=>s+(i.sale_price||0),0)
+                    const mPL = gItems.reduce((s,i)=>s+(i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
+                    return (
+                      <div key={key} className="chart-card" style={{marginBottom:16}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                          <div className="chart-title" style={{margin:0}}>{getMonthLabel(key)}</div>
+                          <div style={{display:'flex',gap:16,fontSize:13}}>
+                            <span style={{color:'var(--muted)'}}>{gItems.length} sale{gItems.length!==1?'s':''} · {fmt(mRevenue)} revenue</span>
+                            <span className={mPL>=0?'td-pos':'td-neg'}>{mPL>=0?'+':''}{fmt(mPL)} profit</span>
+                          </div>
+                        </div>
+                        <div style={{overflowX:'auto'}}>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600,minWidth:580}}>
+                            <div>Item</div><div>Platform</div><div>Cost</div><div>Sale</div><div>Fees</div><div>Profit</div><div>Payout</div>
+                          </div>
+                          {gItems.map(i => {
+                            const profit = (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
+                            return (
+                              <div key={i.id} style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px',gap:8,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center',minWidth:580}}>
+                                <div>
+                                  <div style={{fontWeight:500}}>{i.brand} {i.style}</div>
+                                  <div style={{fontSize:11,color:'var(--muted)'}}>{[i.colourway,i.size?`UK ${i.size}`:null,i.sold_at?new Date(i.sold_at).toLocaleDateString('en-GB'):null].filter(Boolean).join(' · ')}</div>
+                                </div>
+                                <div style={{color:'var(--muted)',fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{i.selling_platform||'—'}</div>
+                                <div>{fmt(i.purchase_price)}</div>
+                                <div>{fmt(i.sale_price)}</div>
+                                <div style={{color:'var(--muted)'}}>-{fmt((i.fee_amount||0)+(i.shipping_fee||0))}</div>
+                                <div className={profit>=0?'td-pos':'td-neg'}>{profit>=0?'+':''}{fmt(profit)}</div>
+                                <div>{i.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✓ Paid</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         )}
 
@@ -1529,12 +1647,67 @@ export default function Dashboard({ session }) {
         {page==='tools'&&(
           <div>
             <div className="page-header"><h1 className="page-title">Tools</h1><p className="page-subtitle">Calculators and utilities</p></div>
-            <div style={{display:'flex',gap:8,marginBottom:24}}>
+            <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
               <button className={`type-btn ${toolTab==='fee'?'active':''}`} onClick={()=>switchToolTab('fee')}>Fee Calculator</button>
               <button className={`type-btn ${toolTab==='checklist'?'active':''}`} onClick={()=>switchToolTab('checklist')}>Stock Checklist</button>
+              <button className={`type-btn ${toolTab==='payouts'?'active':''}`} onClick={()=>switchToolTab('payouts')}>
+                Payouts
+                {(()=>{const n=items.filter(i=>i.status==='sold'&&i.payout_status==='pending').length;return n>0?<span style={{marginLeft:4,background:'#fef3c7',color:'#d97706',borderRadius:10,padding:'1px 6px',fontSize:11}}>{n}</span>:null})()}
+              </button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
             {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
+            {toolTab==='payouts'&&(()=>{
+              const pending = items.filter(i=>i.status==='sold'&&i.payout_status==='pending')
+              const totalOutstanding = pending.reduce((s,i)=>s+(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
+              const byPlatform = {}
+              pending.forEach(i=>{const p=i.selling_platform||'Unknown';if(!byPlatform[p])byPlatform[p]=[];byPlatform[p].push(i)})
+              if (pending.length===0) return <div className="empty"><div className="empty-icon">✅</div><div className="empty-title">All caught up</div><div style={{marginTop:6}}>No pending payouts</div></div>
+              return (
+                <div style={{maxWidth:700}}>
+                  <div className="chart-card" style={{marginBottom:20}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+                      <div>
+                        <div className="chart-title" style={{marginBottom:4}}>Outstanding Payouts</div>
+                        <div style={{fontSize:13,color:'var(--muted)'}}>{pending.length} sale{pending.length!==1?'s':''} pending</div>
+                      </div>
+                      <div style={{textAlign:'right'}}>
+                        <div style={{fontSize:24,fontWeight:700,color:'var(--text)'}}>Net {fmt(totalOutstanding)}</div>
+                        <button className="btn sm primary" style={{marginTop:8}} onClick={()=>markPayoutPaid(pending.map(i=>i.id))}>✓ Mark all paid</button>
+                      </div>
+                    </div>
+                  </div>
+                  {Object.entries(byPlatform).map(([platform, pItems])=>{
+                    const platformTotal = pItems.reduce((s,i)=>s+(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
+                    return (
+                      <div key={platform} className="chart-card" style={{marginBottom:16}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                          <div className="chart-title" style={{margin:0}}>{platform}</div>
+                          <div style={{display:'flex',gap:12,alignItems:'center'}}>
+                            <span style={{fontSize:14,fontWeight:600}}>{fmt(platformTotal)}</span>
+                            <button className="btn sm" onClick={()=>markPayoutPaid(pItems.map(i=>i.id))}>Mark all paid</button>
+                          </div>
+                        </div>
+                        {pItems.map(i=>{
+                          const net=(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
+                          return (
+                            <div key={i.id} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 0',borderBottom:'1px solid var(--surface2)'}}>
+                              <div style={{flex:1}}>
+                                <div style={{fontWeight:500,fontSize:13}}>{i.brand} {i.style}</div>
+                                <div style={{fontSize:11,color:'var(--muted)'}}>{[i.colourway,i.size?`UK ${i.size}`:null,i.sold_at?new Date(i.sold_at).toLocaleDateString('en-GB'):null].filter(Boolean).join(' · ')}</div>
+                              </div>
+                              <div style={{fontSize:12,color:'var(--muted)'}}>{fmt(i.sale_price)}{i.fee_amount?` − ${fmt(i.fee_amount)} fee`:''}</div>
+                              <div style={{fontSize:13,fontWeight:600}}>{fmt(net)}</div>
+                              <button className="btn sm success" onClick={()=>markPayoutPaid([i.id])}>✓ Paid</button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         )}
 
@@ -1578,7 +1751,7 @@ export default function Dashboard({ session }) {
                       </div>
                       <div className="item-card-actions">
                         <button className="btn sm" style={{flex:1}} onClick={()=>openEditBreak(b)}>Edit</button>
-                        {b.type==='packs' && <button className="btn sm success" onClick={()=>{ setViewingBreak(b); fetchBreakCards(b.id) }}>Inventory</button>}
+                        <button className="btn sm success" onClick={()=>{ setViewingBreak(b); fetchBreakCards(b.id) }}>Inventory</button>
                         <button className="btn sm danger" onClick={()=>deleteBreak(b.id)}>Del</button>
                       </div>
                     </div>
@@ -1746,7 +1919,7 @@ export default function Dashboard({ session }) {
                 <label className="form-label">Category *</label>
                 <select className="form-input" value={collectorForm.category} onChange={e=>setCollectorForm(f=>({...f,category:e.target.value,pokemon_type:'',units:[{...EMPTY_UNIT}]}))}>
                   <option value="">Select category</option>
-                  {['Sneakers','Pokémon','Clothing','Miscellaneous'].map(c=><option key={c} value={c}>{c}</option>)}
+                  {['Sneakers','Pokémon','Topps','Lego','Clothing','Miscellaneous'].map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               {collectorForm.category&&<>
@@ -1793,6 +1966,14 @@ export default function Dashboard({ session }) {
                   </select>
                 </div>}
                 <CategoryForm form={form} setForm={setForm} editItem={editItem} updateUnit={updateUnit} addUnit={addUnit} removeUnit={removeUnit}/>
+                {!editItem&&<div className="form-group">
+                  <label className="form-label">Shipping cost (£)</label>
+                  <input className="form-input" type="number" step="0.01" placeholder="0.00 (added to unit cost)" value={form.shipping_cost||''} onChange={e=>setForm(f=>({...f,shipping_cost:e.target.value}))}/>
+                </div>}
+                <div className="form-group">
+                  <label className="form-label">Target sell price (£)</label>
+                  <input className="form-input" type="number" step="0.01" placeholder="0.00 (optional)" value={form.target_price||''} onChange={e=>setForm(f=>({...f,target_price:e.target.value}))}/>
+                </div>
               </>}
             </div>
             {!form.category&&<div style={{color:'var(--muted)',fontSize:13,textAlign:'center',padding:'16px 0'}}>Select a category to continue</div>}
@@ -1822,6 +2003,7 @@ export default function Dashboard({ session }) {
               {batchModal.sku&&<span className="detail-tag"><span className="detail-tag-label">SKU</span>{batchModal.sku}</span>}
               {batchModal.purchase_date&&<span className="detail-tag"><span className="detail-tag-label">Purchased</span>{batchModal.purchase_date}</span>}
               {batchModal.purchase_platform&&<span className="detail-tag"><span className="detail-tag-label">From</span>{batchModal.purchase_platform}</span>}
+              {batchModal.units[0]?.target_price&&<span className="detail-tag"><span className="detail-tag-label">Target</span>{fmt(batchModal.units[0].target_price)}</span>}
             </div>
             {batchModal.notes&&<div className="detail-notes">📝 {batchModal.notes}</div>}
             <div className="detail-units-title">Units</div>
@@ -1884,7 +2066,7 @@ export default function Dashboard({ session }) {
               <strong>{sellItem.brand} {sellItem.style}</strong>
               {sellItem.colourway&&` — ${sellItem.colourway}`}
               {sellItem.size&&` · Size ${sellItem.size}`}
-              <div style={{marginTop:4}}>Cost price: <strong>{fmt(sellItem.purchase_price)}</strong></div>
+              <div style={{marginTop:4}}>Cost price: <strong>{fmt(sellItem.purchase_price)}</strong>{sellItem.target_price&&<span style={{marginLeft:12,color:'var(--muted)',fontSize:13}}>Target: <strong>{fmt(sellItem.target_price)}</strong></span>}</div>
             </div>
             {sellItem._bulkIds&&(
               <div className="form-group" style={{marginBottom:8}}>
@@ -1913,15 +2095,21 @@ export default function Dashboard({ session }) {
                 <input className="form-input" type="number" step="0.1" placeholder="e.g. 10" value={customFeeRate} onChange={e=>setCustomFeeRate(e.target.value)}/>
               </div>
             )}
+            <div className="form-group" style={{marginTop:8}}>
+              <label className="form-label">Postage / shipping (£)</label>
+              <input className="form-input" type="number" step="0.01" placeholder="0.00 (optional)" value={shippingFee} onChange={e=>setShippingFee(e.target.value)}/>
+            </div>
             {salePrice&&(()=>{
               const price = parseFloat(salePrice)||0
               const fee = calcFee(salePrice, sellFeeplatform, customFeeRate)
-              const netSale = price - fee
+              const ship = parseFloat(shippingFee)||0
+              const netSale = price - fee - ship
               const pl = netSale - (sellItem.purchase_price||0)
               return (
                 <div className="fee-breakdown">
                   <div className="fee-row"><span>Sale price</span><span>{fmt(price)}</span></div>
                   {fee>0&&<div className="fee-row fee-deduct"><span>Platform fee</span><span>-{fmt(fee)}</span></div>}
+                  {ship>0&&<div className="fee-row fee-deduct"><span>Postage</span><span>-{fmt(ship)}</span></div>}
                   <div className="fee-row"><span>Net proceeds</span><span>{fmt(netSale)}</span></div>
                   <div className="fee-row"><span>Cost</span><span>-{fmt(sellItem.purchase_price)}</span></div>
                   <div className={`fee-row fee-total ${pl>=0?'pos':'neg'}`}><span>Profit</span><span>{fmt(pl)}</span></div>
@@ -1936,7 +2124,7 @@ export default function Dashboard({ session }) {
               </div>
             </div>
             <div className="form-actions" style={{marginTop:16}}>
-              <button className="btn" onClick={()=>{setSellItem(null);setSellFeeplatform(null);setCustomFeeRate('');setPayoutStatus('pending')}}>Cancel</button>
+              <button className="btn" onClick={()=>{setSellItem(null);setSellFeeplatform(null);setCustomFeeRate('');setPayoutStatus('pending');setShippingFee('')}}>Cancel</button>
               <button className="btn primary" onClick={markSold} disabled={saving||!salePrice}>{saving?'Saving...':'Confirm sale'}</button>
             </div>
           </div>
