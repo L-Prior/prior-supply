@@ -398,6 +398,7 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem, onSellItem }) {
         ? [b.set_name || b.topps_set, b.pokemon_sealed_type || b.topps_sealed_type].filter(Boolean).join(' · ') || b.colourway || '—'
         : b.colourway || '—',
       sku: b.sku || '', category: b.category,
+      grade: (b.graded && (b.grading_company || b.grade)) ? [b.grading_company, b.grade].filter(Boolean).join(' ') : '',
       itemId: b.units[0]?.id, batchId: b.batch_id
     }
     if (Object.keys(b.sizes).length > 0) {
@@ -497,7 +498,10 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem, onSellItem }) {
                     </div>
                   </div>
                   <div className="checklist-col brand">{row.brand}</div>
-                  <div className="checklist-col style">{row.style}</div>
+                  <div className="checklist-col style">
+                    {row.style}
+                    {row.grade&&<span style={{fontSize:10,fontWeight:600,background:'#e0e7ff',color:'#3730a3',padding:'1px 5px',borderRadius:4,display:'inline-block',marginLeft:5}}>{row.grade}</span>}
+                  </div>
                   <div className="checklist-col colourway">{row.colourway||'—'}</div>
                   <div className="checklist-col sku">{row.sku||'—'}</div>
                   <div className="checklist-col size">{row.sizeDisplay}</div>
@@ -984,9 +988,13 @@ export default function Dashboard({ session }) {
     const pl = revenue - soldCost - soldFees
     const now = new Date()
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastMonth = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`
     const monthSold = sold.filter(i => getMonthKey(i.sold_at) === thisMonth)
+    const lastMonthSold = sold.filter(i => getMonthKey(i.sold_at) === lastMonth)
     const monthPL = monthSold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0) - (i.fee_amount || 0) - (i.shipping_fee || 0)), 0)
-    return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl, monthPL }
+    const lastMonthPL = lastMonthSold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0) - (i.fee_amount || 0) - (i.shipping_fee || 0)), 0)
+    return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl, monthPL, lastMonthPL }
   }, [items])
 
   // Breaks state - declared before chart data so it can be used in combined metrics
@@ -1159,10 +1167,64 @@ export default function Dashboard({ session }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toolTab, setToolTab] = useState('fee')
   const [metricsTab, setMetricsTab] = useState('reseller')
+  const currentTaxYear = (()=>{ const n=new Date(); return n.getMonth()>=3?n.getFullYear():n.getFullYear()-1 })()
+
+  const INV_BIZ_KEY = 'stocktrack_biz'
+  const INV_NUM_KEY = 'stocktrack_inv_num'
+  const blankBiz = { name: '', address: '', email: '', phone: '', vatNumber: '' }
+  const [invBiz, setInvBiz] = useState(()=>{ try { return JSON.parse(localStorage.getItem(INV_BIZ_KEY)||'{}') } catch { return {} } })
+  const [invCustomer, setInvCustomer] = useState({ name: '', address: '', email: '' })
+  const [invLines, setInvLines] = useState([{ description: '', qty: '1', unitPrice: '' }])
+  const [invNotes, setInvNotes] = useState('')
+  const [invNumber, setInvNumber] = useState(()=>{ const n=parseInt(localStorage.getItem(INV_NUM_KEY)||'0')+1; return String(n).padStart(4,'0') })
+  const [invDate, setInvDate] = useState(new Date().toISOString().slice(0,10))
+  const [invDueDate, setInvDueDate] = useState('')
+  const [editingBiz, setEditingBiz] = useState(false)
+
+  function saveBizDetails() { localStorage.setItem(INV_BIZ_KEY, JSON.stringify(invBiz)); setEditingBiz(false) }
+  function addInvLine() { setInvLines(l=>[...l,{description:'',qty:'1',unitPrice:''}]) }
+  function removeInvLine(i) { setInvLines(l=>l.filter((_,idx)=>idx!==i)) }
+  function updateInvLine(i,field,value) { setInvLines(l=>{const n=[...l];n[i]={...n[i],[field]:value};return n}) }
+  function printInvoice() {
+    const next = parseInt(invNumber||'0')+1
+    localStorage.setItem(INV_NUM_KEY, String(parseInt(invNumber||'0')))
+    setInvNumber(String(next).padStart(4,'0'))
+    window.print()
+  }
+  const [selectedTaxYear, setSelectedTaxYear] = useState(currentTaxYear)
 
   function switchToolTab(tab) { setToolTab(tab); setTimeout(()=>window.scrollTo({top:0,behavior:'instant'}),50) }
   const [userPlan, setUserPlan] = useState('pro') // default pro until Stripe is set up
   const FREE_LIMIT = 30
+
+  const EXPENSE_CATEGORIES = ['Packaging', 'Shipping Supplies', 'Equipment', 'Platform Subscriptions', 'Advertising', 'Software', 'Travel', 'Professional Services', 'Other']
+  const [expenses, setExpenses] = useState([])
+  const [expensesLoading, setExpensesLoading] = useState(false)
+  const [showExpenseForm, setShowExpenseForm] = useState(false)
+  const [expenseForm, setExpenseForm] = useState({ date: '', amount: '', category: 'Packaging', description: '' })
+  const [expenseSaving, setExpenseSaving] = useState(false)
+
+  useEffect(() => { if (session && page === 'expenses') fetchExpenses() }, [page, session]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchExpenses() {
+    setExpensesLoading(true)
+    const { data } = await supabase.from('expenses').select('*').order('date', { ascending: false })
+    setExpenses(data || [])
+    setExpensesLoading(false)
+  }
+
+  async function saveExpense() {
+    setExpenseSaving(true)
+    const { error } = await supabase.from('expenses').insert([{ user_id: session.user.id, date: expenseForm.date, amount: parseFloat(expenseForm.amount), category: expenseForm.category, description: expenseForm.description || null }])
+    if (!error) { setShowExpenseForm(false); setExpenseForm({ date: '', amount: '', category: 'Packaging', description: '' }); fetchExpenses() }
+    setExpenseSaving(false)
+  }
+
+  async function deleteExpense(id) {
+    if (!window.confirm('Delete this expense?')) return
+    await supabase.from('expenses').delete().eq('id', id)
+    fetchExpenses()
+  }
 
   useEffect(() => { if (session) fetchProfile() }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
   async function fetchProfile() {
@@ -1260,7 +1322,7 @@ export default function Dashboard({ session }) {
     const avgValue = collectorItems.length ? totalValue / collectorItems.length : 0
     return { totalValue, byCategory, categoryChartData, topItems, growthData, total: collectorItems.length, avgValue }
   }, [collectorItems])
-  const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'tools',label:'Tools'}]
+  const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'expenses',label:'Expenses'},{id:'tools',label:'Tools'}]
 
   return (
     <div className="app">
@@ -1307,7 +1369,7 @@ export default function Dashboard({ session }) {
             <div className="stats-bar">
               <div className="stat-card"><div className="stat-label">Units in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
-              <div className="stat-card"><div className="stat-label">This month's profit</div><div className={`stat-value ${stats.monthPL>0?'pos':stats.monthPL<0?'neg':''}`}>{stats.monthPL>=0?'+':''}{fmt(stats.monthPL)}</div></div>
+              <div className="stat-card"><div className="stat-label">This month's profit</div><div className={`stat-value ${stats.monthPL>0?'pos':stats.monthPL<0?'neg':''}`}>{stats.monthPL>=0?'+':''}{fmt(stats.monthPL)}</div>{(()=>{if(stats.lastMonthPL===0&&stats.monthPL===0)return null;if(stats.lastMonthPL===0)return<div style={{fontSize:11,color:'var(--green)',marginTop:2}}>↑ First sales this month</div>;const pct=Math.abs(((stats.monthPL-stats.lastMonthPL)/Math.abs(stats.lastMonthPL))*100).toFixed(0);const up=stats.monthPL>=stats.lastMonthPL;return<div style={{fontSize:11,color:up?'var(--green)':'var(--red)',marginTop:2}}>{up?'↑':'↓'} {pct}% vs last month</div>})()}</div>
               <div className="stat-card"><div className="stat-label">All-time P&L</div><div className={`stat-value ${stats.pl>0?'pos':stats.pl<0?'neg':''}`}>{stats.pl>=0?'+':''}{fmt(stats.pl)}</div></div>
               <div className="stat-card"><div className="stat-label">Total sold</div><div className="stat-value">{stats.sold}</div></div>
             </div>
@@ -1500,6 +1562,7 @@ export default function Dashboard({ session }) {
             <div style={{display:'flex',gap:8,marginBottom:24}}>
               <button className={`type-btn ${metricsTab==='reseller'?'active':''}`} onClick={()=>setMetricsTab('reseller')}>Reseller & Breaker</button>
               <button className={`type-btn ${metricsTab==='collector'?'active':''}`} onClick={()=>setMetricsTab('collector')}>Collector</button>
+              <button className={`type-btn ${metricsTab==='tax'?'active':''}`} onClick={()=>setMetricsTab('tax')}>Tax Summary</button>
             </div>
 
             {metricsTab==='reseller'&&(
@@ -1587,6 +1650,71 @@ export default function Dashboard({ session }) {
                 )}
               </div>
             )}
+
+            {metricsTab==='tax'&&(()=>{
+              const txStart = new Date(selectedTaxYear, 3, 6)
+              const txEnd = new Date(selectedTaxYear + 1, 3, 5, 23, 59, 59)
+              const inYear = d => { const dt = new Date(d); return dt >= txStart && dt <= txEnd }
+
+              const resellerProfit = items.filter(i => i.status === 'sold' && i.sold_at && inYear(i.sold_at))
+                .reduce((s,i) => s + ((i.sale_price||0) - (i.purchase_price||0) - (i.fee_amount||0) - (i.shipping_fee||0)), 0)
+              const breakerProfit = breaks.filter(b => b.status === 'completed' && (b.break_date || b.last_stream_date || b.created_at) && inYear(b.break_date || b.last_stream_date || b.created_at))
+                .reduce((s,b) => s + (b.type==='break' ? (b.spots_sold||0)*(b.spot_price||0) - (b.cost||0) : (b.packs_sold||0)*(b.pack_price||0) - (b.cost||0)), 0)
+              const totalExpenses = expenses.filter(e => e.date && inYear(e.date)).reduce((s,e) => s + (e.amount||0), 0)
+              const grossProfit = resellerProfit + breakerProfit
+              const taxableProfit = Math.max(0, grossProfit - totalExpenses)
+
+              function calcTax(profit) {
+                const PA = 12570, BASIC_LIMIT = 50270, HIGHER_LIMIT = 125140
+                if (profit <= PA) return 0
+                if (profit <= BASIC_LIMIT) return (profit - PA) * 0.20
+                if (profit <= HIGHER_LIMIT) return (BASIC_LIMIT - PA) * 0.20 + (profit - BASIC_LIMIT) * 0.40
+                return (BASIC_LIMIT - PA) * 0.20 + (HIGHER_LIMIT - BASIC_LIMIT) * 0.40 + (profit - HIGHER_LIMIT) * 0.45
+              }
+              function calcNI(profit) {
+                const PA = 12570, UPPER = 50270
+                if (profit <= PA) return 0
+                const lower = Math.min(profit, UPPER) - PA
+                const upper = Math.max(0, profit - UPPER)
+                return lower * 0.06 + upper * 0.02
+              }
+
+              const estimatedTax = calcTax(taxableProfit)
+              const estimatedNI = calcNI(taxableProfit)
+              const totalLiability = estimatedTax + estimatedNI
+
+              const taxYears = Array.from({length:5},(_,i)=>currentTaxYear-i)
+
+              return (
+                <div style={{maxWidth:700}}>
+                  <div className="chart-card" style={{marginBottom:20}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:12}}>
+                      <div className="chart-title" style={{margin:0}}>UK Self-Assessment Summary</div>
+                      <select className="form-input" style={{width:'auto'}} value={selectedTaxYear} onChange={e=>setSelectedTaxYear(Number(e.target.value))}>
+                        {taxYears.map(y=><option key={y} value={y}>{y}/{String(y+1).slice(2)} (6 Apr {y} – 5 Apr {y+1})</option>)}
+                      </select>
+                    </div>
+                    <div className="stats-bar" style={{marginBottom:16}}>
+                      <div className="stat-card"><div className="stat-label">Reseller profit</div><div className={`stat-value ${resellerProfit>=0?'pos':'neg'}`}>{resellerProfit>=0?'+':''}{fmt(resellerProfit)}</div></div>
+                      <div className="stat-card"><div className="stat-label">Breaker profit</div><div className={`stat-value ${breakerProfit>=0?'pos':'neg'}`}>{breakerProfit>=0?'+':''}{fmt(breakerProfit)}</div></div>
+                      <div className="stat-card"><div className="stat-label">Business expenses</div><div className="stat-value neg">−{fmt(totalExpenses)}</div></div>
+                      <div className="stat-card"><div className="stat-label">Taxable profit</div><div className={`stat-value ${taxableProfit>0?'pos':''}`}>{fmt(taxableProfit)}</div></div>
+                    </div>
+                    <div style={{borderTop:'1px solid var(--border)',paddingTop:16}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:14}}><span>Personal Allowance (tax-free)</span><span style={{fontWeight:500}}>{fmt(Math.min(taxableProfit,12570))}</span></div>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:14}}><span>Income Tax (estimate)</span><span style={{fontWeight:600,color:estimatedTax>0?'var(--red)':'var(--text)'}}>{fmt(estimatedTax)}</span></div>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:14}}><span>Class 4 NI (estimate)</span><span style={{fontWeight:600,color:estimatedNI>0?'var(--red)':'var(--text)'}}>{fmt(estimatedNI)}</span></div>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,borderTop:'1px solid var(--border)',paddingTop:10}}><span>Total estimated liability</span><span style={{color:totalLiability>0?'var(--red)':'var(--text)'}}>{fmt(totalLiability)}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{fontSize:12,color:'var(--muted)',background:'var(--surface2)',padding:'10px 14px',borderRadius:'var(--radius)'}}>
+                    ⚠️ This is an estimate only, based on sole trader tax rates for {selectedTaxYear}/{selectedTaxYear+1}. It does not account for other income sources, trading allowance, or relief claims. Consult a qualified accountant for your Self Assessment return.
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
 
@@ -1654,6 +1782,7 @@ export default function Dashboard({ session }) {
                 Payouts
                 {(()=>{const n=items.filter(i=>i.status==='sold'&&i.payout_status==='pending').length;return n>0?<span style={{marginLeft:4,background:'#fef3c7',color:'#d97706',borderRadius:10,padding:'1px 6px',fontSize:11}}>{n}</span>:null})()}
               </button>
+              <button className={`type-btn ${toolTab==='invoice'?'active':''}`} onClick={()=>switchToolTab('invoice')}>Invoice Generator</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
             {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
@@ -1708,6 +1837,176 @@ export default function Dashboard({ session }) {
                 </div>
               )
             })()}
+            {toolTab==='invoice'&&(()=>{
+              const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
+              const bizDetails = {...blankBiz,...invBiz}
+              return (
+                <div style={{maxWidth:720}}>
+                  <div className="chart-card" style={{marginBottom:16}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:editingBiz?16:0}}>
+                      <div className="chart-title" style={{margin:0}}>Your Business Details</div>
+                      <button className="btn sm" onClick={()=>setEditingBiz(e=>!e)}>{editingBiz?'Cancel':'Edit'}</button>
+                    </div>
+                    {editingBiz?(
+                      <div>
+                        <div className="form-grid" style={{marginTop:16}}>
+                          <div className="form-group full"><label className="form-label">Business name</label><input className="form-input" value={invBiz.name||''} onChange={e=>setInvBiz(b=>({...b,name:e.target.value}))}/></div>
+                          <div className="form-group full"><label className="form-label">Address</label><input className="form-input" placeholder="Line 1, City, Postcode" value={invBiz.address||''} onChange={e=>setInvBiz(b=>({...b,address:e.target.value}))}/></div>
+                          <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" value={invBiz.email||''} onChange={e=>setInvBiz(b=>({...b,email:e.target.value}))}/></div>
+                          <div className="form-group"><label className="form-label">Phone</label><input className="form-input" value={invBiz.phone||''} onChange={e=>setInvBiz(b=>({...b,phone:e.target.value}))}/></div>
+                          <div className="form-group"><label className="form-label">VAT Number (optional)</label><input className="form-input" placeholder="GB123456789" value={invBiz.vatNumber||''} onChange={e=>setInvBiz(b=>({...b,vatNumber:e.target.value}))}/></div>
+                        </div>
+                        <div className="form-actions"><button className="btn primary" onClick={saveBizDetails}>Save details</button></div>
+                      </div>
+                    ):(
+                      bizDetails.name?<div style={{fontSize:13,color:'var(--muted)',marginTop:8}}>{bizDetails.name} · {bizDetails.address} · {bizDetails.email}</div>:
+                      <div style={{fontSize:13,color:'var(--muted)',marginTop:8}}>No business details saved yet — click Edit to add them.</div>
+                    )}
+                  </div>
+                  <div id="invoice-print" className="chart-card" style={{marginBottom:16}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24,flexWrap:'wrap',gap:12}}>
+                      <div>
+                        <div style={{fontSize:22,fontWeight:800,color:'var(--green)',marginBottom:4}}>INVOICE</div>
+                        {bizDetails.name&&<div style={{fontWeight:600,fontSize:15}}>{bizDetails.name}</div>}
+                        {bizDetails.address&&<div style={{fontSize:12,color:'var(--muted)'}}>{bizDetails.address}</div>}
+                        {bizDetails.email&&<div style={{fontSize:12,color:'var(--muted)'}}>{bizDetails.email}</div>}
+                        {bizDetails.vatNumber&&<div style={{fontSize:12,color:'var(--muted)'}}>VAT: {bizDetails.vatNumber}</div>}
+                      </div>
+                      <div style={{textAlign:'right'}}>
+                        <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginBottom:4}}>
+                          <span style={{color:'var(--muted)',fontSize:13}}>Invoice #</span>
+                          <input style={{width:80,textAlign:'right',fontWeight:700,fontSize:14,border:'1px solid var(--border)',borderRadius:4,padding:'2px 6px'}} value={invNumber} onChange={e=>setInvNumber(e.target.value)}/>
+                        </div>
+                        <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginBottom:4}}>
+                          <span style={{color:'var(--muted)',fontSize:13}}>Date</span>
+                          <input type="date" style={{fontSize:13,border:'1px solid var(--border)',borderRadius:4,padding:'2px 6px'}} value={invDate} onChange={e=>setInvDate(e.target.value)}/>
+                        </div>
+                        <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+                          <span style={{color:'var(--muted)',fontSize:13}}>Due date</span>
+                          <input type="date" style={{fontSize:13,border:'1px solid var(--border)',borderRadius:4,padding:'2px 6px'}} value={invDueDate} onChange={e=>setInvDueDate(e.target.value)}/>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{marginBottom:20}}>
+                      <div style={{fontSize:11,fontWeight:600,color:'var(--muted)',textTransform:'uppercase',marginBottom:8}}>Bill to</div>
+                      <input className="form-input" style={{marginBottom:6}} placeholder="Customer name" value={invCustomer.name} onChange={e=>setInvCustomer(c=>({...c,name:e.target.value}))}/>
+                      <input className="form-input" style={{marginBottom:6}} placeholder="Address" value={invCustomer.address} onChange={e=>setInvCustomer(c=>({...c,address:e.target.value}))}/>
+                      <input className="form-input" type="email" placeholder="Email" value={invCustomer.email} onChange={e=>setInvCustomer(c=>({...c,email:e.target.value}))}/>
+                    </div>
+                    <table style={{width:'100%',borderCollapse:'collapse',marginBottom:16}}>
+                      <thead><tr style={{borderBottom:'2px solid var(--border)',fontSize:12,color:'var(--muted)',textTransform:'uppercase'}}>
+                        <th style={{textAlign:'left',padding:'6px 0',fontWeight:600}}>Description</th>
+                        <th style={{textAlign:'right',padding:'6px 8px',fontWeight:600,width:60}}>Qty</th>
+                        <th style={{textAlign:'right',padding:'6px 8px',fontWeight:600,width:90}}>Unit price</th>
+                        <th style={{textAlign:'right',padding:'6px 0',fontWeight:600,width:90}}>Total</th>
+                        <th style={{width:32}}></th>
+                      </tr></thead>
+                      <tbody>
+                        {invLines.map((l,i)=>(
+                          <tr key={i} style={{borderBottom:'1px solid var(--border)'}}>
+                            <td style={{padding:'8px 0'}}><input className="form-input" style={{margin:0}} placeholder="Item description" value={l.description} onChange={e=>updateInvLine(i,'description',e.target.value)}/></td>
+                            <td style={{padding:'8px 8px'}}><input className="form-input" style={{margin:0,textAlign:'right',width:55}} type="number" min="1" value={l.qty} onChange={e=>updateInvLine(i,'qty',e.target.value)}/></td>
+                            <td style={{padding:'8px 8px'}}><input className="form-input" style={{margin:0,textAlign:'right',width:80}} type="number" step="0.01" min="0" placeholder="0.00" value={l.unitPrice} onChange={e=>updateInvLine(i,'unitPrice',e.target.value)}/></td>
+                            <td style={{padding:'8px 0',textAlign:'right',fontWeight:500}}>{fmt((parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0))}</td>
+                            <td style={{padding:'8px 0',textAlign:'right'}}>{invLines.length>1&&<button className="btn sm danger" onClick={()=>removeInvLine(i)} style={{padding:'2px 6px',fontSize:11}}>✕</button>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <button className="btn sm" onClick={addInvLine} style={{marginBottom:16}}>+ Add line</button>
+                    <div style={{display:'flex',justifyContent:'flex-end',marginBottom:16}}>
+                      <div style={{width:220}}>
+                        <div style={{display:'flex',justifyContent:'space-between',padding:'4px 0',fontSize:14,fontWeight:700,borderTop:'2px solid var(--border)',marginTop:4}}><span>Total</span><span>{fmt(invTotal)}</span></div>
+                      </div>
+                    </div>
+                    {(invNotes||true)&&<div><div style={{fontSize:11,fontWeight:600,color:'var(--muted)',textTransform:'uppercase',marginBottom:4}}>Notes</div><textarea className="form-input" rows={2} placeholder="Payment terms, bank details, thank you note..." value={invNotes} onChange={e=>setInvNotes(e.target.value)}/></div>}
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="btn primary" onClick={printInvoice}>🖨️ Print / Save as PDF</button>
+                    <button className="btn" onClick={()=>{setInvCustomer({name:'',address:'',email:''});setInvLines([{description:'',qty:'1',unitPrice:''}]);setInvNotes('')}}>Clear</button>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
+        {page==='expenses'&&(
+          <div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24,flexWrap:'wrap',gap:12}}>
+              <div className="page-header" style={{margin:0}}><h1 className="page-title">Expenses</h1><p className="page-subtitle">Track business costs for tax purposes</p></div>
+              <button className="btn primary" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add expense</button>
+            </div>
+            {showExpenseForm&&(
+              <div className="chart-card" style={{marginBottom:20,maxWidth:540}}>
+                <div className="chart-title" style={{marginBottom:16}}>New expense</div>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Date</label>
+                    <input className="form-input" type="date" value={expenseForm.date} onChange={e=>setExpenseForm(f=>({...f,date:e.target.value}))}/>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Amount (£)</label>
+                    <input className="form-input" type="number" step="0.01" min="0" placeholder="0.00" value={expenseForm.amount} onChange={e=>setExpenseForm(f=>({...f,amount:e.target.value}))}/>
+                  </div>
+                  <div className="form-group full">
+                    <label className="form-label">Category</label>
+                    <select className="form-input" value={expenseForm.category} onChange={e=>setExpenseForm(f=>({...f,category:e.target.value}))}>
+                      {EXPENSE_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group full">
+                    <label className="form-label">Description</label>
+                    <input className="form-input" placeholder="e.g. Bubble wrap rolls x 200" value={expenseForm.description} onChange={e=>setExpenseForm(f=>({...f,description:e.target.value}))}/>
+                  </div>
+                </div>
+                <div className="form-actions">
+                  <button className="btn" onClick={()=>setShowExpenseForm(false)}>Cancel</button>
+                  <button className="btn primary" onClick={saveExpense} disabled={expenseSaving||!expenseForm.date||!expenseForm.amount}>{expenseSaving?'Saving...':'Save expense'}</button>
+                </div>
+              </div>
+            )}
+            {expensesLoading?<div className="loading">Loading...</div>:expenses.length===0?(
+              <div className="empty"><div className="empty-icon">🧾</div><div className="empty-title">No expenses logged</div><div style={{marginTop:6}}>Track packaging, subscriptions, and other business costs</div></div>
+            ):(
+              <div>
+                <div className="stats-bar" style={{marginBottom:20}}>
+                  {(()=>{
+                    const now = new Date()
+                    const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+                    const txYearStart = now.getMonth()>=3?now.getFullYear():now.getFullYear()-1
+                    const txStart = new Date(txYearStart,3,6); const txEnd = new Date(txYearStart+1,3,5,23,59,59)
+                    const monthTotal = expenses.filter(e=>e.date&&e.date.slice(0,7)===thisMonthKey).reduce((s,e)=>s+(e.amount||0),0)
+                    const yearTotal = expenses.filter(e=>{const d=new Date(e.date);return d>=txStart&&d<=txEnd}).reduce((s,e)=>s+(e.amount||0),0)
+                    const byCategory = {}
+                    expenses.forEach(e=>{if(!byCategory[e.category])byCategory[e.category]=0;byCategory[e.category]+=(e.amount||0)})
+                    const topCat = Object.entries(byCategory).sort((a,b)=>b[1]-a[1])[0]
+                    return <>
+                      <div className="stat-card"><div className="stat-label">This month</div><div className="stat-value neg">−{fmt(monthTotal)}</div></div>
+                      <div className="stat-card"><div className="stat-label">This tax year</div><div className="stat-value neg">−{fmt(yearTotal)}</div></div>
+                      <div className="stat-card"><div className="stat-label">Total logged</div><div className="stat-value neg">−{fmt(expenses.reduce((s,e)=>s+(e.amount||0),0))}</div></div>
+                      {topCat&&<div className="stat-card"><div className="stat-label">Top category</div><div className="stat-value" style={{fontSize:14}}>{topCat[0]}</div></div>}
+                    </>
+                  })()}
+                </div>
+                <div className="chart-card">
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                    <thead><tr style={{borderBottom:'2px solid var(--border)'}}><th style={{textAlign:'left',padding:'8px 0',color:'var(--muted)',fontWeight:600}}>Date</th><th style={{textAlign:'left',padding:'8px 0',color:'var(--muted)',fontWeight:600}}>Category</th><th style={{textAlign:'left',padding:'8px 0',color:'var(--muted)',fontWeight:600}}>Description</th><th style={{textAlign:'right',padding:'8px 0',color:'var(--muted)',fontWeight:600}}>Amount</th><th style={{padding:'8px 0'}}></th></tr></thead>
+                    <tbody>
+                      {expenses.map(e=>(
+                        <tr key={e.id} style={{borderBottom:'1px solid var(--border)'}}>
+                          <td style={{padding:'10px 8px 10px 0',color:'var(--muted)'}}>{e.date}</td>
+                          <td style={{padding:'10px 8px'}}><span style={{background:'var(--surface2)',borderRadius:4,padding:'2px 8px',fontSize:11}}>{e.category}</span></td>
+                          <td style={{padding:'10px 8px',color:'var(--text)'}}>{e.description||'—'}</td>
+                          <td style={{padding:'10px 0 10px 8px',textAlign:'right',fontWeight:600,color:'var(--red)'}}>−{fmt(e.amount)}</td>
+                          <td style={{padding:'10px 0 10px 8px',textAlign:'right'}}><button className="btn sm danger" onClick={()=>deleteExpense(e.id)}>Del</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -2006,6 +2305,21 @@ export default function Dashboard({ session }) {
               {batchModal.units[0]?.target_price&&<span className="detail-tag"><span className="detail-tag-label">Target</span>{fmt(batchModal.units[0].target_price)}</span>}
             </div>
             {batchModal.notes&&<div className="detail-notes">📝 {batchModal.notes}</div>}
+            {(()=>{
+              const q = encodeURIComponent([batchModal.brand, batchModal.style, batchModal.colourway, batchModal.sku].filter(Boolean).join(' '))
+              const cat = batchModal.category
+              const links = []
+              if (cat==='Sneakers') { links.push({label:'StockX',url:`https://www.stockx.com/search?s=${q}`},{label:'eBay',url:`https://www.ebay.co.uk/sch/i.html?_nkw=${q}`}) }
+              else if (cat==='Pokémon') { links.push({label:'TCGPlayer',url:`https://www.tcgplayer.com/search/pokemon/product?q=${q}`},{label:'eBay',url:`https://www.ebay.co.uk/sch/i.html?_nkw=${q}`}) }
+              else if (cat==='Topps') { links.push({label:'eBay',url:`https://www.ebay.co.uk/sch/i.html?_nkw=${q}`},{label:'TCGPlayer',url:`https://www.tcgplayer.com/search/all/product?q=${q}`}) }
+              else if (cat==='Lego') { links.push({label:'BrickLink',url:`https://www.bricklink.com/v2/search.page?q=${q}`},{label:'eBay',url:`https://www.ebay.co.uk/sch/i.html?_nkw=${q}`}) }
+              else { links.push({label:'eBay',url:`https://www.ebay.co.uk/sch/i.html?_nkw=${q}`}) }
+              links.push({label:'Google',url:`https://www.google.com/search?q=${q}+price+UK`})
+              return <div style={{display:'flex',gap:8,flexWrap:'wrap',margin:'12px 0'}}>
+                <span style={{fontSize:11,color:'var(--muted)',alignSelf:'center'}}>Search:</span>
+                {links.map(l=><a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" className="btn sm" style={{textDecoration:'none'}}>{l.label} ↗</a>)}
+              </div>
+            })()}
             <div className="detail-units-title">Units</div>
             <div className="batch-units">
               {(()=>{
