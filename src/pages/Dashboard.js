@@ -2437,7 +2437,7 @@ export default function Dashboard({ session }) {
                             <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{r.title}</div>
                             <div style={{fontSize:12,color:'var(--muted)',marginBottom:8}}>{[r.brand,r.colorway,r.styleId].filter(Boolean).join(' · ')}</div>
                             <div style={{display:'flex',gap:16,flexWrap:'wrap',marginBottom:10}}>
-                              {r.retailPrice&&<div><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em'}}>Retail (USD)</div><div style={{fontWeight:600,fontSize:14}}>${Math.round(r.retailPrice)}</div></div>}
+                              {r.retailPrice&&<div><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em'}}>Retail</div><div style={{fontWeight:600,fontSize:14}}>{fmt(r.retailPrice)}</div></div>}
                               {r.year&&<div><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em'}}>Year</div><div style={{fontWeight:600,fontSize:14}}>{r.year}</div></div>}
                               {r.styleId&&<div><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em'}}>SKU</div><div style={{fontWeight:600,fontSize:14}}>{r.styleId}</div></div>}
                             </div>
