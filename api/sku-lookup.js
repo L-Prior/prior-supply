@@ -1,4 +1,6 @@
-// Vercel serverless function — proxies sneaker DB API to avoid CORS
+// Vercel serverless function — product lookup via GOAT's Algolia search index
+// GOAT exposes a public-facing Algolia app for their web search; these keys are
+// loaded by every browser visiting goat.com and are intentionally read-only.
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
 
@@ -8,21 +10,48 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const url = `https://api.thesneakerdatabase.com/v1/sneakers?limit=6&search=${encodeURIComponent(q.trim())}`
-    const response = await fetch(url, {
+    const algoliaUrl = 'https://2fwotdvm2o-dsn.algolia.net/1/indexes/*/queries'
+    const params = `query=${encodeURIComponent(q.trim())}&hitsPerPage=6`
+
+    const response = await fetch(algoliaUrl, {
+      method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; StockTrack/1.0)',
-        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'x-algolia-application-id': '2FWOTDVM2O',
+        'x-algolia-api-key': 'ac96de6fef0e02bb95d433d8d5c7038a',
       },
+      body: JSON.stringify({
+        requests: [{ indexName: 'product_variants_v2', params }]
+      })
     })
 
     if (!response.ok) {
-      throw new Error(`Upstream API returned ${response.status}`)
+      throw new Error(`Algolia returned ${response.status}`)
     }
 
     const data = await response.json()
+    const hits = data?.results?.[0]?.hits || []
+
+    const results = hits.map(hit => ({
+      id: hit.objectID,
+      title: hit.name || hit.title || null,
+      brand: hit.brand_name || hit.brand || null,
+      colorway: hit.color || hit.colorway || null,
+      styleId: hit.sku || hit.style_id || null,
+      // retail_price_cents is in USD cents
+      retailPrice: hit.retail_price_cents ? Math.round(hit.retail_price_cents) / 100 : null,
+      year: hit.release_date_year || (hit.release_date ? new Date(hit.release_date * 1000).getFullYear() : null) || null,
+      media: { imageUrl: hit.main_picture_url || hit.picture_url || null },
+      links: {
+        goat: hit.slug ? `https://www.goat.com/sneakers/${hit.slug}` : null,
+        stockX: hit.sku
+          ? `https://stockx.com/search?s=${encodeURIComponent(hit.sku)}`
+          : hit.name ? `https://stockx.com/search?s=${encodeURIComponent(hit.name)}` : null,
+      }
+    }))
+
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600')
-    return res.status(200).json(data)
+    return res.status(200).json({ results })
   } catch (err) {
     console.error('SKU lookup error:', err.message)
     return res.status(503).json({ error: 'Lookup service unavailable', results: [] })
