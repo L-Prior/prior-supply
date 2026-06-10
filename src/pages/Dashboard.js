@@ -66,7 +66,7 @@ const EMPTY_FORM = {
   item_name: '', description: '',
   topps_type: '', topps_card_name: '', topps_set: '', topps_year: '', topps_card_number: '', topps_parallel: '', topps_print_run: '', topps_sealed_type: '', topps_product_name: '',
   purchase_platform: '', purchase_date: '', notes: '', long_term: false,
-  shipping_cost: '', target_price: '',
+  shipping_cost: '', target_price: '', storage_location: '',
   units: [{ ...EMPTY_UNIT }]
 }
 
@@ -729,6 +729,7 @@ export default function Dashboard({ session }) {
       set_number: form.set_number || null, theme: form.theme || null, lego_condition: form.lego_condition || null,
       clothing_brand: form.clothing_brand || null, item: form.item || null, clothing_size: form.clothing_size || null,
       colour: form.colour || null, item_name: form.item_name || null, description: form.description || null,
+      storage_location: form.storage_location || null,
       batch_id: batchId, user_id: session.user.id, status: 'in_stock'
     }
     let error
@@ -810,7 +811,7 @@ export default function Dashboard({ session }) {
     const totalCost = parseFloat(batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
     const sameSize = batchUnits.filter(u => u.size === item.size)
     const qty = sameSize.length > 1 ? sameSize.length : 1
-    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, target_price: item.target_price||'', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
+    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, target_price: item.target_price||'', storage_location: item.storage_location||'', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
     setEditItem(item); setShowAdd(true)
   }
 
@@ -889,7 +890,7 @@ export default function Dashboard({ session }) {
     const feeAmt = calcFee(salePrice, sellFeeplatform, customFeeRate)
     const platformName = sellFeeplatform ? sellFeeplatform.name : sellingPlatform
     const shipAmt = parseFloat(shippingFee) || null
-    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, shipping_fee: shipAmt, payout_status: payoutStatus, sold_at: new Date().toISOString() }
+    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, shipping_fee: shipAmt, payout_status: payoutStatus, buyer_name: buyerName || null, sold_at: new Date().toISOString() }
     if (sellItem._bulkIds) {
       const idsToSell = sellItem._bulkIds
       const perUnitFee = parseFloat((feeAmt / idsToSell.length).toFixed(2))
@@ -900,7 +901,7 @@ export default function Dashboard({ session }) {
     } else {
       await supabase.from('stock').update(updatePayload).eq('id', sellItem.id)
     }
-    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate(''); setPayoutStatus('pending'); setShippingFee('')
+    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate(''); setPayoutStatus('pending'); setShippingFee(''); setBuyerName('')
     fetchItems()
     if (batchModal) {
       const ids = sellItem._bulkIds || [sellItem.id]
@@ -1075,6 +1076,28 @@ export default function Dashboard({ session }) {
   const sellThroughData = useMemo(() => { const map = {}; items.forEach(i => { const cat=i.category||'Other'; if(!map[cat])map[cat]={total:0,sold:0}; map[cat].total++; if(i.status==='sold')map[cat].sold++ }); return Object.entries(map).map(([cat,{total,sold}])=>({cat,rate:parseFloat(((sold/total)*100).toFixed(1))})) }, [items])
   const bestWorst = useMemo(() => { const sold = items.filter(i=>i.status==='sold'&&i.sale_price!=null).map(i=>({...i,pl:(i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)})).sort((a,b)=>b.pl-a.pl); return { best: sold.slice(0,5), worst: sold.slice(-5).reverse() } }, [items])
 
+  const platformData = useMemo(() => {
+    const map = {}
+    items.filter(i => i.status === 'sold').forEach(i => {
+      const p = i.selling_platform || 'Unknown'
+      if (!map[p]) map[p] = { platform: p, pl: 0, count: 0 }
+      map[p].pl += (i.sale_price||0) - (i.purchase_price||0) - (i.fee_amount||0) - (i.shipping_fee||0)
+      map[p].count++
+    })
+    return Object.values(map).sort((a, b) => b.pl - a.pl).map(d => ({ ...d, pl: parseFloat(d.pl.toFixed(2)) }))
+  }, [items])
+
+  const topBuyers = useMemo(() => {
+    const map = {}
+    items.filter(i => i.status === 'sold' && i.buyer_name).forEach(i => {
+      const b = i.buyer_name
+      if (!map[b]) map[b] = { name: b, count: 0, spend: 0 }
+      map[b].count++
+      map[b].spend += i.sale_price || 0
+    })
+    return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 10).map(d => ({ ...d, spend: parseFloat(d.spend.toFixed(2)) }))
+  }, [items])
+
   const username = session?.user?.email?.split('@')[0] || 'there'
 
   // Break cards state
@@ -1109,6 +1132,91 @@ export default function Dashboard({ session }) {
     const tierOrder = { 'Floor': 0, 'Mid': 1, 'Chase': 2 }
     return [...breakCards].sort((a, b) => (tierOrder[a.tier] ?? 0) - (tierOrder[b.tier] ?? 0))
   }, [breakCards])
+
+  async function fetchBreakSpots(breakId) {
+    const { data } = await supabase.from('break_spots').select('*').eq('break_id', breakId).order('spot_number', { ascending: true })
+    setBreakSpots(data || [])
+  }
+
+  async function saveSpot() {
+    if (!slotsBreak || !spotForm.buyer_name.trim()) return
+    setSpotsSaving(true)
+    const nextNum = breakSpots.length > 0 ? Math.max(...breakSpots.map(s => s.spot_number || 0)) + 1 : 1
+    await supabase.from('break_spots').insert([{
+      break_id: slotsBreak.id, user_id: session.user.id, spot_number: nextNum,
+      buyer_name: spotForm.buyer_name.trim(), notes: spotForm.notes || null, paid: false
+    }])
+    setSpotsSaving(false)
+    setSpotForm({ buyer_name: '', notes: '' })
+    fetchBreakSpots(slotsBreak.id)
+  }
+
+  async function toggleSpotPaid(spot) {
+    await supabase.from('break_spots').update({ paid: !spot.paid }).eq('id', spot.id)
+    fetchBreakSpots(slotsBreak.id)
+  }
+
+  async function deleteSpot(id) {
+    await supabase.from('break_spots').delete().eq('id', id)
+    fetchBreakSpots(slotsBreak.id)
+  }
+
+  function downloadCSVTemplate() {
+    const headers = 'Category,Brand,Style,Colourway,SKU,Size,Purchase Date,Purchase Platform,Total Cost (£),Notes'
+    const example = 'Sneakers,Nike,Air Max 95,Pure Money,308497-100,9,2024-01-15,SNKRS,120,Great condition'
+    const blob = new Blob([headers + '\n' + example], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'stocktrack-import-template.csv'; a.click(); URL.revokeObjectURL(url)
+  }
+
+  function parseCsvImport(file) {
+    setCsvError(''); setCsvRows(null)
+    const reader = new FileReader()
+    reader.onload = e => {
+      try {
+        const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean)
+        if (lines.length < 2) { setCsvError('File appears empty'); return }
+        const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim().toLowerCase())
+        const rows = lines.slice(1).map((line, idx) => {
+          const vals = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g) || []
+          const clean = vals.map(v => v.replace(/^"|"$/g,'').trim())
+          const row = {}
+          headers.forEach((h, i) => { row[h] = clean[i] || '' })
+          row._idx = idx + 2 // row number for error reporting
+          return row
+        }).filter(r => r['category'] || r['brand'])
+        if (rows.length === 0) { setCsvError('No valid data rows found'); return }
+        setCsvRows(rows)
+      } catch { setCsvError('Could not parse CSV file') }
+    }
+    reader.readAsText(file)
+  }
+
+  async function importCSVRows() {
+    if (!csvRows || csvRows.length === 0) return
+    setCsvImporting(true); setCsvError('')
+    const toInsert = csvRows.map(r => {
+      const cat = r['category'] || 'Miscellaneous'
+      const brand = r['brand'] || r['item name'] || ''
+      const style = r['style'] || ''
+      const colourway = r['colourway'] || ''
+      const sku = r['sku'] || ''
+      const size = r['size'] || ''
+      const cost = parseFloat(r['total cost (£)'] || r['cost'] || r['unit cost (£)'] || '0') || 0
+      return {
+        category: cat, brand, style, colourway, sku, size: size || null,
+        purchase_date: r['purchase date'] || null,
+        purchase_platform: r['purchase platform'] || null,
+        notes: r['notes'] || null,
+        purchase_price: cost, batch_id: crypto.randomUUID(),
+        user_id: session.user.id, status: 'in_stock', item_condition: 'Brand New'
+      }
+    })
+    const { error } = await supabase.from('stock').insert(toInsert)
+    setCsvImporting(false)
+    if (error) { setCsvError(error.message); return }
+    setCsvRows(null); fetchItems()
+  }
 
   async function fetchBreaks() {
     setBreaksLoading(true)
@@ -1178,6 +1286,21 @@ export default function Dashboard({ session }) {
   }, [breaks])
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => { try { return localStorage.getItem('stocktrack_dark') === 'true' } catch { return false } })
+  const GOAL_KEY = 'stocktrack_goal'
+  const [monthlyGoal, setMonthlyGoal] = useState(() => { try { return parseFloat(localStorage.getItem('stocktrack_goal') || '0') } catch { return 0 } })
+  const [editingGoal, setEditingGoal] = useState(false)
+  const [goalInput, setGoalInput] = useState('')
+  const [buyerName, setBuyerName] = useState('')
+  const [vatRegistered, setVatRegistered] = useState(false)
+  const [vatNumber, setVatNumber] = useState('')
+  const [breakSpots, setBreakSpots] = useState([])
+  const [slotsBreak, setSlotsBreak] = useState(null)
+  const [spotForm, setSpotForm] = useState({ buyer_name: '', notes: '' })
+  const [spotsSaving, setSpotsSaving] = useState(false)
+  const [csvRows, setCsvRows] = useState(null)
+  const [csvImporting, setCsvImporting] = useState(false)
+  const [csvError, setCsvError] = useState('')
   const [toolTab, setToolTab] = useState('fee')
   const [metricsTab, setMetricsTab] = useState('reseller')
   const currentTaxYear = (()=>{ const n=new Date(); return n.getMonth()>=3?n.getFullYear():n.getFullYear()-1 })()
@@ -1302,8 +1425,16 @@ export default function Dashboard({ session }) {
 
   useEffect(() => { if (session) fetchProfile() }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
   async function fetchProfile() {
-    const { data } = await supabase.from('profiles').select('plan').eq('id', session.user.id).single()
-    if (data) setUserPlan(data.plan || 'free')
+    const { data } = await supabase.from('profiles').select('plan, vat_registered, vat_number').eq('id', session.user.id).single()
+    if (data) {
+      setUserPlan(data.plan || 'free')
+      setVatRegistered(!!data.vat_registered)
+      setVatNumber(data.vat_number || '')
+    }
+  }
+
+  async function saveVATSettings() {
+    await supabase.from('profiles').update({ vat_registered: vatRegistered, vat_number: vatNumber || null }).eq('id', session.user.id)
   }
 
   // Collector state
@@ -1399,7 +1530,7 @@ export default function Dashboard({ session }) {
   const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'expenses',label:'Expenses'},{id:'tools',label:'Tools'}]
 
   return (
-    <div className="app">
+    <div className={darkMode ? 'app dark-mode' : 'app'}>
       <div className="topbar">
         <div className="topbar-brand"><span className="brand-mark" />StockTrack</div>
         <nav className="topbar-nav">
@@ -1415,6 +1546,7 @@ export default function Dashboard({ session }) {
             <div className="user-pill">
               <a href="/" className="landing-nav-link" style={{fontSize:12}}>← Site</a>
               <span className="user-email">{session.user.email}</span>
+              <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode ? '☀️' : '🌙'}</button>
               <button className="btn sm" onClick={signOut}>Sign out</button>
             </div>
             <button className="mobile-menu-btn" onClick={()=>setMobileMenuOpen(o=>!o)}>
@@ -1447,6 +1579,42 @@ export default function Dashboard({ session }) {
               <div className="stat-card"><div className="stat-label">All-time P&L</div><div className={`stat-value ${stats.pl>0?'pos':stats.pl<0?'neg':''}`}>{stats.pl>=0?'+':''}{fmt(stats.pl)}</div></div>
               <div className="stat-card"><div className="stat-label">Total sold</div><div className="stat-value">{stats.sold}</div></div>
             </div>
+            {/* Monthly goal progress */}
+            <div className="goal-bar-wrap">
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--muted)',marginBottom:4}}>Monthly Profit Goal</div>
+                  {editingGoal ? (
+                    <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                      <span style={{color:'var(--muted)',fontSize:14}}>£</span>
+                      <input className="form-input" style={{margin:0,width:120}} type="number" step="10" min="0" placeholder="e.g. 500" value={goalInput} onChange={e=>setGoalInput(e.target.value)} autoFocus onKeyDown={e=>{if(e.key==='Enter'){const g=parseFloat(goalInput)||0;setMonthlyGoal(g);try{localStorage.setItem(GOAL_KEY,String(g))}catch{};setEditingGoal(false)}if(e.key==='Escape')setEditingGoal(false)}}/>
+                      <button className="btn primary sm" onClick={()=>{const g=parseFloat(goalInput)||0;setMonthlyGoal(g);try{localStorage.setItem(GOAL_KEY,String(g))}catch{};setEditingGoal(false)}}>Save</button>
+                      <button className="btn sm" onClick={()=>setEditingGoal(false)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div style={{display:'flex',alignItems:'center',gap:10}}>
+                      <span style={{fontSize:20,fontWeight:700,color:'var(--text)'}}>{monthlyGoal > 0 ? `£${monthlyGoal.toFixed(0)}` : 'No goal set'}</span>
+                      <button className="btn sm" onClick={()=>{setGoalInput(monthlyGoal > 0 ? String(monthlyGoal) : '');setEditingGoal(true)}}>{monthlyGoal > 0 ? 'Edit' : '+ Set goal'}</button>
+                    </div>
+                  )}
+                </div>
+                {monthlyGoal > 0 && (
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontSize:22,fontWeight:700,color:stats.monthPL>=monthlyGoal?'var(--green)':stats.monthPL<0?'var(--red)':'var(--text)'}}>{fmt(stats.monthPL)}</div>
+                    <div style={{fontSize:12,color:'var(--muted)'}}>{Math.min(100,Math.max(0,(stats.monthPL/monthlyGoal*100))).toFixed(0)}% of goal</div>
+                  </div>
+                )}
+              </div>
+              {monthlyGoal > 0 && (
+                <div className="goal-bar-track">
+                  <div className="goal-bar-fill" style={{
+                    width: `${Math.min(100, Math.max(0, (stats.monthPL / monthlyGoal) * 100)).toFixed(1)}%`,
+                    background: stats.monthPL >= monthlyGoal ? 'var(--green)' : stats.monthPL < 0 ? 'var(--red)' : 'var(--accent)'
+                  }}/>
+                </div>
+              )}
+            </div>
+
             <div className="chart-card">
               <div className="chart-header">
                 <div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div>
@@ -1539,6 +1707,7 @@ export default function Dashboard({ session }) {
                           <div className="item-card-body">
                             <div className="item-card-brand">{batch.brand||'—'}</div>
                             <div className="item-card-style">{batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?[batch.style,batch.units[0]?.card_number,batch.colourway].filter(Boolean).join(' · '):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='sealed'?[batch.colourway,batch.units[0]?.pokemon_sealed_type,batch.style].filter(Boolean).join(' · ')||'—':[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
+                            {batch.units[0]?.storage_location&&<div style={{marginTop:4,fontSize:11,color:'var(--muted)'}}>📦 {batch.units[0].storage_location}</div>}
                           </div>
                           <div className="item-card-stats">
                             <div className="item-card-stat">
@@ -1679,6 +1848,40 @@ export default function Dashboard({ session }) {
                   </div>
                 )
               })()}
+              {platformData.length > 0 && (
+                <div className="chart-card full">
+                  <div className="chart-header"><div><div className="chart-title">Profit by Platform</div><div className="chart-subtitle">Net P&amp;L per selling platform (all time)</div></div></div>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={platformData} layout="vertical" margin={{top:10,right:20,left:10,bottom:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false}/>
+                      <XAxis type="number" tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/>
+                      <YAxis type="category" dataKey="platform" tick={{fontSize:11,fill:'#8792a2'}} axisLine={false} tickLine={false} width={100}/>
+                      <Tooltip formatter={(v,n)=>[fmt(v),n]} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/>
+                      <Bar dataKey="pl" name="Net P&L" fill="#16a34a" radius={[0,4,4,0]}/>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              {topBuyers.length > 0 && (
+                <div className="chart-card full">
+                  <div className="chart-header"><div><div className="chart-title">Top Buyers</div><div className="chart-subtitle">Repeat customers by purchase count</div></div></div>
+                  <div style={{display:'flex',flexDirection:'column',gap:0}}>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 80px 100px',gap:8,padding:'6px 0',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:700}}>
+                      <div>Buyer</div><div style={{textAlign:'right'}}>Purchases</div><div style={{textAlign:'right'}}>Total spent</div>
+                    </div>
+                    {topBuyers.map((b,i)=>(
+                      <div key={b.name} style={{display:'grid',gridTemplateColumns:'1fr 80px 100px',gap:8,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center'}}>
+                        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                          <span style={{fontSize:11,fontWeight:700,color:'var(--muted)',minWidth:16}}>{i+1}</span>
+                          <span style={{fontWeight:500}}>{b.name}</span>
+                        </div>
+                        <div style={{textAlign:'right',color:'var(--muted)'}}>{b.count}</div>
+                        <div style={{textAlign:'right',fontWeight:600}}>{fmt(b.spend)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             </div>
             )}
@@ -1814,6 +2017,29 @@ export default function Dashboard({ session }) {
                     </div>
                     <div style={{fontSize:11,color:'var(--muted)',marginTop:6}}>Your UTR is shown on previous tax returns and HMRC correspondence. Stored locally, never sent anywhere.</div>
                   </div>
+                  <div className="chart-card" style={{marginBottom:16}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                      <div style={{fontSize:13,fontWeight:600}}>VAT Settings</div>
+                      <span style={{fontSize:11,color:vatRegistered?'var(--green)':'var(--muted)'}}>{vatRegistered?'✓ VAT Registered':'Not registered'}</span>
+                    </div>
+                    <div className="type-toggle" style={{marginBottom:12}}>
+                      <button className={`type-btn ${!vatRegistered?'active':''}`} onClick={()=>setVatRegistered(false)}>Not registered</button>
+                      <button className={`type-btn ${vatRegistered?'active':''}`} onClick={()=>setVatRegistered(true)}>VAT Registered</button>
+                    </div>
+                    {vatRegistered && (
+                      <div style={{display:'flex',gap:8,marginBottom:8}}>
+                        <input className="form-input" style={{margin:0,flex:1,fontFamily:'monospace',letterSpacing:'0.06em'}} placeholder="GB123456789" value={vatNumber} onChange={e=>setVatNumber(e.target.value)} maxLength={12}/>
+                        <button className="btn sm primary" onClick={saveVATSettings}>Save</button>
+                      </div>
+                    )}
+                    {!vatRegistered && <button className="btn sm primary" onClick={saveVATSettings}>Save</button>}
+                    {vatRegistered && taxableProfit > 0 && (
+                      <div style={{marginTop:12,padding:'10px 14px',background:'var(--amber-bg)',border:'1px solid #f59e0b',borderRadius:'var(--radius)',fontSize:13}}>
+                        <div style={{fontWeight:600,marginBottom:4}}>VAT Reminder</div>
+                        <div style={{color:'var(--text2)'}}>If your taxable turnover exceeds £90,000 you must register for VAT. Current year taxable profit: <strong>{fmt(taxableProfit)}</strong>.</div>
+                      </div>
+                    )}
+                  </div>
                   <div style={{fontSize:12,color:'var(--muted)',background:'var(--surface2)',padding:'10px 14px',borderRadius:'var(--radius)'}}>
                     ⚠️ Estimate only, based on sole trader rates for {selectedTaxYear}/{selectedTaxYear+1}. Does not account for other income, trading allowance, or other reliefs. Always confirm with a qualified accountant before submitting your Self Assessment.
                   </div>
@@ -1889,6 +2115,7 @@ export default function Dashboard({ session }) {
               </button>
               <button className={`type-btn ${toolTab==='invoice'?'active':''}`} onClick={()=>switchToolTab('invoice')}>Invoice Generator</button>
               <button className={`type-btn ${toolTab==='sku'?'active':''}`} onClick={()=>switchToolTab('sku')}>SKU Lookup</button>
+              <button className={`type-btn ${toolTab==='csv'?'active':''}`} onClick={()=>switchToolTab('csv')}>CSV Import</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
             {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} clearedBatch={clearedBatch} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
@@ -2068,6 +2295,50 @@ export default function Dashboard({ session }) {
                 </div>
               )
             })()}
+            {toolTab==='csv'&&(
+              <div style={{maxWidth:680}}>
+                <div className="chart-card" style={{marginBottom:16}}>
+                  <div className="chart-title" style={{marginBottom:4}}>CSV Import</div>
+                  <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Bulk-add stock from a spreadsheet. Download the template, fill it in, then upload it here.</div>
+                  <button className="btn sm" onClick={downloadCSVTemplate} style={{marginBottom:16}}>↓ Download template CSV</button>
+                  <div className="csv-drop-zone" onClick={()=>document.getElementById('csv-file-input').click()}>
+                    <div style={{fontSize:32,marginBottom:8}}>📂</div>
+                    <div style={{fontWeight:600,marginBottom:4}}>Click to select a CSV file</div>
+                    <div style={{fontSize:12,color:'var(--muted)'}}>Columns: Category, Brand, Style, Colourway, SKU, Size, Purchase Date, Purchase Platform, Total Cost (£), Notes</div>
+                  </div>
+                  <input id="csv-file-input" type="file" accept=".csv" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f)parseCsvImport(f);e.target.value=''}}/>
+                  {csvError&&<div style={{background:'#fff5f5',border:'1px solid #fed7d7',borderRadius:'var(--radius)',padding:'10px 14px',fontSize:13,color:'var(--red)',marginTop:12}}>{csvError}</div>}
+                </div>
+                {csvRows&&csvRows.length>0&&(
+                  <div className="chart-card">
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                      <div><div className="chart-title" style={{margin:0}}>{csvRows.length} row{csvRows.length!==1?'s':''} ready to import</div></div>
+                      <div style={{display:'flex',gap:8}}>
+                        <button className="btn sm" onClick={()=>setCsvRows(null)}>Cancel</button>
+                        <button className="btn primary sm" onClick={importCSVRows} disabled={csvImporting}>{csvImporting?'Importing...':'Import all'}</button>
+                      </div>
+                    </div>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                        <thead><tr style={{borderBottom:'2px solid var(--border)'}}>{['Category','Brand','Style','Size','Cost'].map(h=><th key={h} style={{textAlign:'left',padding:'4px 8px',color:'var(--muted)',fontWeight:600}}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {csvRows.slice(0,20).map((r,i)=>(
+                            <tr key={i} style={{borderBottom:'1px solid var(--surface2)'}}>
+                              <td style={{padding:'4px 8px'}}>{r['category']||'—'}</td>
+                              <td style={{padding:'4px 8px'}}>{r['brand']||'—'}</td>
+                              <td style={{padding:'4px 8px'}}>{r['style']||'—'}</td>
+                              <td style={{padding:'4px 8px'}}>{r['size']||'—'}</td>
+                              <td style={{padding:'4px 8px'}}>{r['total cost (£)']||r['cost']||'—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {csvRows.length>20&&<div style={{fontSize:12,color:'var(--muted)',padding:'8px',textAlign:'center'}}>…and {csvRows.length-20} more rows</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {toolTab==='sku'&&(
               <div style={{maxWidth:680}}>
                 <div className="chart-card" style={{marginBottom:20}}>
@@ -2252,6 +2523,7 @@ export default function Dashboard({ session }) {
                       </div>
                       <div className="item-card-actions">
                         <button className="btn sm" style={{flex:1}} onClick={()=>openEditBreak(b)}>Edit</button>
+                        {b.type==='break'&&<button className="btn sm" onClick={()=>{ setSlotsBreak(b); fetchBreakSpots(b.id) }}>Spots</button>}
                         <button className="btn sm success" onClick={()=>{ setViewingBreak(b); fetchBreakCards(b.id) }}>Inventory</button>
                         <button className="btn sm danger" onClick={()=>deleteBreak(b.id)}>Del</button>
                       </div>
@@ -2410,6 +2682,57 @@ export default function Dashboard({ session }) {
         </div>
       )}
 
+      {/* Break Spots Modal */}
+      {slotsBreak&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setSlotsBreak(null)}>
+          <div className="modal" style={{maxWidth:560}}>
+            <div className="modal-title">Break Spots</div>
+            <div style={{fontSize:13,color:'var(--muted)',marginTop:-12,marginBottom:16}}>{slotsBreak.name||'Box Break'} · {breakSpots.filter(s=>s.paid).length}/{breakSpots.length} paid</div>
+
+            {/* Add spot form */}
+            <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+              <input className="form-input" style={{flex:'1 1 140px',margin:0}} placeholder="Buyer name *" value={spotForm.buyer_name} onChange={e=>setSpotForm(f=>({...f,buyer_name:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&saveSpot()}/>
+              <input className="form-input" style={{flex:'1 1 120px',margin:0}} placeholder="Notes (optional)" value={spotForm.notes} onChange={e=>setSpotForm(f=>({...f,notes:e.target.value}))}/>
+              <button className="btn primary sm" onClick={saveSpot} disabled={spotsSaving||!spotForm.buyer_name.trim()}>+ Add spot</button>
+            </div>
+
+            {/* Spots list */}
+            {breakSpots.length===0?(
+              <div style={{textAlign:'center',padding:'24px',color:'var(--muted)',fontSize:13}}>No spots added yet — add your first buyer above</div>
+            ):(
+              <div className="batch-units">
+                {breakSpots.map(spot=>(
+                  <div key={spot.id} className="batch-unit-row" style={{background:spot.paid?'#f0fdf4':'var(--surface)'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,flex:1,minWidth:0}}>
+                      <input type="checkbox" checked={!!spot.paid} onChange={()=>toggleSpotPaid(spot)} style={{cursor:'pointer',accentColor:'var(--accent)'}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:500,fontSize:13}}>{spot.buyer_name}</div>
+                        {spot.notes&&<div style={{fontSize:11,color:'var(--muted)'}}>{spot.notes}</div>}
+                      </div>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:11,fontWeight:600,color:spot.paid?'var(--green)':'var(--amber)'}}>{spot.paid?'✓ Paid':'Pending'}</span>
+                      <button className="btn sm danger" onClick={()=>deleteSpot(spot.id)}>Del</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {breakSpots.length > 0 && (
+              <div style={{marginTop:12,padding:'10px 14px',background:'var(--surface2)',borderRadius:'var(--radius)',border:'1px solid var(--border)',display:'flex',justifyContent:'space-between',fontSize:13}}>
+                <span style={{color:'var(--muted)'}}>{breakSpots.filter(s=>s.paid).length} of {breakSpots.length} spots paid</span>
+                <span style={{fontWeight:600,color:'var(--green)'}}>{fmt((breakSpots.filter(s=>s.paid).length) * (slotsBreak.spot_price||0))}</span>
+              </div>
+            )}
+
+            <div className="form-actions" style={{marginTop:16}}>
+              <button className="btn" onClick={()=>setSlotsBreak(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Collector Add/Edit Modal */}
       {showCollectorAdd&&(
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowCollectorAdd(false)}>
@@ -2474,6 +2797,10 @@ export default function Dashboard({ session }) {
                 <div className="form-group">
                   <label className="form-label">Target sell price (£)</label>
                   <input className="form-input" type="number" step="0.01" placeholder="0.00 (optional)" value={form.target_price||''} onChange={e=>setForm(f=>({...f,target_price:e.target.value}))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Storage location</label>
+                  <input className="form-input" placeholder="e.g. Shelf A, Box 3 (optional)" value={form.storage_location||''} onChange={e=>setForm(f=>({...f,storage_location:e.target.value}))}/>
                 </div>
               </>}
             </div>
@@ -2614,6 +2941,10 @@ export default function Dashboard({ session }) {
             <div className="form-group" style={{marginTop:8}}>
               <label className="form-label">Postage / shipping (£)</label>
               <input className="form-input" type="number" step="0.01" placeholder="0.00 (optional)" value={shippingFee} onChange={e=>setShippingFee(e.target.value)}/>
+            </div>
+            <div className="form-group" style={{marginTop:8}}>
+              <label className="form-label">Buyer name (optional)</label>
+              <input className="form-input" placeholder="e.g. John Smith" value={buyerName} onChange={e=>setBuyerName(e.target.value)}/>
             </div>
             {salePrice&&(()=>{
               const price = parseFloat(salePrice)||0
