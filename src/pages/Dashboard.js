@@ -362,6 +362,9 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
     saveToStorage({ selectedCategories, status, notes, rowData, unlisted })
   }, [selectedCategories, status, notes, rowData, unlisted])
 
+  // Scroll to top when checklist mounts (prevents opening at bottom when switching back to tab)
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // When an item is saved from the edit modal, remove its discrepancy
   useEffect(() => {
     if (!clearedBatch) return
@@ -502,6 +505,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
                     <div style={{display:'flex',gap:4}}>
                       <button className={`check-btn correct ${status[row.id]==='correct'?'active':''}`} onClick={()=>setRowStatus(row.id,'correct',row)} title="Correct">✓</button>
                       <button className={`check-btn incorrect ${status[row.id]==='incorrect'?'active':''}`} onClick={()=>setRowStatus(row.id,'incorrect',row)} title="Incorrect">✗</button>
+                      {row.category!=='Breaker'&&row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="check-btn sell" title="Sell" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>£</button>:null})()}
                     </div>
                   </div>
                   <div className="checklist-col brand">{row.brand}</div>
@@ -903,6 +907,8 @@ export default function Dashboard({ session }) {
     }
     setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate(''); setPayoutStatus('pending'); setShippingFee(''); setBuyerName('')
     fetchItems()
+    setClearedBatch(sellItem.batch_id || sellItem.id)
+    setTimeout(() => setClearedBatch(null), 200)
     if (batchModal) {
       const ids = sellItem._bulkIds || [sellItem.id]
       const updated = batchModal.units.map(u => ids.includes(u.id) ? { ...u, status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt } : u)
@@ -1031,6 +1037,18 @@ export default function Dashboard({ session }) {
   }
 
   const [expenses, setExpenses] = useState([])
+
+  // Net home stats = stock P&L minus expenses (separate useMemo so expenses isn't used before it's defined)
+  const netHomeStats = useMemo(() => {
+    const now = new Date()
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth()-1, 1)
+    const lastMonth = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth()+1).padStart(2,'0')}`
+    const totalExp = expenses.reduce((s,e)=>s+(e.amount||0),0)
+    const monthExp = expenses.filter(e=>e.date&&e.date.slice(0,7)===thisMonth).reduce((s,e)=>s+(e.amount||0),0)
+    const lastMonthExp = expenses.filter(e=>e.date&&e.date.slice(0,7)===lastMonth).reduce((s,e)=>s+(e.amount||0),0)
+    return { pl: stats.pl - totalExp, monthPL: stats.monthPL - monthExp, lastMonthPL: stats.lastMonthPL - lastMonthExp }
+  }, [stats, expenses])
 
   const plChartData = useMemo(() => getLast(chartMonths).map(({ key, label }) => {
     let pl = 0, revenue = 0, cost = 0
@@ -1619,8 +1637,8 @@ export default function Dashboard({ session }) {
             <div className="stats-bar">
               <div className="stat-card"><div className="stat-label">Units in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
-              <div className="stat-card"><div className="stat-label">This month's profit</div><div className={`stat-value ${stats.monthPL>0?'pos':stats.monthPL<0?'neg':''}`}>{stats.monthPL>=0?'+':''}{fmt(stats.monthPL)}</div>{(()=>{if(stats.lastMonthPL===0&&stats.monthPL===0)return null;if(stats.lastMonthPL===0)return<div style={{fontSize:11,color:'var(--green)',marginTop:2}}>↑ First sales this month</div>;const pct=Math.abs(((stats.monthPL-stats.lastMonthPL)/Math.abs(stats.lastMonthPL))*100).toFixed(0);const up=stats.monthPL>=stats.lastMonthPL;return<div style={{fontSize:11,color:up?'var(--green)':'var(--red)',marginTop:2}}>{up?'↑':'↓'} {pct}% vs last month</div>})()}</div>
-              <div className="stat-card"><div className="stat-label">All-time P&L</div><div className={`stat-value ${stats.pl>0?'pos':stats.pl<0?'neg':''}`}>{stats.pl>=0?'+':''}{fmt(stats.pl)}</div></div>
+              <div className="stat-card"><div className="stat-label">This month's profit</div><div className={`stat-value ${netHomeStats.monthPL>0?'pos':netHomeStats.monthPL<0?'neg':''}`}>{netHomeStats.monthPL>=0?'+':''}{fmt(netHomeStats.monthPL)}</div>{(()=>{if(netHomeStats.lastMonthPL===0&&netHomeStats.monthPL===0)return null;if(netHomeStats.lastMonthPL===0)return<div style={{fontSize:11,color:'var(--green)',marginTop:2}}>↑ First sales this month</div>;const pct=Math.abs(((netHomeStats.monthPL-netHomeStats.lastMonthPL)/Math.abs(netHomeStats.lastMonthPL))*100).toFixed(0);const up=netHomeStats.monthPL>=netHomeStats.lastMonthPL;return<div style={{fontSize:11,color:up?'var(--green)':'var(--red)',marginTop:2}}>{up?'↑':'↓'} {pct}% vs last month</div>})()}</div>
+              <div className="stat-card"><div className="stat-label">All-time P&L</div><div className={`stat-value ${netHomeStats.pl>0?'pos':netHomeStats.pl<0?'neg':''}`}>{netHomeStats.pl>=0?'+':''}{fmt(netHomeStats.pl)}</div></div>
               <div className="stat-card"><div className="stat-label">Total sold</div><div className="stat-value">{stats.sold}</div></div>
             </div>
             {/* Monthly goal progress */}
@@ -1644,16 +1662,16 @@ export default function Dashboard({ session }) {
                 </div>
                 {monthlyGoal > 0 && (
                   <div style={{textAlign:'right'}}>
-                    <div style={{fontSize:22,fontWeight:700,color:stats.monthPL>=monthlyGoal?'var(--green)':stats.monthPL<0?'var(--red)':'var(--text)'}}>{fmt(stats.monthPL)}</div>
-                    <div style={{fontSize:12,color:'var(--muted)'}}>{Math.min(100,Math.max(0,(stats.monthPL/monthlyGoal*100))).toFixed(0)}% of goal</div>
+                    <div style={{fontSize:22,fontWeight:700,color:netHomeStats.monthPL>=monthlyGoal?'var(--green)':netHomeStats.monthPL<0?'var(--red)':'var(--text)'}}>{fmt(netHomeStats.monthPL)}</div>
+                    <div style={{fontSize:12,color:'var(--muted)'}}>{Math.min(100,Math.max(0,(netHomeStats.monthPL/monthlyGoal*100))).toFixed(0)}% of goal</div>
                   </div>
                 )}
               </div>
               {monthlyGoal > 0 && (
                 <div className="goal-bar-track">
                   <div className="goal-bar-fill" style={{
-                    width: `${Math.min(100, Math.max(0, (stats.monthPL / monthlyGoal) * 100)).toFixed(1)}%`,
-                    background: stats.monthPL >= monthlyGoal ? 'var(--green)' : stats.monthPL < 0 ? 'var(--red)' : 'var(--accent)'
+                    width: `${Math.min(100, Math.max(0, (netHomeStats.monthPL / monthlyGoal) * 100)).toFixed(1)}%`,
+                    background: netHomeStats.monthPL >= monthlyGoal ? 'var(--green)' : netHomeStats.monthPL < 0 ? 'var(--red)' : 'var(--accent)'
                   }}/>
                 </div>
               )}
