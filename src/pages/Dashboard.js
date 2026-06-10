@@ -1029,6 +1029,8 @@ export default function Dashboard({ session }) {
     return (b.packs_sold||0)*(b.pack_price||0) - (b.cost||0)
   }
 
+  const [expenses, setExpenses] = useState([])
+
   const plChartData = useMemo(() => getLast(chartMonths).map(({ key, label }) => {
     let pl = 0, revenue = 0, cost = 0
     if (metricsSources.reseller) {
@@ -1271,7 +1273,6 @@ export default function Dashboard({ session }) {
   const FREE_LIMIT = 30
 
   const EXPENSE_CATEGORIES = ['Packaging', 'Shipping Supplies', 'Equipment', 'Platform Subscriptions', 'Advertising', 'Software', 'Travel', 'Professional Services', 'Other']
-  const [expenses, setExpenses] = useState([])
   const [expensesLoading, setExpensesLoading] = useState(false)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
   const [expenseForm, setExpenseForm] = useState({ date: '', amount: '', category: 'Packaging', description: '' })
