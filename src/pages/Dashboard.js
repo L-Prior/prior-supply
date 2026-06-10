@@ -331,7 +331,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
   return null
 }
 
-function StockChecklist({ items, breaks, onAddItem, onEditItem, onSellItem }) {
+function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, onSellItem }) {
   const STORAGE_KEY = 'stocktrack_checklist'
 
   function loadSaved() {
@@ -361,6 +361,14 @@ function StockChecklist({ items, breaks, onAddItem, onEditItem, onSellItem }) {
   useEffect(() => {
     saveToStorage({ selectedCategories, status, notes, rowData, unlisted })
   }, [selectedCategories, status, notes, rowData, unlisted])
+
+  // When an item is saved from the edit modal, remove its discrepancy
+  useEffect(() => {
+    if (!clearedBatch) return
+    const prefix = `batch-${clearedBatch}`
+    setStatus(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (k.startsWith(prefix)) delete n[k] }); return n })
+    setNotes(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (k.startsWith(prefix)) delete n[k] }); return n })
+  }, [clearedBatch])
 
   function toggleCategory(cat) { setSelectedCategories(s => ({ ...s, [cat]: !s[cat] })) }
 
@@ -665,6 +673,7 @@ export default function Dashboard({ session }) {
   const [payoutStatus, setPayoutStatus] = useState('pending')
   const [shippingFee, setShippingFee] = useState('')
   const [stockTab, setStockTab] = useState('inventory')
+  const [clearedBatch, setClearedBatch] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [search, setSearch] = useState('')
   const [filterBrand, setFilterBrand] = useState('')
@@ -791,6 +800,7 @@ export default function Dashboard({ session }) {
     }
     setSaving(false)
     if (error) { setSaveError(error.message); return }
+    if (editItem) { setClearedBatch(editItem.batch_id || editItem.id); setTimeout(() => setClearedBatch(null), 200) }
     setShowAdd(false); setEditItem(null); setForm(EMPTY_FORM); fetchItems()
   }
 
@@ -1880,7 +1890,7 @@ export default function Dashboard({ session }) {
               <button className={`type-btn ${toolTab==='sku'?'active':''}`} onClick={()=>switchToolTab('sku')}>SKU Lookup</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
-            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
+            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} clearedBatch={clearedBatch} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
             {toolTab==='payouts'&&(()=>{
               const pending = items.filter(i=>i.status==='sold'&&i.payout_status==='pending')
               const totalOutstanding = pending.reduce((s,i)=>s+(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
