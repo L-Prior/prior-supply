@@ -1161,6 +1161,44 @@ export default function Dashboard({ session }) {
     fetchBreakSpots(slotsBreak.id)
   }
 
+  function addToOrder(item) {
+    if (orderCart.some(e => e.item.id === item.id)) return
+    const batchUnits = item.batch_id
+      ? items.filter(i => i.batch_id === item.batch_id && i.size === (item.size||'') && i.status === 'in_stock')
+      : items.filter(i => i.id === item.id && i.status === 'in_stock')
+    const maxQty = Math.max(batchUnits.length, 1)
+    const cartId = `${item.id}-${Date.now()}`
+    setOrderCart(c => [...c, { cartId, item, qty: 1, unitPrice: '', maxQty, unitIds: batchUnits.map(u => u.id) }])
+  }
+
+  function removeFromOrder(cartId) { setOrderCart(c => c.filter(e => e.cartId !== cartId)) }
+  function updateOrderPrice(cartId, price) { setOrderCart(c => c.map(e => e.cartId === cartId ? { ...e, unitPrice: price } : e)) }
+  function updateOrderQty(cartId, qty) { setOrderCart(c => c.map(e => e.cartId === cartId ? { ...e, qty: Math.min(Math.max(parseInt(qty)||1, 1), e.maxQty) } : e)) }
+
+  async function confirmOrder() {
+    setSaving(true)
+    const now = new Date().toISOString()
+    const platformName = orderPlatform ? orderPlatform.name : ''
+    for (const entry of orderCart) {
+      const price = parseFloat(entry.unitPrice) || 0
+      const feeAmt = calcFee(entry.unitPrice, orderPlatform, orderCustomRate)
+      const payload = {
+        status: 'sold', sale_price: price, selling_platform: platformName || null,
+        fee_amount: feeAmt || null, payout_status: orderPayoutStatus,
+        buyer_name: orderBuyerName || null, sold_at: now
+      }
+      const toSell = entry.unitIds.slice(0, entry.qty)
+      for (const id of toSell) {
+        await supabase.from('stock').update(payload).eq('id', id)
+      }
+    }
+    setSaving(false)
+    setOrderCart([]); setShowOrderModal(false)
+    setOrderPlatform(null); setOrderCustomRate('')
+    setOrderBuyerName(''); setOrderPayoutStatus('pending')
+    fetchItems()
+  }
+
   function downloadCSVTemplate() {
     const headers = 'Category,Brand,Style,Colourway,SKU,Size,Purchase Date,Purchase Platform,Total Cost (£),Notes'
     const example = 'Sneakers,Nike,Air Max 95,Pure Money,308497-100,9,2024-01-15,SNKRS,120,Great condition'
@@ -1301,6 +1339,12 @@ export default function Dashboard({ session }) {
   const [csvRows, setCsvRows] = useState(null)
   const [csvImporting, setCsvImporting] = useState(false)
   const [csvError, setCsvError] = useState('')
+  const [orderCart, setOrderCart] = useState([])
+  const [showOrderModal, setShowOrderModal] = useState(false)
+  const [orderPlatform, setOrderPlatform] = useState(null)
+  const [orderCustomRate, setOrderCustomRate] = useState('')
+  const [orderBuyerName, setOrderBuyerName] = useState('')
+  const [orderPayoutStatus, setOrderPayoutStatus] = useState('pending')
   const [toolTab, setToolTab] = useState('fee')
   const [metricsTab, setMetricsTab] = useState('reseller')
   const currentTaxYear = (()=>{ const n=new Date(); return n.getMonth()>=3?n.getFullYear():n.getFullYear()-1 })()
@@ -1671,6 +1715,15 @@ export default function Dashboard({ session }) {
                   {(search||filterBrand||filterStatus||filterCategory)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('')}}>Clear</button>}
                   <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
                 </div>
+                {orderCart.length>0&&(
+                  <div style={{background:'var(--accent)',color:'#fff',padding:'10px 16px',borderRadius:'var(--radius)',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                    <span style={{fontWeight:600,fontSize:14}}>🛒 {orderCart.length} item{orderCart.length!==1?'s':''} in order</span>
+                    <div style={{display:'flex',gap:8}}>
+                      <button style={{background:'rgba(255,255,255,0.2)',border:'1px solid rgba(255,255,255,0.5)',color:'#fff',borderRadius:'var(--radius)',padding:'4px 12px',fontSize:12,fontWeight:600,cursor:'pointer'}} onClick={()=>setShowOrderModal(true)}>View order →</button>
+                      <button style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.3)',color:'#fff',borderRadius:'var(--radius)',padding:'4px 10px',fontSize:12,cursor:'pointer'}} onClick={()=>setOrderCart([])}>✕ Clear</button>
+                    </div>
+                  </div>
+                )}
                 {loading?<div className="loading">Loading stock...</div>:filteredBatches.length===0?(
                   <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">{items.length===0?'No stock yet':'No results'}</div><div style={{marginTop:6}}>{items.length===0?'Add your first item to get started':'Try adjusting your filters'}</div></div>
                 ):(
@@ -1729,6 +1782,10 @@ export default function Dashboard({ session }) {
                           <div className="item-card-actions" onClick={e=>e.stopPropagation()}>
                             {isSingle&&batch.units[0].status==='in_stock'&&<button className="btn sm success" style={{flex:1}} onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
                             {!isSingle&&!allSold&&<button className="btn sm success" style={{flex:1}} onClick={()=>setBatchModal(batch)}>View units</button>}
+                            {isSingle&&batch.units[0].status==='in_stock'&&(()=>{
+                              const inCart=orderCart.some(e=>e.item.id===batch.units[0].id)
+                              return <button className={`btn sm${inCart?' primary':''}`} title={inCart?'In order — click to remove':'Add to order'} onClick={()=>inCart?removeFromOrder(orderCart.find(e=>e.item.id===batch.units[0].id)?.cartId):addToOrder(batch.units[0])}>{inCart?'✓ Order':'📋'}</button>
+                            })()}
                             {isSingle&&<button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
                             <button className="btn sm" onClick={()=>duplicateItem(batch)}>Copy</button>
                             {isSingle?<button className="btn sm danger" onClick={()=>deleteItem(batch.units[0].id)}>Del</button>:<button className="btn sm danger" onClick={()=>deleteBatch(batch.key)}>Del all</button>}
@@ -2878,6 +2935,10 @@ export default function Dashboard({ session }) {
                           Sell
                         </button>
                       )}
+                      {g.inStock.length > 0 && (()=>{
+                        const inCart = orderCart.some(e => e.item.id === g.inStock[0].id)
+                        return <button className={`btn sm${inCart?' primary':''}`} onClick={()=>inCart?removeFromOrder(orderCart.find(e=>e.item.id===g.inStock[0].id)?.cartId):addToOrder(g.inStock[0])}>{inCart?'✓ Order':'📋 Order'}</button>
+                      })()}
                       <button className="btn sm" onClick={()=>{openEdit(g.inStock[0]||g.sold[0]);setBatchModal(null)}}>Edit</button>
                       <button className="btn sm danger" onClick={()=>{
                         if (!window.confirm(`Delete all ${g.inStock.length} in-stock units of this size?`)) return
@@ -2895,6 +2956,114 @@ export default function Dashboard({ session }) {
               ):(
                 <button className="btn" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>markLongTerm(batchModal)}>📌 Mark as long-term hold</button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Modal */}
+      {showOrderModal&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowOrderModal(false)}>
+          <div className="modal" style={{maxWidth:680}}>
+            <div className="modal-title">Order — {orderCart.length} item{orderCart.length!==1?'s':''}</div>
+
+            {/* Shared order settings */}
+            <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',padding:'12px 16px',background:'var(--surface2)',borderRadius:'var(--radius)',border:'1px solid var(--border)'}}>
+              <div className="form-group" style={{margin:0,flex:'1 1 180px'}}>
+                <label className="form-label">Platform & fees</label>
+                <select className="form-input" style={{margin:0}} value={orderPlatform?.id||''} onChange={e=>{const p=RESELLER_PLATFORMS.find(p=>p.id===e.target.value)||null;setOrderPlatform(p)}}>
+                  <option value="">No platform / no fees</option>
+                  {RESELLER_PLATFORMS.map(p=><option key={p.id} value={p.id}>{p.name}{p.rate>0?` (${p.rate}%)`:''}</option>)}
+                </select>
+              </div>
+              {orderPlatform?.id==='custom'&&(
+                <div className="form-group" style={{margin:0,flex:'0 0 100px'}}>
+                  <label className="form-label">Custom %</label>
+                  <input className="form-input" style={{margin:0}} type="number" step="0.1" placeholder="e.g. 10" value={orderCustomRate} onChange={e=>setOrderCustomRate(e.target.value)}/>
+                </div>
+              )}
+              <div className="form-group" style={{margin:0,flex:'1 1 140px'}}>
+                <label className="form-label">Buyer name</label>
+                <input className="form-input" style={{margin:0}} placeholder="e.g. John Smith" value={orderBuyerName} onChange={e=>setOrderBuyerName(e.target.value)}/>
+              </div>
+              <div className="form-group" style={{margin:0,flex:'1 1 140px'}}>
+                <label className="form-label">Payout status</label>
+                <select className="form-input" style={{margin:0}} value={orderPayoutStatus} onChange={e=>setOrderPayoutStatus(e.target.value)}>
+                  <option value="pending">⏳ Pending</option>
+                  <option value="paid">✅ Paid out</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Per-item table */}
+            <div style={{overflowX:'auto',marginBottom:16}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                <thead>
+                  <tr style={{borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:700}}>
+                    <th style={{textAlign:'left',padding:'6px 8px 6px 0'}}>Item</th>
+                    <th style={{textAlign:'right',padding:'6px 8px',width:52}}>Qty</th>
+                    <th style={{textAlign:'right',padding:'6px 8px',width:60}}>Cost</th>
+                    <th style={{textAlign:'right',padding:'6px 8px',width:110}}>Unit price (£)</th>
+                    <th style={{textAlign:'right',padding:'6px 8px',width:70}}>Fee</th>
+                    <th style={{textAlign:'right',padding:'6px 0',width:80}}>Profit</th>
+                    <th style={{width:28}}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderCart.map(entry=>{
+                    const price = parseFloat(entry.unitPrice)||0
+                    const fee = calcFee(entry.unitPrice, orderPlatform, orderCustomRate)
+                    const profit = (price - (entry.item.purchase_price||0) - fee) * entry.qty
+                    return (
+                      <tr key={entry.cartId} style={{borderBottom:'1px solid var(--surface2)'}}>
+                        <td style={{padding:'8px 8px 8px 0'}}>
+                          <div style={{fontWeight:500}}>{entry.item.brand} {entry.item.style}</div>
+                          <div style={{fontSize:11,color:'var(--muted)'}}>{[entry.item.colourway,entry.item.size?`UK ${entry.item.size}`:null].filter(Boolean).join(' · ')}</div>
+                        </td>
+                        <td style={{padding:'8px'}}>
+                          {entry.maxQty > 1 ? (
+                            <input className="form-input" style={{margin:0,textAlign:'right',width:44,padding:'4px 6px',fontSize:12}} type="number" min="1" max={entry.maxQty} value={entry.qty} onChange={e=>updateOrderQty(entry.cartId,e.target.value)}/>
+                          ) : (
+                            <span style={{textAlign:'right',display:'block',color:'var(--muted)'}}>1</span>
+                          )}
+                        </td>
+                        <td style={{padding:'8px',textAlign:'right',color:'var(--muted)'}}>{fmt(entry.item.purchase_price)}</td>
+                        <td style={{padding:'8px'}}>
+                          <input className="form-input" style={{margin:0,textAlign:'right',width:90,padding:'4px 8px'}} type="number" step="0.01" placeholder="0.00" value={entry.unitPrice} onChange={e=>updateOrderPrice(entry.cartId,e.target.value)} autoFocus={orderCart.indexOf(entry)===0}/>
+                        </td>
+                        <td style={{padding:'8px',textAlign:'right',fontSize:12,color:'var(--muted)'}}>{price>0&&fee>0?`-${fmt(fee)}`:'—'}</td>
+                        <td style={{padding:'8px 0',textAlign:'right',fontWeight:600}}><span className={price>0?(profit>=0?'td-pos':'td-neg'):''}>{price>0?fmt(profit):'—'}</span></td>
+                        <td style={{padding:'8px 0',textAlign:'right'}}><button onClick={()=>removeFromOrder(entry.cartId)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:16,lineHeight:1}}>✕</button></td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Order totals */}
+            {(()=>{
+              const totalRevenue = orderCart.reduce((s,e)=>{const p=parseFloat(e.unitPrice)||0;return s+p*e.qty},0)
+              const totalCost = orderCart.reduce((s,e)=>s+(e.item.purchase_price||0)*e.qty,0)
+              const totalFees = orderCart.reduce((s,e)=>{const f=calcFee(e.unitPrice,orderPlatform,orderCustomRate);return s+f*e.qty},0)
+              const totalProfit = totalRevenue - totalCost - totalFees
+              return (
+                <div style={{borderTop:'2px solid var(--border)',paddingTop:12,marginBottom:16}}>
+                  <div style={{display:'flex',justifyContent:'flex-end'}}>
+                    <div style={{width:320}}>
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}><span style={{color:'var(--muted)'}}>Total revenue</span><span style={{fontWeight:500}}>{fmt(totalRevenue)}</span></div>
+                      {totalFees>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}><span style={{color:'var(--muted)'}}>Total fees</span><span style={{color:'var(--muted)'}}>-{fmt(totalFees)}</span></div>}
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}><span style={{color:'var(--muted)'}}>Total cost</span><span style={{color:'var(--muted)'}}>-{fmt(totalCost)}</span></div>
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,borderTop:'1px solid var(--border)',paddingTop:8}}><span>Net profit</span><span className={totalProfit>=0?'td-pos':'td-neg'}>{fmt(totalProfit)}</span></div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            <div className="form-actions">
+              <button className="btn" onClick={()=>setShowOrderModal(false)}>Cancel</button>
+              <button className="btn primary" onClick={confirmOrder} disabled={saving||orderCart.every(e=>!e.unitPrice)}>{saving?'Saving...':'Confirm order'}</button>
             </div>
           </div>
         </div>
