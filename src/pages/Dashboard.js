@@ -31,7 +31,6 @@ const RESELLER_PLATFORMS = [
   { id: 'stockx_l2', name: 'StockX — Level 2 (12–39 sales)', type: 'percent', rate: 11.5 },
   { id: 'stockx_l3', name: 'StockX — Level 3 (40–799 sales)', type: 'percent', rate: 11 },
   { id: 'stockx_l4', name: 'StockX — Level 4 (800+ sales)', type: 'percent', rate: 10 },
-  { id: 'alias', name: 'Alias', type: 'percent', rate: 9.5 },
   { id: 'whatnot', name: 'Whatnot (UK)', type: 'percent_plus_fixed', rate: 9.09, fixed: 0.35 },
   { id: 'custom', name: 'Custom', type: 'percent', rate: 0 },
 ]
@@ -681,7 +680,7 @@ export default function Dashboard({ session }) {
     setMetricsSources(s => ({ ...s, [key]: !s[key] }))
   }
 
-  useEffect(() => { fetchItems(); fetchBreaks() }, [])
+  useEffect(() => { fetchItems(); fetchBreaks(); fetchExpenses() }, [])
 
   async function fetchItems() {
     setLoading(true)
@@ -1041,8 +1040,10 @@ export default function Dashboard({ session }) {
         pl += brev - bcost; revenue += brev; cost += bcost
       })
     }
-    return { label, pl: parseFloat(pl.toFixed(2)), revenue: parseFloat(revenue.toFixed(2)), cost: parseFloat(cost.toFixed(2)) }
-  }), [items, breaks, chartMonths, metricsSources])
+    const exp = expenses.filter(e => e.date && e.date.slice(0,7) === key).reduce((s,e) => s + (e.amount||0), 0)
+    const netPL = parseFloat((pl - exp).toFixed(2))
+    return { label, pl: parseFloat(pl.toFixed(2)), netPL, expenses: parseFloat(exp.toFixed(2)), revenue: parseFloat(revenue.toFixed(2)), cost: parseFloat(cost.toFixed(2)) }
+  }), [items, breaks, expenses, chartMonths, metricsSources])
 
   const categoryData = useMemo(() => {
     const map = {}
@@ -1171,6 +1172,7 @@ export default function Dashboard({ session }) {
 
   const INV_BIZ_KEY = 'stocktrack_biz'
   const INV_NUM_KEY = 'stocktrack_inv_num'
+  const INV_SAVED_KEY = 'stocktrack_invoices'
   const blankBiz = { name: '', address: '', email: '', phone: '', vatNumber: '' }
   const [invBiz, setInvBiz] = useState(()=>{ try { return JSON.parse(localStorage.getItem(INV_BIZ_KEY)||'{}') } catch { return {} } })
   const [invCustomer, setInvCustomer] = useState({ name: '', address: '', email: '' })
@@ -1180,19 +1182,53 @@ export default function Dashboard({ session }) {
   const [invDate, setInvDate] = useState(new Date().toISOString().slice(0,10))
   const [invDueDate, setInvDueDate] = useState('')
   const [editingBiz, setEditingBiz] = useState(false)
+  const [savedInvoices, setSavedInvoices] = useState(()=>{ try { return JSON.parse(localStorage.getItem(INV_SAVED_KEY)||'[]') } catch { return [] } })
 
   function saveBizDetails() { localStorage.setItem(INV_BIZ_KEY, JSON.stringify(invBiz)); setEditingBiz(false) }
+
+  function saveInvoice() {
+    const bizDetails = {...blankBiz,...invBiz}
+    const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
+    const inv = { id: Date.now().toString(), number: invNumber, date: invDate, dueDate: invDueDate, customerName: invCustomer.name, total: invTotal, snapshot: { invNumber, invDate, invDueDate, invCustomer, invLines, invNotes, bizDetails } }
+    const updated = [inv, ...savedInvoices]
+    setSavedInvoices(updated)
+    try { localStorage.setItem(INV_SAVED_KEY, JSON.stringify(updated)) } catch {}
+    const next = parseInt(invNumber||'0')+1
+    localStorage.setItem(INV_NUM_KEY, String(parseInt(invNumber||'0')))
+    setInvNumber(String(next).padStart(4,'0'))
+  }
+
+  function deleteSavedInvoice(id) {
+    const updated = savedInvoices.filter(i=>i.id!==id)
+    setSavedInvoices(updated)
+    try { localStorage.setItem(INV_SAVED_KEY, JSON.stringify(updated)) } catch {}
+  }
+
+  function printSavedInvoice(snap) {
+    const { invNumber: n, invDate: d, invDueDate: dd, invCustomer: c, invLines: lines, invNotes: notes, bizDetails: biz } = snap
+    const total = lines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
+    openInvoicePrint(n, d, dd, c, lines, notes, biz, total, false)
+  }
+
+  function openInvoicePrint(n, d, dd, c, lines, notes, biz, total, autoPrint) {
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #${n}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:800px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:48px}.invoice-label{font-size:36px;font-weight:800;color:#16a34a;margin-bottom:12px}.biz-name{font-size:16px;font-weight:600;margin-bottom:6px}.biz-detail{font-size:13px;color:#666;line-height:1.7}.meta{text-align:right}.meta-row{display:flex;justify-content:flex-end;gap:16px;font-size:13px;margin-bottom:6px}.meta-label{color:#888}.meta-value{font-weight:600;min-width:90px;text-align:right}.bill-to{margin-bottom:32px}.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:8px}.bill-name{font-size:15px;font-weight:600;margin-bottom:4px}.bill-detail{font-size:13px;color:#555;line-height:1.6}table{width:100%;border-collapse:collapse;margin-bottom:24px}th{text-align:left;padding:10px 0;border-bottom:2px solid #e2e8f0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888}.right{text-align:right}td{padding:12px 0;border-bottom:1px solid #f0f4f8;font-size:14px}.total-row td{border-bottom:none;border-top:2px solid #1a2332;font-weight:700;font-size:16px;padding-top:16px}.notes{margin-top:32px;padding-top:24px;border-top:1px solid #e2e8f0}.notes p{font-size:13px;color:#555;line-height:1.7;white-space:pre-wrap}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="invoice-label">INVOICE</div>${biz.name?`<div class="biz-name">${biz.name}</div>`:''}<div class="biz-detail">${[biz.address,biz.email,biz.phone,biz.vatNumber?`VAT: ${biz.vatNumber}`:''].filter(Boolean).join('<br>')}</div></div><div class="meta"><div class="meta-row"><span class="meta-label">Invoice #</span><span class="meta-value">${n}</span></div><div class="meta-row"><span class="meta-label">Date</span><span class="meta-value">${d}</span></div>${dd?`<div class="meta-row"><span class="meta-label">Due</span><span class="meta-value">${dd}</span></div>`:''}</div></div>${c.name||c.address?`<div class="bill-to"><div class="section-label">Bill to</div>${c.name?`<div class="bill-name">${c.name}</div>`:''}<div class="bill-detail">${[c.address,c.email].filter(Boolean).join('<br>')}</div></div>`:''}<table><thead><tr><th>Description</th><th class="right" style="width:60px">Qty</th><th class="right" style="width:100px">Unit price</th><th class="right" style="width:100px">Total</th></tr></thead><tbody>${lines.filter(l=>l.description||l.unitPrice).map(l=>`<tr><td>${l.description||''}</td><td class="right">${l.qty||1}</td><td class="right">£${parseFloat(l.unitPrice||0).toFixed(2)}</td><td class="right">£${((parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0)).toFixed(2)}</td></tr>`).join('')}<tr class="total-row"><td colspan="3" class="right">Total</td><td class="right">£${total.toFixed(2)}</td></tr></tbody></table>${notes?`<div class="notes"><div class="section-label">Notes</div><p>${notes.replace(/\n/g,'<br>')}</p></div>`:''}</body></html>`
+    const win = window.open('','_blank','width=900,height=700')
+    win.document.write(html); win.document.close(); win.focus()
+    if (autoPrint) setTimeout(()=>win.print(), 400)
+  }
   function addInvLine() { setInvLines(l=>[...l,{description:'',qty:'1',unitPrice:''}]) }
   function removeInvLine(i) { setInvLines(l=>l.filter((_,idx)=>idx!==i)) }
   function updateInvLine(i,field,value) { setInvLines(l=>{const n=[...l];n[i]={...n[i],[field]:value};return n}) }
+  function previewInvoice() {
+    const bizDetails = {...blankBiz,...invBiz}
+    const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
+    openInvoicePrint(invNumber, invDate, invDueDate, invCustomer, invLines, invNotes, bizDetails, invTotal, false)
+  }
+
   function printInvoice() {
     const bizDetails = {...blankBiz,...invBiz}
     const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
-    const next = parseInt(invNumber||'0')+1
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #${invNumber}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:800px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:48px}.invoice-label{font-size:36px;font-weight:800;color:#16a34a;margin-bottom:12px}.biz-name{font-size:16px;font-weight:600;margin-bottom:6px}.biz-detail{font-size:13px;color:#666;line-height:1.7}.meta{text-align:right}.meta-row{display:flex;justify-content:flex-end;gap:16px;font-size:13px;margin-bottom:6px}.meta-label{color:#888}.meta-value{font-weight:600;min-width:90px;text-align:right}.bill-to{margin-bottom:32px}.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:8px}.bill-name{font-size:15px;font-weight:600;margin-bottom:4px}.bill-detail{font-size:13px;color:#555;line-height:1.6}table{width:100%;border-collapse:collapse;margin-bottom:24px}th{text-align:left;padding:10px 0;border-bottom:2px solid #e2e8f0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888}.right{text-align:right}td{padding:12px 0;border-bottom:1px solid #f0f4f8;font-size:14px}.total-row td{border-bottom:none;border-top:2px solid #1a2332;font-weight:700;font-size:16px;padding-top:16px}.notes{margin-top:32px;padding-top:24px;border-top:1px solid #e2e8f0}.notes p{font-size:13px;color:#555;line-height:1.7;white-space:pre-wrap}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="invoice-label">INVOICE</div>${bizDetails.name?`<div class="biz-name">${bizDetails.name}</div>`:''}<div class="biz-detail">${[bizDetails.address,bizDetails.email,bizDetails.phone,bizDetails.vatNumber?`VAT: ${bizDetails.vatNumber}`:''].filter(Boolean).join('<br>')}</div></div><div class="meta"><div class="meta-row"><span class="meta-label">Invoice #</span><span class="meta-value">${invNumber}</span></div><div class="meta-row"><span class="meta-label">Date</span><span class="meta-value">${invDate}</span></div>${invDueDate?`<div class="meta-row"><span class="meta-label">Due</span><span class="meta-value">${invDueDate}</span></div>`:''}</div></div>${invCustomer.name||invCustomer.address?`<div class="bill-to"><div class="section-label">Bill to</div>${invCustomer.name?`<div class="bill-name">${invCustomer.name}</div>`:''}<div class="bill-detail">${[invCustomer.address,invCustomer.email].filter(Boolean).join('<br>')}</div></div>`:''}<table><thead><tr><th>Description</th><th class="right" style="width:60px">Qty</th><th class="right" style="width:100px">Unit price</th><th class="right" style="width:100px">Total</th></tr></thead><tbody>${invLines.filter(l=>l.description||l.unitPrice).map(l=>`<tr><td>${l.description||''}</td><td class="right">${l.qty||1}</td><td class="right">£${parseFloat(l.unitPrice||0).toFixed(2)}</td><td class="right">£${((parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0)).toFixed(2)}</td></tr>`).join('')}<tr class="total-row"><td colspan="3" class="right">Total</td><td class="right">£${invTotal.toFixed(2)}</td></tr></tbody></table>${invNotes?`<div class="notes"><div class="section-label">Notes</div><p>${invNotes.replace(/\n/g,'<br>')}</p></div>`:''}</body></html>`
-    const win = window.open('','_blank','width=900,height=700')
-    win.document.write(html); win.document.close(); win.focus()
-    setTimeout(()=>{ win.print(); localStorage.setItem(INV_NUM_KEY, String(parseInt(invNumber||'0'))); setInvNumber(String(next).padStart(4,'0')) }, 400)
+    openInvoicePrint(invNumber, invDate, invDueDate, invCustomer, invLines, invNotes, bizDetails, invTotal, true)
   }
 
   const TAX_UTR_KEY = 'stocktrack_utr'
@@ -1207,9 +1243,10 @@ export default function Dashboard({ session }) {
     if (!skuQuery.trim()) return
     setSkuLoading(true); setSkuError(''); setSkuResults(null)
     try {
-      const res = await fetch(`https://api.thesneakerdatabase.com/v1/sneakers?limit=6&search=${encodeURIComponent(skuQuery)}`)
+      const res = await fetch(`/api/sku-lookup?q=${encodeURIComponent(skuQuery)}`)
       if (!res.ok) throw new Error('API error')
       const data = await res.json()
+      if (data.error) throw new Error(data.error)
       setSkuResults(data.results || [])
     } catch {
       setSkuResults([])
@@ -1604,8 +1641,8 @@ export default function Dashboard({ session }) {
                   </div>
                 </div>
                 <div className="metrics-grid">
-              <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div><div className="chart-controls">{[3,6,12].map(m=><button key={m} className={`chart-btn ${chartMonths===m?'active':''}`} onClick={()=>setChartMonths(m)}>{m}M</button>)}</div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Bar dataKey="pl" name="P&L" fill="#16a34a" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div>
-              <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Revenue vs Cost</div><div className="chart-subtitle">Monthly comparison</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/><Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4,4,0,0]}/><Bar dataKey="cost" name="Cost" fill="#e3e8ef" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div>
+              <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Gross P&L vs net after expenses</div></div><div className="chart-controls">{[3,6,12].map(m=><button key={m} className={`chart-btn ${chartMonths===m?'active':''}`} onClick={()=>setChartMonths(m)}>{m}M</button>)}</div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/><Bar dataKey="pl" name="Gross P&L" fill="#16a34a" radius={[4,4,0,0]}/><Bar dataKey="netPL" name="Net (after expenses)" fill="#22c55e" radius={[4,4,0,0]} opacity={0.7}/></BarChart></ResponsiveContainer></div>
+              <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Revenue vs Cost vs Expenses</div><div className="chart-subtitle">Monthly comparison</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/><Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4,4,0,0]}/><Bar dataKey="cost" name="Stock cost" fill="#e3e8ef" radius={[4,4,0,0]}/><Bar dataKey="expenses" name="Expenses" fill="#f59e0b" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Stock by Category</div><div className="chart-subtitle">All items</div></div></div><ResponsiveContainer width="100%" height={260}><PieChart><Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={3}>{categoryData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/></PieChart></ResponsiveContainer></div>
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Sell-Through Rate</div><div className="chart-subtitle">% sold per category</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={sellThroughData} layout="vertical" margin={{top:10,right:20,left:10,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false}/><XAxis type="number" domain={[0,100]} tickFormatter={v=>v+'%'} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="cat" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} width={80}/><Tooltip formatter={v=>v+'%'} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Bar dataKey="rate" name="Sell-through %" fill="#22c55e" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Top Brands by Profit</div><div className="chart-subtitle">All-time</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={brandData} layout="vertical" margin={{top:10,right:20,left:10,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false}/><XAxis type="number" tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="brand" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} width={70}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Bar dataKey="pl" name="Profit" fill="#16a34a" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></div>
@@ -1899,7 +1936,7 @@ export default function Dashboard({ session }) {
               const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
               const bizDetails = {...blankBiz,...invBiz}
               return (
-                <div style={{maxWidth:700}}>
+                <div style={{display:'flex',gap:20,alignItems:'flex-start',flexWrap:'wrap'}}><div style={{flex:'1 1 480px',minWidth:0,maxWidth:700}}>
                   {/* Business details */}
                   <div className="chart-card" style={{marginBottom:16}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:editingBiz?16:0}}>
@@ -1983,11 +2020,40 @@ export default function Dashboard({ session }) {
                     </div>
                   </div>
 
-                  <div style={{display:'flex',gap:8}}>
-                    <button className="btn primary" onClick={printInvoice}>🖨️ Preview &amp; Print</button>
-                    <button className="btn" onClick={()=>{setInvCustomer({name:'',address:'',email:''});setInvLines([{description:'',qty:'1',unitPrice:''}]);setInvNotes('')}}>Clear form</button>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    <button className="btn" onClick={previewInvoice}>👁 Preview</button>
+                    <button className="btn primary" onClick={printInvoice}>🖨️ Print</button>
+                    <button className="btn success" onClick={saveInvoice}>💾 Save Invoice</button>
+                    <button className="btn" onClick={()=>{setInvCustomer({name:'',address:'',email:''});setInvLines([{description:'',qty:'1',unitPrice:''}]);setInvNotes('')}}>Clear</button>
                   </div>
-                  <div style={{fontSize:12,color:'var(--muted)',marginTop:10}}>Opens a print-ready invoice in a new tab — use your browser's "Save as PDF" option to export.</div>
+                  <div style={{fontSize:12,color:'var(--muted)',marginTop:8}}>Preview opens a new tab. Print opens + auto-prints. Save stores a copy on the right.</div>
+                </div>
+                {/* Saved invoices panel */}
+                <div style={{flex:'0 0 240px',minWidth:220}}>
+                  <div className="chart-card">
+                    <div className="chart-title" style={{marginBottom:savedInvoices.length?12:0,fontSize:14}}>Saved Invoices</div>
+                    {savedInvoices.length===0?(
+                      <div style={{fontSize:12,color:'var(--muted)',marginTop:8}}>No saved invoices yet. Hit "Save Invoice" to store one here.</div>
+                    ):(
+                      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                        {savedInvoices.map(inv=>(
+                          <div key={inv.id} style={{padding:'10px 12px',background:'var(--surface2)',borderRadius:'var(--radius)',fontSize:12}}>
+                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
+                              <div style={{fontWeight:700,fontSize:13}}>INV-{inv.number}</div>
+                              <button onClick={()=>deleteSavedInvoice(inv.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:14,lineHeight:1,padding:0}}>✕</button>
+                            </div>
+                            <div style={{color:'var(--muted)',marginBottom:2}}>{inv.customerName||'No customer'}</div>
+                            <div style={{color:'var(--muted)',marginBottom:6}}>{inv.date}</div>
+                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                              <div style={{fontWeight:600,color:'var(--text)'}}>{fmt(inv.total)}</div>
+                              <button className="btn sm" onClick={()=>printSavedInvoice(inv.snapshot)}>Print ↗</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 </div>
               )
             })()}
@@ -2041,9 +2107,9 @@ export default function Dashboard({ session }) {
                       {[
                         {label:'StockX',url:`https://www.stockx.com/search?s=${encodeURIComponent(skuQuery)}`},
                         {label:'GOAT',url:`https://www.goat.com/search?query=${encodeURIComponent(skuQuery)}`},
-                        {label:'Laced',url:`https://www.laced.com/products?q=${encodeURIComponent(skuQuery)}`},
+                        {label:'Laced',url:`https://www.laced.co.uk/products?q=${encodeURIComponent(skuQuery)}`},
+                        {label:'Klekt',url:`https://www.klekt.com/search?q=${encodeURIComponent(skuQuery)}`},
                         {label:'eBay',url:`https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(skuQuery)}`},
-                        {label:'Alias',url:`https://www.alias.co.uk/search?q=${encodeURIComponent(skuQuery)}`},
                         {label:'Google',url:`https://www.google.com/search?q=${encodeURIComponent(skuQuery+' price UK')}`},
                       ].map(l=><a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" className="btn sm" style={{textDecoration:'none'}}>{l.label} ↗</a>)}
                     </div>
