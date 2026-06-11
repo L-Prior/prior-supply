@@ -676,6 +676,7 @@ export default function Dashboard({ session }) {
   const [customFeeRate, setCustomFeeRate] = useState('')
   const [payoutStatus, setPayoutStatus] = useState('pending')
   const [shippingFee, setShippingFee] = useState('')
+  const [soldDate, setSoldDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [stockTab, setStockTab] = useState('inventory')
   const [clearedBatch, setClearedBatch] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -889,12 +890,42 @@ export default function Dashboard({ session }) {
     fetchItems()
   }
 
+  function resetSellModal() {
+    setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null)
+    setCustomFeeRate(''); setPayoutStatus('pending'); setShippingFee(''); setBuyerName('')
+    setSoldDate(new Date().toISOString().slice(0, 10))
+  }
+
+  function handleEditSold(item) {
+    setSalePrice(String(item.sale_price || ''))
+    setShippingFee(String(item.shipping_fee || ''))
+    setBuyerName(item.buyer_name || '')
+    setPayoutStatus(item.payout_status || 'pending')
+    setSoldDate(item.sold_at ? item.sold_at.slice(0, 10) : new Date().toISOString().slice(0, 10))
+    const platform = RESELLER_PLATFORMS.find(p => p.name === item.selling_platform) || null
+    setSellFeeplatform(platform)
+    setSellingPlatform(item.selling_platform || '')
+    setSellItem({ ...item, _editMode: true })
+  }
+
   async function markSold() {
     setSaving(true)
     const feeAmt = calcFee(salePrice, sellFeeplatform, customFeeRate)
     const platformName = sellFeeplatform ? sellFeeplatform.name : sellingPlatform
     const shipAmt = parseFloat(shippingFee) || null
-    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, shipping_fee: shipAmt, payout_status: payoutStatus, buyer_name: buyerName || null, sold_at: new Date().toISOString() }
+    const sold_at = new Date(soldDate + 'T12:00:00').toISOString()
+
+    if (sellItem._editMode) {
+      await supabase.from('stock').update({
+        sale_price: parseFloat(salePrice), selling_platform: platformName,
+        fee_amount: feeAmt || null, shipping_fee: shipAmt,
+        payout_status: payoutStatus, buyer_name: buyerName || null, sold_at
+      }).eq('id', sellItem.id)
+      setSaving(false); resetSellModal(); fetchItems()
+      return
+    }
+
+    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, shipping_fee: shipAmt, payout_status: payoutStatus, buyer_name: buyerName || null, sold_at }
     if (sellItem._bulkIds) {
       const idsToSell = sellItem._bulkIds
       const perUnitFee = parseFloat((feeAmt / idsToSell.length).toFixed(2))
@@ -905,9 +936,9 @@ export default function Dashboard({ session }) {
     } else {
       await supabase.from('stock').update(updatePayload).eq('id', sellItem.id)
     }
-    setSaving(false); setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null); setCustomFeeRate(''); setPayoutStatus('pending'); setShippingFee(''); setBuyerName('')
-    fetchItems()
-    setClearedBatch(sellItem.batch_id || sellItem.id)
+    const batchRef = sellItem.batch_id || sellItem.id
+    setSaving(false); resetSellModal(); fetchItems()
+    setClearedBatch(batchRef)
     setTimeout(() => setClearedBatch(null), 200)
     if (batchModal) {
       const ids = sellItem._bulkIds || [sellItem.id]
@@ -1843,13 +1874,13 @@ export default function Dashboard({ session }) {
                           </div>
                         </div>
                         <div style={{overflowX:'auto'}}>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600,minWidth:580}}>
-                            <div>Item</div><div>Platform</div><div>Cost</div><div>Sale</div><div>Fees</div><div>Profit</div><div>Payout</div>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px 40px',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600,minWidth:600}}>
+                            <div>Item</div><div>Platform</div><div>Cost</div><div>Sale</div><div>Fees</div><div>Profit</div><div>Payout</div><div></div>
                           </div>
                           {gItems.map(i => {
                             const profit = (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
                             return (
-                              <div key={i.id} style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px',gap:8,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center',minWidth:580}}>
+                              <div key={i.id} style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px 40px',gap:8,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center',minWidth:600}}>
                                 <div>
                                   <div style={{fontWeight:500}}>{i.brand} {i.style}</div>
                                   <div style={{fontSize:11,color:'var(--muted)'}}>{[i.colourway,i.size?`UK ${i.size}`:null,i.sold_at?new Date(i.sold_at).toLocaleDateString('en-GB'):null].filter(Boolean).join(' · ')}</div>
@@ -1860,6 +1891,7 @@ export default function Dashboard({ session }) {
                                 <div style={{color:'var(--muted)'}}>-{fmt((i.fee_amount||0)+(i.shipping_fee||0))}</div>
                                 <div className={profit>=0?'td-pos':'td-neg'}>{profit>=0?'+':''}{fmt(profit)}</div>
                                 <div>{i.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✓ Paid</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}</div>
+                                <div><button className="btn sm" style={{padding:'2px 6px',fontSize:11}} onClick={()=>handleEditSold(i)}>Edit</button></div>
                               </div>
                             )
                           })}
@@ -3090,9 +3122,9 @@ export default function Dashboard({ session }) {
 
       {/* Sell Modal */}
       {sellItem&&(
-        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setSellItem(null)}>
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&resetSellModal()}>
           <div className="modal">
-            <div className="modal-title">{sellItem._bulkIds ? `Sell units` : 'Mark as sold'}</div>
+            <div className="modal-title">{sellItem._editMode ? 'Edit sale details' : sellItem._bulkIds ? 'Sell units' : 'Mark as sold'}</div>
             <div className="sell-info">
               <strong>{sellItem.brand} {sellItem.style}</strong>
               {sellItem.colourway&&` — ${sellItem.colourway}`}
@@ -3134,6 +3166,10 @@ export default function Dashboard({ session }) {
               <label className="form-label">Buyer name (optional)</label>
               <input className="form-input" placeholder="e.g. John Smith" value={buyerName} onChange={e=>setBuyerName(e.target.value)}/>
             </div>
+            <div className="form-group" style={{marginTop:8}}>
+              <label className="form-label">Date sold</label>
+              <input className="form-input" type="date" value={soldDate} onChange={e=>setSoldDate(e.target.value)}/>
+            </div>
             {salePrice&&(()=>{
               const price = parseFloat(salePrice)||0
               const fee = calcFee(salePrice, sellFeeplatform, customFeeRate)
@@ -3159,8 +3195,8 @@ export default function Dashboard({ session }) {
               </div>
             </div>
             <div className="form-actions" style={{marginTop:16}}>
-              <button className="btn" onClick={()=>{setSellItem(null);setSellFeeplatform(null);setCustomFeeRate('');setPayoutStatus('pending');setShippingFee('')}}>Cancel</button>
-              <button className="btn primary" onClick={markSold} disabled={saving||!salePrice}>{saving?'Saving...':'Confirm sale'}</button>
+              <button className="btn" onClick={resetSellModal}>Cancel</button>
+              <button className="btn primary" onClick={markSold} disabled={saving||!salePrice}>{saving?'Saving...':sellItem._editMode?'Save changes':'Confirm sale'}</button>
             </div>
           </div>
         </div>
