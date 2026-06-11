@@ -369,8 +369,10 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
   useEffect(() => {
     if (!clearedBatch) return
     const prefix = `batch-${clearedBatch}`
-    setStatus(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (k.startsWith(prefix)) delete n[k] }); return n })
-    setNotes(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (k.startsWith(prefix)) delete n[k] }); return n })
+    // Exact match (no-size row) OR prefix + '-' (sized row) — prevents "10" matching "10.5"
+    const matches = k => k === prefix || k.startsWith(prefix + '-')
+    setStatus(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (matches(k)) delete n[k] }); return n })
+    setNotes(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (matches(k)) delete n[k] }); return n })
   }, [clearedBatch])
 
   function toggleCategory(cat) { setSelectedCategories(s => ({ ...s, [cat]: !s[cat] })) }
@@ -395,9 +397,12 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
   const batchMap = {}
   items.filter(i => selectedCategories[i.category] && i.status === 'in_stock').forEach(i => {
     const key = i.batch_id || i.id
-    if (!batchMap[key]) batchMap[key] = { ...i, units: [], qty: 0, sizes: {} }
+    if (!batchMap[key]) batchMap[key] = { ...i, units: [], qty: 0, sizes: {}, sizeFirstUnit: {} }
     batchMap[key].units.push(i); batchMap[key].qty++
-    if (i.size) batchMap[key].sizes[i.size] = (batchMap[key].sizes[i.size] || 0) + 1
+    if (i.size) {
+      batchMap[key].sizes[i.size] = (batchMap[key].sizes[i.size] || 0) + 1
+      if (!batchMap[key].sizeFirstUnit[i.size]) batchMap[key].sizeFirstUnit[i.size] = i
+    }
   })
 
   const stockRows = []
@@ -413,7 +418,9 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
     }
     if (Object.keys(b.sizes).length > 0) {
       Object.entries(b.sizes).forEach(([size, qty]) => {
-        stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}-${size}`, sizeDisplay: `UK ${size}`, qty })
+        // Use first unit of this specific size so sell/edit targets the right item
+        const sizeItemId = b.sizeFirstUnit[size]?.id || baseRow.itemId
+        stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}-${size}`, sizeDisplay: `UK ${size}`, qty, itemId: sizeItemId })
       })
     } else {
       stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}`, sizeDisplay: '—', qty: b.qty })
@@ -946,7 +953,10 @@ export default function Dashboard({ session }) {
     } else {
       await supabase.from('stock').update(updatePayload).eq('id', sellItem.id)
     }
-    const batchRef = sellItem.batch_id || sellItem.id
+    // Include size in the key so only the sold size clears from the discrepancy tab
+    const batchRef = sellItem.batch_id
+      ? (sellItem.size ? `${sellItem.batch_id}-${sellItem.size}` : sellItem.batch_id)
+      : sellItem.id
     setSaving(false); resetSellModal(); fetchItems()
     setClearedBatch(batchRef)
     setTimeout(() => setClearedBatch(null), 200)
@@ -1740,7 +1750,6 @@ export default function Dashboard({ session }) {
           <div>
             <div className="page-header"><h1 className="page-title">Stock</h1><p className="page-subtitle">Manage your inventory</p></div>
             <div className="stats-bar" style={{gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))'}}>
-              <div className="stat-card"><div className="stat-label">Total units</div><div className="stat-value">{stats.total}</div></div>
               <div className="stat-card"><div className="stat-label">In stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
               <div className="stat-card"><div className="stat-label">Units sold</div><div className="stat-value">{stats.sold}</div></div>
