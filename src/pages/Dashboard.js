@@ -1423,7 +1423,6 @@ export default function Dashboard({ session }) {
     return { totalPL, completed, active, total: breaks.length }
   }, [breaks])
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(() => { try { return localStorage.getItem('stocktrack_dark') === 'true' } catch { return false } })
   const GOAL_KEY = 'stocktrack_goal'
   const [monthlyGoal, setMonthlyGoal] = useState(() => { try { return parseFloat(localStorage.getItem('stocktrack_goal') || '0') } catch { return 0 } })
@@ -1447,6 +1446,7 @@ export default function Dashboard({ session }) {
   const [orderPayoutStatus, setOrderPayoutStatus] = useState('pending')
   const [toolTab, setToolTab] = useState('fee')
   const [metricsTab, setMetricsTab] = useState('reseller')
+  const [financeTab, setFinanceTab] = useState('metrics')
   const currentTaxYear = (()=>{ const n=new Date(); return n.getMonth()>=3?n.getFullYear():n.getFullYear()-1 })()
 
   const INV_BIZ_KEY = 'stocktrack_biz'
@@ -1545,7 +1545,7 @@ export default function Dashboard({ session }) {
   const [expenseForm, setExpenseForm] = useState({ date: '', amount: '', category: 'Packaging', description: '' })
   const [expenseSaving, setExpenseSaving] = useState(false)
 
-  useEffect(() => { if (session && page === 'expenses') fetchExpenses() }, [page, session]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (session && (page === 'expenses' || page === 'finance')) fetchExpenses() }, [page, session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchExpenses() {
     setExpensesLoading(true)
@@ -1671,46 +1671,58 @@ export default function Dashboard({ session }) {
     const avgValue = collectorItems.length ? totalValue / collectorItems.length : 0
     return { totalValue, byCategory, categoryChartData, topItems, growthData, total: collectorItems.length, avgValue }
   }, [collectorItems])
-  const NAV_ITEMS = [{id:'home',label:'Home'},{id:'stock',label:'Reseller'},{id:'breaks',label:'Breaker'},{id:'collector',label:'Collector'},{id:'metrics',label:'Metrics'},{id:'expenses',label:'Expenses'},{id:'tools',label:'Tools'}]
+  const NAV_ITEMS = [
+    {id:'home',    label:'Home',      icon:'🏠'},
+    {id:'stock',   label:'Inventory', icon:'📦'},
+    {id:'breaks',  label:'Breaker',   icon:'🃏'},
+    {id:'collector',label:'Collector',icon:'🗂️'},
+    {id:'finance', label:'Finance',   icon:'💹'},
+    {id:'tools',   label:'Tools',     icon:'🔧'},
+  ]
+
+  function navTo(id) { setPage(id); window.scrollTo(0,0) }
 
   return (
     <div className={darkMode ? 'app dark-mode' : 'app'}>
-      <div className="topbar">
-        <div className="topbar-brand"><span className="brand-mark" />StockTrack</div>
-        <nav className="topbar-nav">
+
+      {/* ── Sidebar (desktop only) ─────────────────────────────────────────── */}
+      <aside className="sidebar">
+        <div className="sidebar-brand"><span className="brand-mark"/>StockTrack</div>
+        <nav className="sidebar-nav">
           {NAV_ITEMS.map(n=>(
-            <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>{setPage(n.id);window.scrollTo(0,0)}}>{n.label}</button>
+            <button key={n.id} className={`sidebar-nav-btn ${page===n.id?'active':''}`} onClick={()=>navTo(n.id)}>
+              <span className="sidebar-nav-icon">{n.icon}</span>
+              <span>{n.label}</span>
+            </button>
           ))}
         </nav>
-        <div style={{position:'relative'}}>
+        <div className="sidebar-footer">
+          <a href="/" className="sidebar-footer-link">← Back to site</a>
+          <div className="sidebar-footer-email">{session.user.email}</div>
+          <div className="sidebar-footer-actions">
+            <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode ? '☀️' : '🌙'}</button>
+            <button className="btn sm" onClick={signOut}>Sign out</button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── App body ──────────────────────────────────────────────────────── */}
+      <div className="app-body">
+
+        {/* Mobile topbar */}
+        <div className="topbar">
+          <div className="topbar-brand"><span className="brand-mark"/>StockTrack</div>
           <div className="topbar-actions">
-            {page==='stock'&&<button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>}
-            {page==='breaks'&&<button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button>}
-            {page==='collector'&&<button className="btn primary" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={userPlan==='free'&&collectorItems.length>=FREE_LIMIT}>+ Add item</button>}
+            {page==='stock'&&<button className="btn primary sm" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add</button>}
+            {page==='breaks'&&<button className="btn primary sm" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add</button>}
+            {page==='collector'&&<button className="btn primary sm" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={userPlan==='free'&&collectorItems.length>=FREE_LIMIT}>+ Add</button>}
+            {page==='finance'&&financeTab==='expenses'&&<button className="btn primary sm" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add</button>}
             <div className="user-pill">
-              <a href="/" className="landing-nav-link" style={{fontSize:12}}>← Site</a>
-              <span className="user-email">{session.user.email}</span>
               <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode ? '☀️' : '🌙'}</button>
               <button className="btn sm" onClick={signOut}>Sign out</button>
             </div>
-            <button className="mobile-menu-btn" onClick={()=>setMobileMenuOpen(o=>!o)}>
-              {mobileMenuOpen ? '✕' : '☰'}
-            </button>
           </div>
-          {mobileMenuOpen && (
-            <div className="mobile-menu">
-              {NAV_ITEMS.map(n=>(
-                <button key={n.id} className={`mobile-menu-item ${page===n.id?'active':''}`} onClick={()=>{setPage(n.id);setMobileMenuOpen(false);window.scrollTo(0,0)}}>
-                  {n.label}
-                </button>
-              ))}
-              <div className="mobile-menu-divider"/>
-              <a href="/" className="mobile-menu-item">← Back to site</a>
-              <button className="mobile-menu-item danger" onClick={signOut}>Sign out</button>
-            </div>
-          )}
         </div>
-      </div>
 
       <div className="main">
         {page==='home'&&(
@@ -1780,7 +1792,10 @@ export default function Dashboard({ session }) {
 
         {page==='stock'&&(
           <div>
-            <div className="page-header"><h1 className="page-title">Stock</h1><p className="page-subtitle">Manage your inventory</p></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+              <div><h1 className="page-title">Inventory</h1><p className="page-subtitle">Manage your reseller stock</p></div>
+              <button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>
+            </div>
             <div className="stats-bar" style={{gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))'}}>
               <div className="stat-card"><div className="stat-label">In stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
@@ -1790,10 +1805,13 @@ export default function Dashboard({ session }) {
             </div>
             <div style={{display:'flex',gap:8,marginBottom:16}}>
               <button className={`type-btn ${stockTab==='inventory'?'active':''}`} onClick={()=>setStockTab('inventory')}>
-                Inventory <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{stats.inStock}</span>
+                Stock <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{stats.inStock}</span>
               </button>
               <button className={`type-btn ${stockTab==='history'?'active':''}`} onClick={()=>setStockTab('history')}>
-                Sold History <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{stats.sold}</span>
+                Sold <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{stats.sold}</span>
+              </button>
+              <button className={`type-btn ${stockTab==='checklist'?'active':''}`} onClick={()=>setStockTab('checklist')}>
+                Checklist
               </button>
             </div>
 
@@ -1956,13 +1974,30 @@ export default function Dashboard({ session }) {
                 </div>
               )
             })()}
+            {stockTab==='checklist'&&<StockChecklist items={items} breaks={breaks} clearedBatch={clearedBatch} onAddItem={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
           </div>
         )}
 
-        {page==='metrics'&&(
+        {/* ── Finance page: header + outer tabs ──────────────────────────── */}
+        {page==='finance'&&(
           <div>
-            <div className="page-header"><h1 className="page-title">Metrics</h1><p className="page-subtitle">Deep dive into your performance</p></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+              <div><h1 className="page-title">Finance</h1><p className="page-subtitle">Performance metrics, expenses &amp; payouts</p></div>
+              {financeTab==='expenses'&&<button className="btn primary" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add expense</button>}
+            </div>
+            <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
+              <button className={`type-btn ${financeTab==='metrics'?'active':''}`} onClick={()=>setFinanceTab('metrics')}>Metrics</button>
+              <button className={`type-btn ${financeTab==='expenses'?'active':''}`} onClick={()=>setFinanceTab('expenses')}>Expenses</button>
+              <button className={`type-btn ${financeTab==='payouts'?'active':''}`} onClick={()=>setFinanceTab('payouts')}>
+                Payouts{(()=>{const n=items.filter(i=>i.status==='sold'&&i.payout_status==='pending').length;return n>0?<span style={{marginLeft:4,background:'#fef3c7',color:'#d97706',borderRadius:10,padding:'1px 6px',fontSize:11}}>{n}</span>:null})()}
+              </button>
+            </div>
+          </div>
+        )}
 
+        {/* Metrics sub-tab content (Finance > Metrics) */}
+        {(page==='finance'&&financeTab==='metrics')&&(
+          <div>
             <div style={{display:'flex',gap:8,marginBottom:24}}>
               <button className={`type-btn ${metricsTab==='reseller'?'active':''}`} onClick={()=>setMetricsTab('reseller')}>Reseller & Breaker</button>
               <button className={`type-btn ${metricsTab==='collector'?'active':''}`} onClick={()=>setMetricsTab('collector')}>Collector</button>
@@ -2212,7 +2247,7 @@ export default function Dashboard({ session }) {
 
         {page==='collector'&&(
           <div>
-            <div className="page-header"><h1 className="page-title">Collector</h1><p className="page-subtitle">Your personal collection</p></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">Collector</h1><p className="page-subtitle">Your personal collection</p></div><button className="btn primary" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={userPlan==='free'&&collectorItems.length>=FREE_LIMIT}>+ Add item</button></div>
 
             {/* Free tier limit warning */}
             {userPlan==='free'&&(
@@ -2269,68 +2304,11 @@ export default function Dashboard({ session }) {
             <div className="page-header"><h1 className="page-title">Tools</h1><p className="page-subtitle">Calculators and utilities</p></div>
             <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
               <button className={`type-btn ${toolTab==='fee'?'active':''}`} onClick={()=>switchToolTab('fee')}>Fee Calculator</button>
-              <button className={`type-btn ${toolTab==='checklist'?'active':''}`} onClick={()=>switchToolTab('checklist')}>Stock Checklist</button>
-              <button className={`type-btn ${toolTab==='payouts'?'active':''}`} onClick={()=>switchToolTab('payouts')}>
-                Payouts
-                {(()=>{const n=items.filter(i=>i.status==='sold'&&i.payout_status==='pending').length;return n>0?<span style={{marginLeft:4,background:'#fef3c7',color:'#d97706',borderRadius:10,padding:'1px 6px',fontSize:11}}>{n}</span>:null})()}
-              </button>
               <button className={`type-btn ${toolTab==='invoice'?'active':''}`} onClick={()=>switchToolTab('invoice')}>Invoice Generator</button>
               <button className={`type-btn ${toolTab==='sku'?'active':''}`} onClick={()=>switchToolTab('sku')}>SKU Lookup</button>
               <button className={`type-btn ${toolTab==='csv'?'active':''}`} onClick={()=>switchToolTab('csv')}>CSV Import</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
-            {toolTab==='checklist'&&<StockChecklist items={items} breaks={breaks} clearedBatch={clearedBatch} onAddItem={()=>{setPage('stock');setTimeout(()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)},100)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
-            {toolTab==='payouts'&&(()=>{
-              const pending = items.filter(i=>i.status==='sold'&&i.payout_status==='pending')
-              const totalOutstanding = pending.reduce((s,i)=>s+(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
-              const byPlatform = {}
-              pending.forEach(i=>{const p=i.selling_platform||'Unknown';if(!byPlatform[p])byPlatform[p]=[];byPlatform[p].push(i)})
-              if (pending.length===0) return <div className="empty"><div className="empty-icon">✅</div><div className="empty-title">All caught up</div><div style={{marginTop:6}}>No pending payouts</div></div>
-              return (
-                <div style={{maxWidth:700}}>
-                  <div className="chart-card" style={{marginBottom:20}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
-                      <div>
-                        <div className="chart-title" style={{marginBottom:4}}>Outstanding Payouts</div>
-                        <div style={{fontSize:13,color:'var(--muted)'}}>{pending.length} sale{pending.length!==1?'s':''} pending</div>
-                      </div>
-                      <div style={{textAlign:'right'}}>
-                        <div style={{fontSize:24,fontWeight:700,color:'var(--text)'}}>Net {fmt(totalOutstanding)}</div>
-                        <button className="btn sm primary" style={{marginTop:8}} onClick={()=>markPayoutPaid(pending.map(i=>i.id))}>✓ Mark all paid</button>
-                      </div>
-                    </div>
-                  </div>
-                  {Object.entries(byPlatform).map(([platform, pItems])=>{
-                    const platformTotal = pItems.reduce((s,i)=>s+(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
-                    return (
-                      <div key={platform} className="chart-card" style={{marginBottom:16}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-                          <div className="chart-title" style={{margin:0}}>{platform}</div>
-                          <div style={{display:'flex',gap:12,alignItems:'center'}}>
-                            <span style={{fontSize:14,fontWeight:600}}>{fmt(platformTotal)}</span>
-                            <button className="btn sm" onClick={()=>markPayoutPaid(pItems.map(i=>i.id))}>Mark all paid</button>
-                          </div>
-                        </div>
-                        {pItems.map(i=>{
-                          const net=(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
-                          return (
-                            <div key={i.id} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 0',borderBottom:'1px solid var(--surface2)'}}>
-                              <div style={{flex:1}}>
-                                <div style={{fontWeight:500,fontSize:13}}>{i.brand} {i.style}</div>
-                                <div style={{fontSize:11,color:'var(--muted)'}}>{[i.colourway,i.size?`UK ${i.size}`:null,i.sold_at?new Date(i.sold_at).toLocaleDateString('en-GB'):null].filter(Boolean).join(' · ')}</div>
-                              </div>
-                              <div style={{fontSize:12,color:'var(--muted)'}}>{fmt(i.sale_price)}{i.fee_amount?` − ${fmt(i.fee_amount)} fee`:''}</div>
-                              <div style={{fontSize:13,fontWeight:600}}>{fmt(net)}</div>
-                              <button className="btn sm success" onClick={()=>markPayoutPaid([i.id])}>✓ Paid</button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
             {toolTab==='invoice'&&(()=>{
               const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
               const bizDetails = {...blankBiz,...invBiz}
@@ -2564,12 +2542,9 @@ export default function Dashboard({ session }) {
           </div>
         )}
 
-        {page==='expenses'&&(
+        {/* Expenses sub-tab content (Finance > Expenses) */}
+        {(page==='finance'&&financeTab==='expenses')&&(
           <div>
-            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-              <div><h1 className="page-title">Expenses</h1><p className="page-subtitle">Track business costs for tax purposes</p></div>
-              <button className="btn primary" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add expense</button>
-            </div>
             {showExpenseForm&&(
               <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowExpenseForm(false)}>
                 <div className="modal" style={{maxWidth:480}}>
@@ -2645,9 +2620,62 @@ export default function Dashboard({ session }) {
           </div>
         )}
 
+        {/* Payouts sub-tab content (Finance > Payouts) */}
+        {(page==='finance'&&financeTab==='payouts')&&(()=>{
+          const pending = items.filter(i=>i.status==='sold'&&i.payout_status==='pending')
+          const totalOutstanding = pending.reduce((s,i)=>s+(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
+          const byPlatform = {}
+          pending.forEach(i=>{const p=i.selling_platform||'Unknown';if(!byPlatform[p])byPlatform[p]=[];byPlatform[p].push(i)})
+          if (pending.length===0) return <div className="empty"><div className="empty-icon">✅</div><div className="empty-title">All caught up</div><div style={{marginTop:6}}>No pending payouts</div></div>
+          return (
+            <div style={{maxWidth:700}}>
+              <div className="chart-card" style={{marginBottom:20}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+                  <div>
+                    <div className="chart-title" style={{marginBottom:4}}>Outstanding Payouts</div>
+                    <div style={{fontSize:13,color:'var(--muted)'}}>{pending.length} sale{pending.length!==1?'s':''} pending</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontSize:24,fontWeight:700,color:'var(--text)'}}>Net {fmt(totalOutstanding)}</div>
+                    <button className="btn sm primary" style={{marginTop:8}} onClick={()=>markPayoutPaid(pending.map(i=>i.id))}>✓ Mark all paid</button>
+                  </div>
+                </div>
+              </div>
+              {Object.entries(byPlatform).map(([platform, pItems])=>{
+                const platformTotal = pItems.reduce((s,i)=>s+(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
+                return (
+                  <div key={platform} className="chart-card" style={{marginBottom:16}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                      <div className="chart-title" style={{margin:0}}>{platform}</div>
+                      <div style={{display:'flex',gap:12,alignItems:'center'}}>
+                        <span style={{fontSize:14,fontWeight:600}}>{fmt(platformTotal)}</span>
+                        <button className="btn sm" onClick={()=>markPayoutPaid(pItems.map(i=>i.id))}>Mark all paid</button>
+                      </div>
+                    </div>
+                    {pItems.map(i=>{
+                      const net=(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
+                      return (
+                        <div key={i.id} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 0',borderBottom:'1px solid var(--surface2)'}}>
+                          <div style={{flex:1}}>
+                            <div style={{fontWeight:500,fontSize:13}}>{i.brand} {i.style}</div>
+                            <div style={{fontSize:11,color:'var(--muted)'}}>{[i.colourway,i.size?`UK ${i.size}`:null,i.sold_at?new Date(i.sold_at).toLocaleDateString('en-GB'):null].filter(Boolean).join(' · ')}</div>
+                          </div>
+                          <div style={{fontSize:12,color:'var(--muted)'}}>{fmt(i.sale_price)}{i.fee_amount?` − ${fmt(i.fee_amount)} fee`:''}</div>
+                          <div style={{fontSize:13,fontWeight:600}}>{fmt(net)}</div>
+                          <button className="btn sm success" onClick={()=>markPayoutPaid([i.id])}>✓ Paid</button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
         {page==='breaks'&&(
           <div>
-            <div className="page-header"><h1 className="page-title">Breaker</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">Breaker</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div><button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button></div>
             <div className="stats-bar">
               <div className="stat-card"><div className="stat-label">Total entries</div><div className="stat-value">{breakStats.total}</div></div>
               <div className="stat-card"><div className="stat-label">Active / Upcoming</div><div className="stat-value amber">{breakStats.active}</div></div>
@@ -3280,6 +3308,19 @@ export default function Dashboard({ session }) {
           </div>
         </div>
       )}
+
+      </div>{/* /app-body */}
+
+      {/* ── Mobile bottom nav ────────────────────────────────────────────── */}
+      <nav className="bottom-nav">
+        {NAV_ITEMS.map(n=>(
+          <button key={n.id} className={`bottom-nav-item ${page===n.id?'active':''}`} onClick={()=>navTo(n.id)}>
+            <span className="bottom-nav-icon">{n.icon}</span>
+            <span>{n.label}</span>
+          </button>
+        ))}
+      </nav>
+
     </div>
   )
 }
