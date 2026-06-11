@@ -747,8 +747,8 @@ export default function Dashboard({ session }) {
       const newQty = form.units[0]?.quantity === '10+' ? (parseInt(form.units[0]?.custom_qty) || 1) : (parseInt(form.units[0]?.quantity) || 1)
       const currentQty = batchUnits.length
 
-      // Calculate new price per unit from total cost across ALL batch units (including other sizes)
-      const allBatchUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id) : [editItem]
+      // Only count in-stock units for price-per-unit recalculation
+      const allBatchUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id && i.status === 'in_stock') : [editItem].filter(i => i.status === 'in_stock')
       const otherUnits = allBatchUnits.filter(i => i.size !== (editItem.size||''))
       const batchCost = parseFloat(form.batch_total_cost) || 0
       const newTotalUnits = otherUnits.length + newQty
@@ -811,8 +811,8 @@ export default function Dashboard({ session }) {
   }
 
   function openEdit(item) {
-    // Calculate total batch cost from all units in the same batch
-    const batchUnits = item.batch_id ? items.filter(i => i.batch_id === item.batch_id) : [item]
+    // Only count in-stock units — sold units have already realised their cost
+    const batchUnits = item.batch_id ? items.filter(i => i.batch_id === item.batch_id && i.status === 'in_stock') : [item].filter(i => i.status === 'in_stock')
     const totalCost = parseFloat(batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
     const sameSize = batchUnits.filter(u => u.size === item.size)
     const qty = sameSize.length > 1 ? sameSize.length : 1
@@ -825,6 +825,12 @@ export default function Dashboard({ session }) {
     await supabase.from('stock').delete().eq('id', id)
     fetchItems()
     if (batchModal) setBatchModal(prev => ({ ...prev, units: prev.units.filter(u => u.id !== id) }))
+  }
+
+  async function deleteSoldItem(id) {
+    if (!window.confirm('Remove this sold listing? This cannot be undone.')) return
+    await supabase.from('stock').delete().eq('id', id)
+    fetchItems()
   }
 
   function duplicateItem(batch) {
@@ -1874,13 +1880,13 @@ export default function Dashboard({ session }) {
                           </div>
                         </div>
                         <div style={{overflowX:'auto'}}>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px 40px',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600,minWidth:600}}>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px 80px',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600,minWidth:620}}>
                             <div>Item</div><div>Platform</div><div>Cost</div><div>Sale</div><div>Fees</div><div>Profit</div><div>Payout</div><div></div>
                           </div>
                           {gItems.map(i => {
                             const profit = (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
                             return (
-                              <div key={i.id} style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px 40px',gap:8,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center',minWidth:600}}>
+                              <div key={i.id} style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px 80px',gap:8,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center',minWidth:620}}>
                                 <div>
                                   <div style={{fontWeight:500}}>{i.brand} {i.style}</div>
                                   <div style={{fontSize:11,color:'var(--muted)'}}>{[i.colourway,i.size?`UK ${i.size}`:null,i.sold_at?new Date(i.sold_at).toLocaleDateString('en-GB'):null].filter(Boolean).join(' · ')}</div>
@@ -1891,7 +1897,10 @@ export default function Dashboard({ session }) {
                                 <div style={{color:'var(--muted)'}}>-{fmt((i.fee_amount||0)+(i.shipping_fee||0))}</div>
                                 <div className={profit>=0?'td-pos':'td-neg'}>{profit>=0?'+':''}{fmt(profit)}</div>
                                 <div>{i.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✓ Paid</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}</div>
-                                <div><button className="btn sm" style={{padding:'2px 6px',fontSize:11}} onClick={()=>handleEditSold(i)}>Edit</button></div>
+                                <div style={{display:'flex',gap:4}}>
+                                  <button className="btn sm" style={{padding:'2px 6px',fontSize:11}} onClick={()=>handleEditSold(i)}>Edit</button>
+                                  <button className="btn sm danger" style={{padding:'2px 6px',fontSize:11}} onClick={()=>deleteSoldItem(i.id)}>Del</button>
+                                </div>
                               </div>
                             )
                           })}
