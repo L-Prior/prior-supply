@@ -2981,34 +2981,58 @@ export default function Dashboard({ session }) {
                   else groups[key].sold.push(u)
                 })
                 return Object.values(groups).map(g => (
-                  <div key={g.size||'no-size'} className="batch-unit-row">
-                    <div className="batch-unit-info" style={{flex:1}}>
-                      <div className="batch-unit-size">{g.size ? `UK ${g.size}` : 'No size'}</div>
-                      <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>
-                        {g.inStock.length > 0 && <span style={{marginRight:8}}>{g.inStock.length} in stock</span>}
-                        {g.sold.length > 0 && <span style={{color:'var(--green)'}}>{g.sold.length} sold</span>}
+                  <div key={g.size||'no-size'}>
+                    <div className="batch-unit-row">
+                      <div className="batch-unit-info" style={{flex:1}}>
+                        <div className="batch-unit-size">{g.size ? `UK ${g.size}` : 'No size'}</div>
+                        <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>
+                          {g.inStock.length > 0 && <span style={{marginRight:8}}>{g.inStock.length} in stock</span>}
+                          {g.sold.length > 0 && <span style={{color:'var(--green)'}}>{g.sold.length} sold</span>}
+                        </div>
+                      </div>
+                      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                        {g.inStock.length > 0 && (
+                          <button className="btn sm success" onClick={()=>{
+                            const ids = g.inStock.map(u => u.id)
+                            setSellItem({ ...g.inStock[0], _bulkIds: [g.inStock[0].id], _allIds: ids, _maxQty: ids.length, _sellQty: 1 })
+                            setSalePrice(''); setSellingPlatform(''); setPayoutStatus('pending')
+                          }}>
+                            Sell
+                          </button>
+                        )}
+                        {g.inStock.length > 0 && (()=>{
+                          const inCart = orderCart.some(e => e.item.id === g.inStock[0].id)
+                          return <button className={`btn sm${inCart?' primary':''}`} onClick={()=>inCart?removeFromOrder(orderCart.find(e=>e.item.id===g.inStock[0].id)?.cartId):addToOrder(g.inStock[0])}>{inCart?'✓ Order':'📋 Order'}</button>
+                        })()}
+                        <button className="btn sm" onClick={()=>{openEdit(g.inStock[0]||g.sold[0]);setBatchModal(null)}}>Edit</button>
+                        <button className="btn sm danger" onClick={()=>{
+                          if (!window.confirm(`Delete all ${g.inStock.length} in-stock units of this size?`)) return
+                          g.inStock.forEach(u => deleteItem(u.id))
+                        }}>Del</button>
                       </div>
                     </div>
-                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                      {g.inStock.length > 0 && (
-                        <button className="btn sm success" onClick={()=>{
-                          const ids = g.inStock.map(u => u.id)
-                          setSellItem({ ...g.inStock[0], _bulkIds: [g.inStock[0].id], _allIds: ids, _maxQty: ids.length, _sellQty: 1 })
-                          setSalePrice(''); setSellingPlatform(''); setPayoutStatus('pending')
-                        }}>
-                          Sell
-                        </button>
-                      )}
-                      {g.inStock.length > 0 && (()=>{
-                        const inCart = orderCart.some(e => e.item.id === g.inStock[0].id)
-                        return <button className={`btn sm${inCart?' primary':''}`} onClick={()=>inCart?removeFromOrder(orderCart.find(e=>e.item.id===g.inStock[0].id)?.cartId):addToOrder(g.inStock[0])}>{inCart?'✓ Order':'📋 Order'}</button>
-                      })()}
-                      <button className="btn sm" onClick={()=>{openEdit(g.inStock[0]||g.sold[0]);setBatchModal(null)}}>Edit</button>
-                      <button className="btn sm danger" onClick={()=>{
-                        if (!window.confirm(`Delete all ${g.inStock.length} in-stock units of this size?`)) return
-                        g.inStock.forEach(u => deleteItem(u.id))
-                      }}>Del</button>
-                    </div>
+                    {g.sold.map(u => {
+                      const profit = (u.sale_price||0) - (u.purchase_price||0) - (u.fee_amount||0) - (u.shipping_fee||0)
+                      return (
+                        <div key={u.id} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 12px',marginBottom:4,background:'var(--surface2)',borderRadius:'var(--radius)',border:'1px solid var(--border)'}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:'flex',gap:12,flexWrap:'wrap',fontSize:13}}>
+                              <span style={{fontWeight:600,color:'var(--green)'}}>{fmt(u.sale_price||0)}</span>
+                              {u.selling_platform&&<span style={{color:'var(--muted)'}}>{u.selling_platform}</span>}
+                              <span className={profit>=0?'td-pos':'td-neg'}>{profit>=0?'+':''}{fmt(profit)} profit</span>
+                              {u.payout_status==='paid'
+                                ? <span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✓ Paid</span>
+                                : <span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}
+                            </div>
+                            {u.sold_at&&<div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{new Date(u.sold_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}{u.buyer_name&&` · ${u.buyer_name}`}</div>}
+                          </div>
+                          <div style={{display:'flex',gap:4,flexShrink:0}}>
+                            <button className="btn sm" style={{fontSize:11,padding:'2px 6px'}} onClick={()=>{setBatchModal(null);handleEditSold(u)}}>Edit</button>
+                            <button className="btn sm" style={{fontSize:11,padding:'2px 6px',borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>undoSale(u.id)}>Undo</button>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 ))
               })()}
