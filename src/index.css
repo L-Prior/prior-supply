@@ -2066,11 +2066,14 @@ tbody td {
 /* Sticky checklist controls */
 .checklist-sticky {
   position: sticky;
-  top: 60px;
+  top: 0;
   z-index: 50;
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+@media (max-width: 768px) {
+  .checklist-sticky { top: 56px; }
 }
 /* Shop coming soon */
 .shop-coming-soon {

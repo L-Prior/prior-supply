@@ -1802,7 +1802,7 @@ export default function Dashboard({ session }) {
               <button className={`type-btn ${stockTab==='history'?'active':''}`} onClick={()=>setStockTab('history')}>
                 Sold <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{stats.sold}</span>
               </button>
-              <button className={`type-btn ${stockTab==='checklist'?'active':''}`} onClick={()=>setStockTab('checklist')}>
+              <button className={`type-btn ${stockTab==='checklist'?'active':''}`} onClick={()=>{setStockTab('checklist');window.scrollTo(0,0)}}>
                 Checklist
               </button>
             </div>
@@ -3282,7 +3282,7 @@ export default function Dashboard({ session }) {
                   <div className="fee-row"><span>Net proceeds</span><span>{fmt(netSale)}</span></div>
                   <div className="fee-row"><span>Cost</span><span>-{fmt(sellItem.purchase_price)}</span></div>
                   <div className={`fee-row fee-total ${pl>=0?'pos':'neg'}`}><span>Profit</span><span>{fmt(pl)}</span></div>
-                  {(sellItem.purchase_price||0)>0&&<div className={`fee-row ${pl>=0?'pos':'neg'}`} style={{fontSize:12,borderTop:'none',paddingTop:0}}><span>ROI</span><span>{((pl/(sellItem.purchase_price||1))*100).toFixed(1)}%</span></div>}
+                  {(sellItem.purchase_price||0)>0&&<div className={`fee-row ${pl>=0?'pos':'neg'}`}><span>ROI</span><span>{((pl/(sellItem.purchase_price||1))*100).toFixed(1)}%</span></div>}
                 </div>
               )
             })()}
