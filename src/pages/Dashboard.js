@@ -827,9 +827,13 @@ export default function Dashboard({ session }) {
     if (batchModal) setBatchModal(prev => ({ ...prev, units: prev.units.filter(u => u.id !== id) }))
   }
 
-  async function deleteSoldItem(id) {
-    if (!window.confirm('Remove this sold listing? This cannot be undone.')) return
-    await supabase.from('stock').delete().eq('id', id)
+  async function undoSale(id) {
+    if (!window.confirm('Restore this item to inventory? The sale record will be cleared.')) return
+    await supabase.from('stock').update({
+      status: 'in_stock', sale_price: null, selling_platform: null,
+      fee_amount: null, shipping_fee: null, sold_at: null,
+      payout_status: null, buyer_name: null
+    }).eq('id', id)
     fetchItems()
   }
 
@@ -1899,7 +1903,7 @@ export default function Dashboard({ session }) {
                                 <div>{i.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✓ Paid</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}</div>
                                 <div style={{display:'flex',gap:4}}>
                                   <button className="btn sm" style={{padding:'2px 6px',fontSize:11}} onClick={()=>handleEditSold(i)}>Edit</button>
-                                  <button className="btn sm danger" style={{padding:'2px 6px',fontSize:11}} onClick={()=>deleteSoldItem(i.id)}>Del</button>
+                                  <button className="btn sm" style={{padding:'2px 6px',fontSize:11,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>undoSale(i.id)}>Undo</button>
                                 </div>
                               </div>
                             )
