@@ -362,18 +362,45 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
     saveToStorage({ selectedCategories, status, notes, rowData, unlisted })
   }, [selectedCategories, status, notes, rowData, unlisted])
 
-  // Scroll to top when checklist mounts (prevents opening at bottom when switching back to tab)
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Scroll to top when checklist mounts — delay so autoFocus on discrepancy inputs doesn't re-scroll down
+  useEffect(() => {
+    const t = setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 150)
+    return () => clearTimeout(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When an item is saved from the edit modal, remove its discrepancy
+  // When an item is edited and saved, mark it as correct (green) in the checklist
   useEffect(() => {
     if (!clearedBatch) return
     const prefix = `batch-${clearedBatch}`
-    // Exact match (no-size row) OR prefix + '-' (sized row) — prevents "10" matching "10.5"
     const matches = k => k === prefix || k.startsWith(prefix + '-')
-    setStatus(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (matches(k)) delete n[k] }); return n })
+    setStatus(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (matches(k)) n[k] = 'correct' }); return n })
     setNotes(prev => { const n = {...prev}; Object.keys(n).forEach(k => { if (matches(k)) delete n[k] }); return n })
   }, [clearedBatch])
+
+  // When items refresh and an incorrect item has been sold, remove it from discrepancies
+  useEffect(() => {
+    setStatus(prev => {
+      const n = {...prev}; let changed = false
+      Object.entries(n).forEach(([key, val]) => {
+        if (val !== 'incorrect') return
+        const row = rowData[key]
+        if (!row?.itemId) return
+        const item = items.find(i => i.id === row.itemId)
+        if (item && item.status === 'sold') { delete n[key]; changed = true }
+      })
+      return changed ? n : prev
+    })
+    setNotes(prev => {
+      const n = {...prev}; let changed = false
+      Object.keys(n).forEach(key => {
+        const row = rowData[key]
+        if (!row?.itemId) return
+        const item = items.find(i => i.id === row.itemId)
+        if (item && item.status === 'sold') { delete n[key]; changed = true }
+      })
+      return changed ? n : prev
+    })
+  }, [items]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleCategory(cat) { setSelectedCategories(s => ({ ...s, [cat]: !s[cat] })) }
 
@@ -689,7 +716,7 @@ export default function Dashboard({ session }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [search, setSearch] = useState('')
   const [filterBrand, setFilterBrand] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
+  const [filterStatus, setFilterStatus] = useState('in_stock')
   const [filterCategory, setFilterCategory] = useState('')
   const [sortBy, setSortBy] = useState('newest')
   const [saving, setSaving] = useState(false)
@@ -1092,14 +1119,18 @@ export default function Dashboard({ session }) {
   // Net home stats = stock P&L minus expenses (separate useMemo so expenses isn't used before it's defined)
   const netHomeStats = useMemo(() => {
     const now = new Date()
+    const thisYear = String(now.getFullYear())
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
     const lastMonthDate = new Date(now.getFullYear(), now.getMonth()-1, 1)
     const lastMonth = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth()+1).padStart(2,'0')}`
     const totalExp = expenses.reduce((s,e)=>s+(e.amount||0),0)
     const monthExp = expenses.filter(e=>e.date&&e.date.slice(0,7)===thisMonth).reduce((s,e)=>s+(e.amount||0),0)
     const lastMonthExp = expenses.filter(e=>e.date&&e.date.slice(0,7)===lastMonth).reduce((s,e)=>s+(e.amount||0),0)
-    return { pl: stats.pl - totalExp, monthPL: stats.monthPL - monthExp, lastMonthPL: stats.lastMonthPL - lastMonthExp }
-  }, [stats, expenses])
+    const ytdExp = expenses.filter(e=>e.date&&e.date.startsWith(thisYear)).reduce((s,e)=>s+(e.amount||0),0)
+    const ytdSold = items.filter(i=>i.status==='sold'&&i.sold_at&&i.sold_at.startsWith(thisYear))
+    const ytdPL = ytdSold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)),0) - ytdExp
+    return { pl: stats.pl - totalExp, monthPL: stats.monthPL - monthExp, lastMonthPL: stats.lastMonthPL - lastMonthExp, ytdPL }
+  }, [stats, expenses, items])
 
   const plChartData = useMemo(() => getLast(chartMonths).map(({ key, label }) => {
     let pl = 0, revenue = 0, cost = 0
@@ -1689,6 +1720,7 @@ export default function Dashboard({ session }) {
               <div className="stat-card"><div className="stat-label">Units in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
               <div className="stat-card"><div className="stat-label">This month's profit</div><div className={`stat-value ${netHomeStats.monthPL>0?'pos':netHomeStats.monthPL<0?'neg':''}`}>{netHomeStats.monthPL>=0?'+':''}{fmt(netHomeStats.monthPL)}</div>{(()=>{if(netHomeStats.lastMonthPL===0&&netHomeStats.monthPL===0)return null;if(netHomeStats.lastMonthPL===0)return<div style={{fontSize:11,color:'var(--green)',marginTop:2}}>↑ First sales this month</div>;const pct=Math.abs(((netHomeStats.monthPL-netHomeStats.lastMonthPL)/Math.abs(netHomeStats.lastMonthPL))*100).toFixed(0);const up=netHomeStats.monthPL>=netHomeStats.lastMonthPL;return<div style={{fontSize:11,color:up?'var(--green)':'var(--red)',marginTop:2}}>{up?'↑':'↓'} {pct}% vs last month</div>})()}</div>
+              <div className="stat-card"><div className="stat-label">YTD profit</div><div className={`stat-value ${netHomeStats.ytdPL>0?'pos':netHomeStats.ytdPL<0?'neg':''}`}>{netHomeStats.ytdPL>=0?'+':''}{fmt(netHomeStats.ytdPL)}</div><div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{new Date().getFullYear()}</div></div>
               <div className="stat-card"><div className="stat-label">All-time P&L</div><div className={`stat-value ${netHomeStats.pl>0?'pos':netHomeStats.pl<0?'neg':''}`}>{netHomeStats.pl>=0?'+':''}{fmt(netHomeStats.pl)}</div></div>
               <div className="stat-card"><div className="stat-label">Total sold</div><div className="stat-value">{stats.sold}</div></div>
             </div>
@@ -3230,6 +3262,7 @@ export default function Dashboard({ session }) {
                   <div className="fee-row"><span>Net proceeds</span><span>{fmt(netSale)}</span></div>
                   <div className="fee-row"><span>Cost</span><span>-{fmt(sellItem.purchase_price)}</span></div>
                   <div className={`fee-row fee-total ${pl>=0?'pos':'neg'}`}><span>Profit</span><span>{fmt(pl)}</span></div>
+                  {(sellItem.purchase_price||0)>0&&<div className={`fee-row ${pl>=0?'pos':'neg'}`} style={{fontSize:12,borderTop:'none',paddingTop:0}}><span>ROI</span><span>{((pl/(sellItem.purchase_price||1))*100).toFixed(1)}%</span></div>}
                 </div>
               )
             })()}
