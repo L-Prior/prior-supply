@@ -362,12 +362,6 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
     saveToStorage({ selectedCategories, status, notes, rowData, unlisted })
   }, [selectedCategories, status, notes, rowData, unlisted])
 
-  // Scroll to top when checklist mounts — delay so autoFocus on discrepancy inputs doesn't re-scroll down
-  useEffect(() => {
-    const t = setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 150)
-    return () => clearTimeout(t)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   // When an item is edited and saved, mark it as correct (green) in the checklist
   useEffect(() => {
     if (!clearedBatch) return
@@ -421,47 +415,45 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
     try { localStorage.removeItem(STORAGE_KEY) } catch {}
   }
 
-  const batchMap = {}
-  items.filter(i => selectedCategories[i.category] && i.status === 'in_stock').forEach(i => {
-    const key = i.batch_id || i.id
-    if (!batchMap[key]) batchMap[key] = { ...i, units: [], qty: 0, sizes: {}, sizeFirstUnit: {} }
-    batchMap[key].units.push(i); batchMap[key].qty++
-    if (i.size) {
-      batchMap[key].sizes[i.size] = (batchMap[key].sizes[i.size] || 0) + 1
-      if (!batchMap[key].sizeFirstUnit[i.size]) batchMap[key].sizeFirstUnit[i.size] = i
-    }
-  })
-
-  const stockRows = []
-  Object.values(batchMap).forEach(b => {
-    const baseRow = {
-      brand: b.brand || '—', style: b.style || '—',
-      colourway: (b.category === 'Pokémon' || b.category === 'Topps')
-        ? [b.set_name || b.topps_set, b.pokemon_sealed_type || b.topps_sealed_type].filter(Boolean).join(' · ') || b.colourway || '—'
-        : b.colourway || '—',
-      sku: b.sku || '', category: b.category,
-      grade: (b.graded && (b.grading_company || b.grade)) ? [b.grading_company, b.grade].filter(Boolean).join(' ') : '',
-      itemId: b.units[0]?.id, batchId: b.batch_id
-    }
-    if (Object.keys(b.sizes).length > 0) {
-      Object.entries(b.sizes).forEach(([size, qty]) => {
-        // Use first unit of this specific size so sell/edit targets the right item
-        const sizeItemId = b.sizeFirstUnit[size]?.id || baseRow.itemId
-        stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}-${size}`, sizeDisplay: `UK ${size}`, qty, itemId: sizeItemId })
-      })
-    } else {
-      stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}`, sizeDisplay: '—', qty: b.qty })
-    }
-  })
-
-  const breakRows = selectedCategories.Breaker ? breaks.filter(b => b.status !== 'completed').map(b => ({
-    id: `break-${b.id}`, brand: b.type === 'break' ? 'Box Break' : 'Mystery Packs',
-    style: b.name || (b.type === 'break' ? 'Box Break' : 'Mystery Packs'), colourway: '', sku: '',
-    sizeDisplay: b.type === 'break' ? `${b.spots_sold||0}/${b.spots_total||0} spots` : `${b.packs_sold||0}/${b.packs_total||0} packs`,
-    qty: 1, category: 'Breaker', itemId: null, batchId: null
-  })) : []
-
-  const allRows = [...stockRows, ...breakRows]
+  const allRows = useMemo(() => {
+    const batchMap = {}
+    items.filter(i => selectedCategories[i.category] && i.status === 'in_stock').forEach(i => {
+      const key = i.batch_id || i.id
+      if (!batchMap[key]) batchMap[key] = { ...i, units: [], qty: 0, sizes: {}, sizeFirstUnit: {} }
+      batchMap[key].units.push(i); batchMap[key].qty++
+      if (i.size) {
+        batchMap[key].sizes[i.size] = (batchMap[key].sizes[i.size] || 0) + 1
+        if (!batchMap[key].sizeFirstUnit[i.size]) batchMap[key].sizeFirstUnit[i.size] = i
+      }
+    })
+    const stockRows = []
+    Object.values(batchMap).forEach(b => {
+      const baseRow = {
+        brand: b.brand || '—', style: b.style || '—',
+        colourway: (b.category === 'Pokémon' || b.category === 'Topps')
+          ? [b.set_name || b.topps_set, b.pokemon_sealed_type || b.topps_sealed_type].filter(Boolean).join(' · ') || b.colourway || '—'
+          : b.colourway || '—',
+        sku: b.sku || '', category: b.category,
+        grade: (b.graded && (b.grading_company || b.grade)) ? [b.grading_company, b.grade].filter(Boolean).join(' ') : '',
+        itemId: b.units[0]?.id, batchId: b.batch_id
+      }
+      if (Object.keys(b.sizes).length > 0) {
+        Object.entries(b.sizes).forEach(([size, qty]) => {
+          const sizeItemId = b.sizeFirstUnit[size]?.id || baseRow.itemId
+          stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}-${size}`, sizeDisplay: `UK ${size}`, qty, itemId: sizeItemId })
+        })
+      } else {
+        stockRows.push({ ...baseRow, id: `batch-${b.batch_id || b.id}`, sizeDisplay: '—', qty: b.qty })
+      }
+    })
+    const breakRows = selectedCategories.Breaker ? breaks.filter(b => b.status !== 'completed').map(b => ({
+      id: `break-${b.id}`, brand: b.type === 'break' ? 'Box Break' : 'Mystery Packs',
+      style: b.name || (b.type === 'break' ? 'Box Break' : 'Mystery Packs'), colourway: '', sku: '',
+      sizeDisplay: b.type === 'break' ? `${b.spots_sold||0}/${b.spots_total||0} spots` : `${b.packs_sold||0}/${b.packs_total||0} packs`,
+      qty: 1, category: 'Breaker', itemId: null, batchId: null
+    })) : []
+    return [...stockRows, ...breakRows]
+  }, [items, breaks, selectedCategories]) // eslint-disable-line react-hooks/exhaustive-deps
   const correctCount = Object.values(status).filter(s => s === 'correct').length
   const incorrectCount = Object.values(status).filter(s => s === 'incorrect').length
   const uncheckedCount = allRows.length - correctCount - incorrectCount
