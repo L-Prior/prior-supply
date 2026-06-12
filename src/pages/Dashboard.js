@@ -1966,7 +1966,7 @@ export default function Dashboard({ session }) {
                             <div style={{fontSize:13,color:'var(--text2)',marginTop:2,lineHeight:1.4}}>{styleText}</div>
                             <div className="inv-list-meta">
                               {sizeLabel&&<span className="inv-list-meta-chip">{sizeLabel}</span>}
-                              {purchaseDateLabel&&<span className="inv-list-meta-chip">📅 {purchaseDateLabel}</span>}
+                              {purchaseDateLabel&&<span className="inv-list-meta-chip">{purchaseDateLabel}</span>}
                               {storageLabel&&<span className="inv-list-meta-chip">📦 {storageLabel}</span>}
                               {targetLabel&&<span className="inv-list-meta-chip" style={{color:'var(--accent)',borderColor:'var(--accent)'}}>{targetLabel}</span>}
                               {tags.map(t=><span key={t} className="inv-list-meta-chip" style={{cursor:'pointer'}} onClick={e=>{e.stopPropagation();setFilterTag(t)}}>{t}</span>)}
@@ -1984,12 +1984,11 @@ export default function Dashboard({ session }) {
                             {avgCost>0&&<div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>avg {fmt(avgCost)}</div>}
                           </div>
                           <div className={`inv-col-num ${plColor(soldUnits.length?totalPL:null)}`} style={{fontWeight:600,fontSize:14}}>{soldUnits.length?fmt(totalPL):'—'}</div>
-                          <div className="inv-col-num" style={{fontSize:13,color:'var(--text2)',fontWeight:500}}>{batch.units.length>1?`${inStockUnits.length}/${batch.units.length}`:(allSold?'—':'1')}</div>
+                          <div className="inv-col-num" style={{fontSize:13,color:'var(--text2)',fontWeight:500}}>{batch.units.length>1?`${inStockUnits.length}/${batch.units.length}`:allSold?'—':'1'}</div>
                           <div className="inv-list-actions" onClick={e=>e.stopPropagation()}>
                             {isSingle&&!allSold&&<button className="btn sm success" onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
                             {!isSingle&&!allSold&&<button className="btn sm success" onClick={()=>setBatchModal(batch)}>Units</button>}
                             {isSingle&&<button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
-                            <button className="btn sm" onClick={()=>duplicateItem(batch)}>Copy</button>
                             {isSingle?<button className="btn sm danger" onClick={()=>deleteItem(batch.units[0].id)}>Del</button>:<button className="btn sm danger" onClick={()=>deleteBatch(batch.key)}>Del all</button>}
                           </div>
                         </div>
