@@ -1969,14 +1969,14 @@ export default function Dashboard({ session }) {
                               {tags.map(t=><span key={t} className="inv-list-meta-chip" style={{cursor:'pointer'}} onClick={e=>{e.stopPropagation();setFilterTag(t)}}>{t}</span>)}
                             </div>
                           </div>
-                          <div style={{display:'flex',flexDirection:'column',gap:5,paddingTop:2}}>
-                            {isLongTerm?<span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 8px',borderRadius:20,border:'1px solid #c7d2fe',display:'inline-flex',alignItems:'center',gap:4,alignSelf:'flex-start'}}>📌 Long-term</span>
-                            :daysInStock>30?<span style={{fontSize:10,fontWeight:600,color:'#dc2626',background:'#fee2e2',padding:'2px 8px',borderRadius:20,border:'1px solid #fca5a5',display:'inline-flex',alignItems:'center',gap:4,alignSelf:'flex-start'}}><span style={{width:5,height:5,borderRadius:'50%',background:'#dc2626',flexShrink:0,display:'inline-block'}}/>30+ days</span>
-                            :daysInStock>STALE_DAYS?<span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 8px',borderRadius:20,border:'1px solid #fcd34d',display:'inline-flex',alignItems:'center',gap:4,alignSelf:'flex-start'}}><span style={{width:5,height:5,borderRadius:'50%',background:'#f59e0b',flexShrink:0,display:'inline-block'}}/>{STALE_DAYS}+ days</span>
-                            :null}
-                            <span className={`badge ${allSold?'sold':'in_stock'}`} style={{fontSize:10,padding:'2px 8px',alignSelf:'flex-start'}}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
-                            {sizeLabel&&<span className="inv-list-meta-chip" style={{alignSelf:'flex-start'}}>{sizeLabel}</span>}
-                            {purchaseDateLabel&&<span className="inv-list-meta-chip" style={{alignSelf:'flex-start'}}>{purchaseDateLabel}</span>}
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5,paddingTop:2,alignItems:'start'}}>
+                            {isLongTerm?<span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 8px',borderRadius:20,border:'1px solid #c7d2fe',display:'inline-flex',alignItems:'center',gap:4}}>📌 Long-term</span>
+                            :daysInStock>30?<span style={{fontSize:10,fontWeight:600,color:'#dc2626',background:'#fee2e2',padding:'2px 8px',borderRadius:20,border:'1px solid #fca5a5',display:'inline-flex',alignItems:'center',gap:4}}><span style={{width:5,height:5,borderRadius:'50%',background:'#dc2626',flexShrink:0,display:'inline-block'}}/>30+ days</span>
+                            :daysInStock>STALE_DAYS?<span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 8px',borderRadius:20,border:'1px solid #fcd34d',display:'inline-flex',alignItems:'center',gap:4}}><span style={{width:5,height:5,borderRadius:'50%',background:'#f59e0b',flexShrink:0,display:'inline-block'}}/>{STALE_DAYS}+ days</span>
+                            :<span/>}
+                            <span className={`badge ${allSold?'sold':'in_stock'}`} style={{fontSize:10,padding:'2px 8px',justifySelf:'start'}}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                            {sizeLabel?<span className="inv-list-meta-chip">{sizeLabel}</span>:<span/>}
+                            {purchaseDateLabel?<span className="inv-list-meta-chip">{purchaseDateLabel}</span>:<span/>}
                           </div>
                           <div className="inv-col-num">
                             <div style={{fontWeight:600,fontSize:14}}>{fmt(totalCost)}</div>
