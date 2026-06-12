@@ -358,6 +358,13 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
   const [showFlagForm, setShowFlagForm] = useState(false)
   const [flagNote, setFlagNote] = useState('')
 
+  // Scroll to top when checklist mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [])
+
   // Save to localStorage whenever state changes
   useEffect(() => {
     saveToStorage({ selectedCategories, status, notes, rowData, unlisted })
@@ -1876,7 +1883,7 @@ export default function Dashboard({ session }) {
               <button className={`type-btn ${stockTab==='history'?'active':''}`} onClick={()=>setStockTab('history')}>
                 Sold <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{stats.sold}</span>
               </button>
-              <button className={`type-btn ${stockTab==='checklist'?'active':''}`} onClick={()=>{setStockTab('checklist');window.scrollTo(0,0)}}>
+              <button className={`type-btn ${stockTab==='checklist'?'active':''}`} onClick={()=>{setStockTab('checklist');setTimeout(()=>{window.scrollTo({top:0,behavior:'instant'});document.documentElement.scrollTop=0;document.body.scrollTop=0},50)}}>
                 Checklist
               </button>
             </div>
