@@ -359,11 +359,12 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
   const [flagNote, setFlagNote] = useState('')
 
   // Scroll to top when checklist mounts
+  // Scroll to top on mount and whenever the internal tab changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
     document.documentElement.scrollTop = 0
     document.body.scrollTop = 0
-  }, [])
+  }, [checklistTab])
 
   // Save to localStorage whenever state changes
   useEffect(() => {
