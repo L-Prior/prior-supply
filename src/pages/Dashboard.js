@@ -1969,15 +1969,25 @@ export default function Dashboard({ session }) {
                               {tags.map(t=><span key={t} className="inv-list-meta-chip" style={{cursor:'pointer'}} onClick={e=>{e.stopPropagation();setFilterTag(t)}}>{t}</span>)}
                             </div>
                           </div>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5,paddingTop:2,alignItems:'start'}}>
-                            {isLongTerm?<span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 8px',borderRadius:20,border:'1px solid #c7d2fe',display:'inline-flex',alignItems:'center',gap:4}}>📌 Long-term</span>
-                            :daysInStock>30?<span style={{fontSize:10,fontWeight:600,color:'#dc2626',background:'#fee2e2',padding:'2px 8px',borderRadius:20,border:'1px solid #fca5a5',display:'inline-flex',alignItems:'center',gap:4}}><span style={{width:5,height:5,borderRadius:'50%',background:'#dc2626',flexShrink:0,display:'inline-block'}}/>30+ days</span>
-                            :daysInStock>STALE_DAYS?<span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 8px',borderRadius:20,border:'1px solid #fcd34d',display:'inline-flex',alignItems:'center',gap:4}}><span style={{width:5,height:5,borderRadius:'50%',background:'#f59e0b',flexShrink:0,display:'inline-block'}}/>{STALE_DAYS}+ days</span>
-                            :<span/>}
-                            <span className={`badge ${allSold?'sold':'in_stock'}`} style={{fontSize:10,padding:'2px 8px',justifySelf:'start'}}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
-                            {sizeLabel?<span className="inv-list-meta-chip">{sizeLabel}</span>:<span/>}
-                            {purchaseDateLabel?<span className="inv-list-meta-chip">{purchaseDateLabel}</span>:<span/>}
-                          </div>
+                          {(()=>{
+                            const pill = {fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:20,display:'inline-flex',alignItems:'center',gap:4,whiteSpace:'nowrap',width:'fit-content'}
+                            const chipPill = {fontSize:10,fontWeight:500,padding:'3px 9px',borderRadius:20,background:'var(--surface2)',border:'1px solid var(--border)',color:'var(--text2)',whiteSpace:'nowrap',width:'fit-content'}
+                            const stalePill = isLongTerm
+                              ? <span style={{...pill,color:'#6366f1',background:'#eef2ff',border:'1px solid #c7d2fe'}}>📌 Long-term</span>
+                              : daysInStock>30
+                              ? <span style={{...pill,color:'#dc2626',background:'#fee2e2',border:'1px solid #fca5a5'}}><span style={{width:5,height:5,borderRadius:'50%',background:'#dc2626',flexShrink:0,display:'inline-block'}}/>30+ days</span>
+                              : daysInStock>STALE_DAYS
+                              ? <span style={{...pill,color:'#d97706',background:'#fef3c7',border:'1px solid #fcd34d'}}><span style={{width:5,height:5,borderRadius:'50%',background:'#f59e0b',flexShrink:0,display:'inline-block'}}/>{STALE_DAYS}+ days</span>
+                              : <span/>
+                            return (
+                              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,alignItems:'center'}}>
+                                {stalePill}
+                                <span className={`badge ${allSold?'sold':'in_stock'}`} style={{fontSize:10,padding:'3px 9px',whiteSpace:'nowrap',width:'fit-content'}}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                                {sizeLabel?<span style={chipPill}>{sizeLabel}</span>:<span/>}
+                                {purchaseDateLabel?<span style={chipPill}>{purchaseDateLabel}</span>:<span/>}
+                              </div>
+                            )
+                          })()}
                           <div className="inv-col-num">
                             <div style={{fontWeight:600,fontSize:14}}>{fmt(totalCost)}</div>
                             {avgCost>0&&<div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>avg {fmt(avgCost)}</div>}
