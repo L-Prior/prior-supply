@@ -1935,10 +1935,9 @@ export default function Dashboard({ session }) {
                   <div className="inv-list">
                     <div className="inv-list-header">
                       <span>Item</span>
-                      <span>Status</span>
+                      <span>Status &amp; Details</span>
                       <span className="inv-col-num">Cost</span>
                       <span className="inv-col-num">P&amp;L</span>
-                      <span className="inv-col-num">Stock</span>
                       <span/>
                     </div>
                     {filteredBatches.map(batch=>{
@@ -1965,8 +1964,6 @@ export default function Dashboard({ session }) {
                             <div style={{fontWeight:700,fontSize:15,color:'var(--text)',lineHeight:1.25}}>{batch.brand||'—'}</div>
                             <div style={{fontSize:13,color:'var(--text2)',marginTop:2,lineHeight:1.4}}>{styleText}</div>
                             <div className="inv-list-meta">
-                              {sizeLabel&&<span className="inv-list-meta-chip">{sizeLabel}</span>}
-                              {purchaseDateLabel&&<span className="inv-list-meta-chip">{purchaseDateLabel}</span>}
                               {storageLabel&&<span className="inv-list-meta-chip">📦 {storageLabel}</span>}
                               {targetLabel&&<span className="inv-list-meta-chip" style={{color:'var(--accent)',borderColor:'var(--accent)'}}>{targetLabel}</span>}
                               {tags.map(t=><span key={t} className="inv-list-meta-chip" style={{cursor:'pointer'}} onClick={e=>{e.stopPropagation();setFilterTag(t)}}>{t}</span>)}
@@ -1978,13 +1975,14 @@ export default function Dashboard({ session }) {
                             :daysInStock>STALE_DAYS?<span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 8px',borderRadius:20,border:'1px solid #fcd34d',display:'inline-flex',alignItems:'center',gap:4,alignSelf:'flex-start'}}><span style={{width:5,height:5,borderRadius:'50%',background:'#f59e0b',flexShrink:0,display:'inline-block'}}/>{STALE_DAYS}+ days</span>
                             :null}
                             <span className={`badge ${allSold?'sold':'in_stock'}`} style={{fontSize:10,padding:'2px 8px',alignSelf:'flex-start'}}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                            {sizeLabel&&<span className="inv-list-meta-chip" style={{alignSelf:'flex-start'}}>{sizeLabel}</span>}
+                            {purchaseDateLabel&&<span className="inv-list-meta-chip" style={{alignSelf:'flex-start'}}>{purchaseDateLabel}</span>}
                           </div>
                           <div className="inv-col-num">
                             <div style={{fontWeight:600,fontSize:14}}>{fmt(totalCost)}</div>
                             {avgCost>0&&<div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>avg {fmt(avgCost)}</div>}
                           </div>
                           <div className={`inv-col-num ${plColor(soldUnits.length?totalPL:null)}`} style={{fontWeight:600,fontSize:14}}>{soldUnits.length?fmt(totalPL):'—'}</div>
-                          <div className="inv-col-num" style={{fontSize:13,color:'var(--text2)',fontWeight:500}}>{batch.units.length>1?`${inStockUnits.length}/${batch.units.length}`:allSold?'—':'1'}</div>
                           <div className="inv-list-actions" onClick={e=>e.stopPropagation()}>
                             {isSingle&&!allSold&&<button className="btn sm success" onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
                             {!isSingle&&!allSold&&<button className="btn sm success" onClick={()=>setBatchModal(batch)}>Units</button>}
