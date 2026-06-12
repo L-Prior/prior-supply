@@ -713,6 +713,7 @@ export default function Dashboard({ session }) {
   const [shippingFee, setShippingFee] = useState('')
   const [soldDate, setSoldDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [stockTab, setStockTab] = useState('inventory')
+  const [viewMode, setViewMode] = useState(()=>{ try { return localStorage.getItem('stocktrack_viewmode')||'grid' } catch { return 'grid' } })
   const [clearedBatch, setClearedBatch] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [search, setSearch] = useState('')
@@ -1910,6 +1911,14 @@ export default function Dashboard({ session }) {
                   })()}
                   {(search||filterBrand||filterStatus||filterCategory||filterTag)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('');setFilterTag('')}}>Clear</button>}
                   <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
+                  <div className="view-toggle">
+                    <button className={`view-toggle-btn${viewMode==='grid'?' active':''}`} title="Grid view" onClick={()=>{setViewMode('grid');try{localStorage.setItem('stocktrack_viewmode','grid')}catch{}}}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="0" width="6" height="6" rx="1" fill="currentColor"/><rect x="8" y="0" width="6" height="6" rx="1" fill="currentColor"/><rect x="0" y="8" width="6" height="6" rx="1" fill="currentColor"/><rect x="8" y="8" width="6" height="6" rx="1" fill="currentColor"/></svg>
+                    </button>
+                    <button className={`view-toggle-btn${viewMode==='list'?' active':''}`} title="List view" onClick={()=>{setViewMode('list');try{localStorage.setItem('stocktrack_viewmode','list')}catch{}}}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="1" width="14" height="2" rx="1" fill="currentColor"/><rect x="0" y="6" width="14" height="2" rx="1" fill="currentColor"/><rect x="0" y="11" width="14" height="2" rx="1" fill="currentColor"/></svg>
+                    </button>
+                  </div>
                 </div>
                 {orderCart.length>0&&(
                   <div style={{background:'var(--accent)',color:'#fff',padding:'10px 16px',borderRadius:'var(--radius)',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
@@ -1922,6 +1931,53 @@ export default function Dashboard({ session }) {
                 )}
                 {loading?<div className="loading">Loading stock...</div>:filteredBatches.length===0?(
                   <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">{items.length===0?'No stock yet':'No results'}</div><div style={{marginTop:6}}>{items.length===0?'Add your first item to get started':'Try adjusting your filters'}</div></div>
+                ):viewMode==='list'?(
+                  <div className="inv-list">
+                    <div className="inv-list-header">
+                      <span>Item</span>
+                      <span>Status</span>
+                      <span className="inv-col-num">Cost</span>
+                      <span className="inv-col-num">P&amp;L</span>
+                      <span className="inv-col-num">Stock</span>
+                      <span/>
+                    </div>
+                    {filteredBatches.map(batch=>{
+                      const inStockUnits=batch.units.filter(u=>u.status==='in_stock')
+                      const soldUnits=batch.units.filter(u=>u.status==='sold')
+                      const totalCost=inStockUnits.reduce((s,u)=>s+(u.purchase_price||0),0)
+                      const totalPL=soldUnits.reduce((s,u)=>s+((u.sale_price||0)-(u.purchase_price||0)-(u.fee_amount||0)-(u.shipping_fee||0)),0)
+                      const allSold=inStockUnits.length===0
+                      const isSingle=batch.units.length===1
+                      const now=new Date()
+                      const isLongTerm=batch.units.some(u=>u.long_term)
+                      const daysInStock=batch.units.reduce((max,u)=>{if(u.status!=='in_stock'||!u.purchase_date)return max;return Math.max(max,(now-new Date(u.purchase_date))/86400000)},0)
+                      const styleText=batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?[batch.style,batch.units[0]?.card_number,batch.colourway].filter(Boolean).join(' · '):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='sealed'?[batch.colourway,batch.units[0]?.pokemon_sealed_type,batch.style].filter(Boolean).join(' · ')||'—':[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'
+                      return (
+                        <div key={batch.key} className="inv-list-row" onClick={()=>setBatchModal(batch)}>
+                          <div className="inv-list-main">
+                            <div style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600,marginBottom:1}}>{batch.category}</div>
+                            <div style={{fontWeight:600,fontSize:14,color:'var(--text)',lineHeight:1.2}}>{batch.brand||'—'}</div>
+                            <div style={{fontSize:12,color:'var(--text2)',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:260}}>{styleText}</div>
+                          </div>
+                          <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}>
+                            {isLongTerm?<span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'1px 7px',borderRadius:20,border:'1px solid #c7d2fe',whiteSpace:'nowrap'}}>📌 Hold</span>
+                            :daysInStock>30?<span style={{fontSize:10,fontWeight:600,color:'#dc2626',background:'#fee2e2',padding:'1px 7px',borderRadius:20,border:'1px solid #fca5a5',display:'inline-flex',alignItems:'center',gap:4,whiteSpace:'nowrap'}}><span style={{width:5,height:5,borderRadius:'50%',background:'#dc2626',flexShrink:0,display:'inline-block'}}/>30+ days</span>
+                            :daysInStock>STALE_DAYS?<span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'1px 7px',borderRadius:20,border:'1px solid #fcd34d',display:'inline-flex',alignItems:'center',gap:4,whiteSpace:'nowrap'}}><span style={{width:5,height:5,borderRadius:'50%',background:'#f59e0b',flexShrink:0,display:'inline-block'}}/>{STALE_DAYS}+ days</span>
+                            :<span className={`badge ${allSold?'sold':'in_stock'}`} style={{fontSize:10,padding:'1px 7px'}}>{allSold?'Sold':'In stock'}</span>}
+                          </div>
+                          <div className="inv-col-num" style={{fontWeight:500,fontSize:13}}>{fmt(totalCost)}</div>
+                          <div className={`inv-col-num ${plColor(soldUnits.length?totalPL:null)}`} style={{fontWeight:600,fontSize:13}}>{soldUnits.length?fmt(totalPL):'—'}</div>
+                          <div className="inv-col-num" style={{fontSize:13,color:'var(--text2)'}}>{batch.units.length>1?`${inStockUnits.length}/${batch.units.length}`:(allSold?'Sold':'1')}</div>
+                          <div className="inv-list-actions" onClick={e=>e.stopPropagation()}>
+                            {isSingle&&!allSold&&<button className="btn sm success" onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
+                            {!isSingle&&!allSold&&<button className="btn sm success" onClick={()=>setBatchModal(batch)}>Units</button>}
+                            {isSingle&&<button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
+                            {isSingle?<button className="btn sm danger" onClick={()=>deleteItem(batch.units[0].id)}>Del</button>:<button className="btn sm danger" onClick={()=>deleteBatch(batch.key)}>Del all</button>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 ):(
                   <div className="card-grid">
                     {filteredBatches.map(batch=>{
