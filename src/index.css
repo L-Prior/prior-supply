@@ -1021,7 +1021,7 @@ tbody td {
 }
 .inv-list-header {
   display: grid;
-  grid-template-columns: minmax(200px,1fr) 210px 100px 80px auto;
+  grid-template-columns: minmax(200px,1fr) 210px 100px 70px 130px;
   gap: 12px;
   padding: 8px 16px;
   background: var(--surface2);
@@ -1035,7 +1035,7 @@ tbody td {
 }
 .inv-list-row {
   display: grid;
-  grid-template-columns: minmax(200px,1fr) 210px 100px 80px auto;
+  grid-template-columns: minmax(200px,1fr) 210px 100px 70px 130px;
   gap: 12px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
