@@ -8,7 +8,7 @@ import {
 
 const CATEGORIES = ['Sneakers', 'Pokémon', 'Topps', 'Lego', 'Clothing', 'Miscellaneous']
 const COLORS = ['#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0','#f59e0b','#3b82f6']
-const POKEMON_TYPES = ['Booster Box', 'Elite Trainer Box', 'Pack', 'Sleeved Booster', 'Blister', 'Triple Blister', 'Bundle', 'Other']
+const POKEMON_TYPES = ['Booster Box', 'Elite Trainer Box', 'Pack', 'Sleeved Booster', 'Blister', 'Triple Blister', 'Mini Tin', 'Bundle', 'Other']
 const TOPPS_SEALED_TYPES = ['Hobby Box', 'Blaster Box', 'Mega Box', 'Tin', 'Pack', 'Bundle', 'Other']
 const TOPPS_PARALLELS = ['Base', 'Gold', 'Refractor', 'Chrome', 'Prizm', 'Foil', 'Numbered', 'Auto', 'Other']
 const CONDITIONS = ['Sealed', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played']
@@ -619,7 +619,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
               {unlisted.map(u=>(
                 <div key={u.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',background:'#fffbeb',border:'1px solid #f59e0b',borderRadius:'var(--radius)'}}>
                   <div style={{flex:1,fontSize:13,color:'var(--text)'}}>{u.note}</div>
-                  <button className="btn primary sm" onClick={()=>{onAddItem();removeUnlisted(u.id)}}>+ Add to stock</button>
+                  <button className="btn primary sm" onClick={()=>{onAddItem(()=>removeUnlisted(u.id))}}>+ Add to stock</button>
                   <button className="btn sm danger" onClick={()=>removeUnlisted(u.id)}>Del</button>
                 </div>
               ))}
@@ -698,6 +698,7 @@ function FeeCalculator() {
 
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
+  const addItemSuccessCallback = React.useRef(null)
   const [page, setPage] = useState('home')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -724,6 +725,10 @@ export default function Dashboard({ session }) {
   const [sortBy, setSortBy] = useState('newest')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [fetchError, setFetchError] = useState('')
+  const [settingsSaved, setSettingsSaved] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(() => { try { return !localStorage.getItem('stocktrack_onboarded') } catch { return false } })
+  function dismissOnboarding() { try { localStorage.setItem('stocktrack_onboarded','1') } catch {}; setShowOnboarding(false) }
   const [chartMonths, setChartMonths] = useState(6)
   const [metricsSources, setMetricsSources] = useState({ reseller: true, breaker: true, collector: false })
 
@@ -731,12 +736,12 @@ export default function Dashboard({ session }) {
     setMetricsSources(s => ({ ...s, [key]: !s[key] }))
   }
 
-  useEffect(() => { fetchItems(); fetchBreaks(); fetchExpenses() }, [])
+  useEffect(() => { fetchItems(); fetchBreaks(); fetchExpenses() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchItems() {
     setLoading(true)
-    const { data, error } = await supabase.from('stock').select('*').order('created_at', { ascending: false })
-    if (error) console.error(error)
+    const { data, error } = await supabase.from('stock').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false })
+    if (error) { console.error(error); setFetchError('Failed to load inventory. Please refresh.') }
     setItems(data || [])
     setLoading(false)
   }
@@ -845,6 +850,7 @@ export default function Dashboard({ session }) {
     setSaving(false)
     if (error) { setSaveError(error.message); return }
     if (editItem) { setClearedBatch(editItem.batch_id || editItem.id); setTimeout(() => setClearedBatch(null), 200) }
+    if (addItemSuccessCallback.current) { addItemSuccessCallback.current(); addItemSuccessCallback.current = null }
     setShowAdd(false); setEditItem(null); setForm(EMPTY_FORM); fetchItems()
   }
 
@@ -885,7 +891,7 @@ export default function Dashboard({ session }) {
         user_id: session.user.id,
         date: new Date().toISOString().slice(0, 10),
         amount: cost,
-        category: 'Other',
+        category: 'Returns',
         description: `Return: ${returnItem.brand || ''} ${returnItem.style || ''}`.trim()
       }])
       fetchExpenses()
@@ -1384,7 +1390,7 @@ export default function Dashboard({ session }) {
 
   async function fetchBreaks() {
     setBreaksLoading(true)
-    const { data } = await supabase.from('breaks').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('breaks').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false })
     setBreaks(data || [])
     setBreaksLoading(false)
   }
@@ -1618,7 +1624,7 @@ export default function Dashboard({ session }) {
 
   async function fetchExpenses() {
     setExpensesLoading(true)
-    const { data } = await supabase.from('expenses').select('*').order('date', { ascending: false })
+    const { data } = await supabase.from('expenses').select('*').eq('user_id', session.user.id).order('date', { ascending: false })
     setExpenses(data || [])
     setExpensesLoading(false)
   }
@@ -1669,7 +1675,7 @@ export default function Dashboard({ session }) {
 
   async function fetchCollector() {
     setCollectorLoading(true)
-    const { data } = await supabase.from('collector').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('collector').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false })
     setCollectorItems(data || [])
     setCollectorLoading(false)
   }
@@ -1800,9 +1806,32 @@ export default function Dashboard({ session }) {
         </div>
 
       <div className="main">
+        {fetchError&&(
+          <div style={{margin:'0 0 16px 0',padding:'12px 16px',background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:'var(--radius)',color:'#dc2626',fontSize:13,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span>{fetchError}</span>
+            <button style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontWeight:700,padding:'0 4px'}} onClick={()=>setFetchError('')}>✕</button>
+          </div>
+        )}
+
         {page==='home'&&(
           <div>
-            <div className="page-header"><h1 className="page-title">Welcome back, {username} 👋</h1><p className="page-subtitle">Here's how your stock is performing</p></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+              <div><h1 className="page-title">Welcome back, {username} 👋</h1><p className="page-subtitle">Here's how your stock is performing</p></div>
+              <button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>
+            </div>
+            {showOnboarding&&!loading&&items.length===0&&(
+              <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',border:'1px solid #86efac',borderRadius:'var(--radius-lg)',padding:'20px 24px',marginBottom:24,display:'flex',gap:16,alignItems:'flex-start'}}>
+                <div style={{fontSize:28,flexShrink:0}}>👋</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:16,color:'#14532d',marginBottom:4}}>Welcome to StockTrack!</div>
+                  <div style={{fontSize:13,color:'#166534',marginBottom:14}}>You're all set. Add your first item to start tracking your inventory and profit. It takes about 30 seconds.</div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    <button className="btn primary sm" onClick={()=>{dismissOnboarding();setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add first item</button>
+                    <button className="btn sm" onClick={dismissOnboarding}>Dismiss</button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="stats-bar">
               <div className="stat-card"><div className="stat-label">Units in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
@@ -2044,6 +2073,7 @@ export default function Dashboard({ session }) {
                             <div className="item-card-brand">{batch.brand||'—'}</div>
                             <div className="item-card-style">{batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?[batch.style,batch.units[0]?.card_number,batch.colourway].filter(Boolean).join(' · '):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='sealed'?[batch.colourway,batch.units[0]?.pokemon_sealed_type,batch.style].filter(Boolean).join(' · ')||'—':[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
                             {batch.units[0]?.storage_location&&<div style={{marginTop:4,fontSize:11,color:'var(--muted)'}}>📦 {batch.units[0].storage_location}</div>}
+                            {batch.units[0]?.target_price&&!allSold&&<div style={{marginTop:5,display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:700,color:'#7c3aed',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:20,padding:'2px 8px'}}>🎯 Target {fmt(batch.units[0].target_price)}</div>}
                             {(()=>{const tags=(batch.units[0]?.tags||'').split(',').map(t=>t.trim()).filter(Boolean);return tags.length>0&&<div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>{tags.map(t=><span key={t} style={{fontSize:10,fontWeight:600,padding:'2px 6px',borderRadius:10,background:'var(--surface2)',border:'1px solid var(--border)',color:'var(--text2)',cursor:'pointer'}} onClick={e=>{e.stopPropagation();setFilterTag(t)}}>{t}</span>)}</div>})()}
                           </div>
                           <div className="item-card-stats">
@@ -2140,7 +2170,7 @@ export default function Dashboard({ session }) {
                 </div>
               )
             })()}
-            {stockTab==='checklist'&&<StockChecklist items={items} breaks={breaks} clearedBatch={clearedBatch} onAddItem={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
+            {stockTab==='checklist'&&<StockChecklist items={items} breaks={breaks} clearedBatch={clearedBatch} onAddItem={(onSuccess)=>{addItemSuccessCallback.current=onSuccess||null;setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
           </div>
         )}
 
@@ -3180,7 +3210,7 @@ export default function Dashboard({ session }) {
       )}
 
       {showAdd&&(
-        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAdd(false)}>
+        <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget){addItemSuccessCallback.current=null;setShowAdd(false)}}}>
           <div className="modal">
             <div className="modal-title">{editItem?'Edit item':'Add new item'}</div>
             <div className="form-grid">
@@ -3227,7 +3257,7 @@ export default function Dashboard({ session }) {
             </div>}
             {saveError&&<div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {saveError}</div>}
             <div className="form-actions">
-              <button className="btn" onClick={()=>{setShowAdd(false);setEditItem(null);setForm(EMPTY_FORM);setSaveError('')}}>Cancel</button>
+              <button className="btn" onClick={()=>{addItemSuccessCallback.current=null;setShowAdd(false);setEditItem(null);setForm(EMPTY_FORM);setSaveError('')}}>Cancel</button>
               <button className="btn primary" onClick={saveItem} disabled={saving||!form.category}>{saving?'Saving...':editItem?'Save changes':'Add item'}</button>
             </div>
           </div>
@@ -3579,8 +3609,24 @@ export default function Dashboard({ session }) {
                   <input className="form-input" value={session.user.email} disabled style={{background:'var(--surface2)',color:'var(--muted)'}}/>
                 </div>
                 <div className="form-actions">
-                  <button className="btn" onClick={()=>setShowSettings(false)}>Close</button>
-                  <button className="btn primary" onClick={async()=>{await saveDisplayName();setShowSettings(false)}}>Save</button>
+                  {settingsSaved&&<span style={{fontSize:13,color:'var(--green)',fontWeight:600}}>✓ Saved</span>}
+                  <button className="btn" onClick={()=>{setShowSettings(false);setSettingsSaved(false)}}>Close</button>
+                  <button className="btn primary" onClick={async()=>{await saveDisplayName();setSettingsSaved(true);setTimeout(()=>setSettingsSaved(false),3000)}}>Save</button>
+                </div>
+                <div style={{marginTop:24,paddingTop:20,borderTop:'1px solid var(--border)'}}>
+                  <div style={{fontSize:13,fontWeight:600,color:'var(--text)',marginBottom:4}}>Danger zone</div>
+                  <div style={{fontSize:12,color:'var(--muted)',marginBottom:12}}>Permanently delete your account and all data. This cannot be undone.</div>
+                  <button className="btn danger sm" onClick={async()=>{
+                    if (!window.confirm('This will permanently delete your account and ALL your data. Are you absolutely sure?\n\nThis cannot be undone.')) return
+                    if (!window.confirm('Last chance — are you sure you want to delete everything?')) return
+                    try {
+                      const { data: { session: s } } = await supabase.auth.getSession()
+                      const res = await fetch('/api/delete-account', { method:'POST', headers:{ Authorization:`Bearer ${s.access_token}`, 'Content-Type':'application/json' } })
+                      if (!res.ok) { const d=await res.json(); alert(d.error||'Deletion failed. Please contact hello@stocktrack.app'); return }
+                      await supabase.auth.signOut()
+                      navigate('/')
+                    } catch(e) { alert('Something went wrong. Please contact hello@stocktrack.app') }
+                  }}>Delete my account</button>
                 </div>
               </div>
             )}
