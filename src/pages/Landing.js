@@ -16,10 +16,10 @@ const plans = [
     price: 'Free',
     desc: 'For those who collect for the love of it',
     features: [
-      'Catalogue your full collection',
+      'Catalogue your collection (up to 30 items)',
       'Sneakers, Pokémon, Lego & more',
       'Notes and condition tracking',
-      'Unlimited items',
+      'No credit card required',
     ],
     cta: 'Get started free',
     href: '/login',
@@ -162,6 +162,13 @@ export default function Landing({ session }) {
             StockTrack
           </div>
           <div className="footer-note">Built for resellers. © 2026 StockTrack.</div>
+          <div className="footer-links">
+            <Link to="/privacy" className="footer-link">Privacy Policy</Link>
+            <span className="footer-sep">·</span>
+            <Link to="/terms" className="footer-link">Terms of Service</Link>
+            <span className="footer-sep">·</span>
+            <a href="mailto:hello@stocktrack.app" className="footer-link">Contact</a>
+          </div>
         </div>
       </footer>
     </div>

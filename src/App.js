@@ -4,6 +4,9 @@ import { supabase } from './supabase'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
+import ResetPassword from './pages/ResetPassword'
 import './index.css'
 
 function ProtectedRoute({ session, children }) {
@@ -27,6 +30,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing session={session} />} />
         <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         <Route path="/dashboard" element={
           <ProtectedRoute session={session}>
             <Dashboard session={session} />
