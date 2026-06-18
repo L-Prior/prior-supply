@@ -2387,6 +2387,35 @@ tbody td {
 }
 .dark-mode .mobile-menu { background: var(--surface); border-color: var(--border); }
 
+/* ── Logo image sizing ───────────────────────────────── */
+.sidebar-logo {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+.topbar-logo {
+  height: 26px;
+  width: auto;
+  display: block;
+}
+.auth-logo {
+  height: 34px;
+  width: auto;
+  display: block;
+  margin-bottom: 28px;
+}
+.nav-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+.footer-logo {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+/* Dark mode logo swap is handled in JS via darkMode state */
+
 /* ── Goal Progress Bar ───────────────────────────────── */
 .goal-bar-wrap {
   background: var(--surface);

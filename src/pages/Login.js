@@ -58,8 +58,7 @@ export default function Login() {
     <div className="auth-wrap">
       <div className="auth-card">
         <Link to="/" className="auth-brand" style={{ textDecoration: 'none' }}>
-          <span className="brand-mark" />
-          StockTrack
+          <img src="/logo-light.svg" alt="ITS VAULTED" className="auth-logo" />
         </Link>
 
         <h2 className="auth-title">

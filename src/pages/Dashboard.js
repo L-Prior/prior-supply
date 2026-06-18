@@ -1983,7 +1983,7 @@ export default function Dashboard({ session }) {
 
       {/* ── Sidebar (desktop only) ─────────────────────────────────────────── */}
       <aside className="sidebar">
-        <div className="sidebar-brand"><span className="brand-mark"/>StockTrack</div>
+        <div className="sidebar-brand"><img src={darkMode?'/logo-dark.svg':'/logo-light.svg'} alt="ITS VAULTED" className="sidebar-logo" /></div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map(n=>(
             <button key={n.id} className={`sidebar-nav-btn ${page===n.id?'active':''} ${n.locked?'locked':''}`} onClick={()=>navTo(n.id)}>
@@ -2009,7 +2009,7 @@ export default function Dashboard({ session }) {
 
         {/* Mobile topbar */}
         <div className="topbar">
-          <div className="topbar-brand"><span className="brand-mark"/>StockTrack</div>
+          <div className="topbar-brand"><img src={darkMode?'/logo-dark.svg':'/logo-light.svg'} alt="ITS VAULTED" className="topbar-logo" /></div>
           <div className="topbar-actions">
             {page==='stock'&&<button className="btn primary sm" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add</button>}
             {page==='breaks'&&<button className="btn primary sm" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add</button>}
@@ -2040,7 +2040,7 @@ export default function Dashboard({ session }) {
               <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',border:'1px solid #86efac',borderRadius:'var(--radius-lg)',padding:'20px 24px',marginBottom:24,display:'flex',gap:16,alignItems:'flex-start'}}>
                 <div style={{fontSize:28,flexShrink:0}}>👋</div>
                 <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:16,color:'#14532d',marginBottom:4}}>Welcome to StockTrack!</div>
+                  <div style={{fontWeight:700,fontSize:16,color:'#14532d',marginBottom:4}}>Welcome to ITS VAULTED!</div>
                   <div style={{fontSize:13,color:'#166534',marginBottom:14}}>You're all set. Add your first item to start tracking your inventory and profit. It takes about 30 seconds.</div>
                   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                     <button className="btn primary sm" onClick={()=>{dismissOnboarding();setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add first item</button>
