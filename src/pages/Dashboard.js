@@ -696,6 +696,94 @@ function FeeCalculator() {
   )
 }
 
+function ProfitCalcTool() {
+  const [buyPrice, setBuyPrice] = useState('')
+  const [platform, setPlatform] = useState(null)
+  const [targetROI, setTargetROI] = useState('')
+  const [shipping, setShipping] = useState('')
+  const [customRate, setCustomRate] = useState('')
+
+  const buy = parseFloat(buyPrice) || 0
+  const ship = parseFloat(shipping) || 0
+  const roi = parseFloat(targetROI) || 0
+  const totalCost = buy + ship
+
+  function feeForSell(sell) {
+    if (!platform) return 0
+    return calcFee(String(sell), platform, customRate)
+  }
+
+  // Break-even sell price (binary search since fee depends on sell price)
+  const breakEven = (() => {
+    if (totalCost === 0) return 0
+    let lo = totalCost, hi = totalCost * 5
+    for (let i = 0; i < 30; i++) {
+      const mid = (lo + hi) / 2
+      if (mid - feeForSell(mid) - totalCost > 0) hi = mid; else lo = mid
+    }
+    return lo
+  })()
+
+  // Target sell price for desired ROI
+  const targetSell = (() => {
+    if (totalCost === 0 || roi === 0) return 0
+    const desired = totalCost * (1 + roi / 100)
+    let lo = desired, hi = desired * 5
+    for (let i = 0; i < 30; i++) {
+      const mid = (lo + hi) / 2
+      if (mid - feeForSell(mid) - totalCost >= desired - totalCost) hi = mid; else lo = mid
+    }
+    return lo
+  })()
+
+  const hasCost = buy > 0 || ship > 0
+
+  return (
+    <div style={{maxWidth:520}}>
+      <div className="chart-card">
+        <div className="chart-title" style={{marginBottom:20}}>Pre-Purchase Calculator</div>
+        <p style={{fontSize:13,color:'var(--muted)',marginBottom:16,marginTop:-8}}>Work out what you need to sell for before you buy.</p>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Buy price (£)</label>
+            <input className="form-input" type="number" step="0.01" placeholder="0.00" value={buyPrice} onChange={e=>setBuyPrice(e.target.value)}/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Shipping cost (£)</label>
+            <input className="form-input" type="number" step="0.01" placeholder="0.00" value={shipping} onChange={e=>setShipping(e.target.value)}/>
+          </div>
+          <div className="form-group full">
+            <label className="form-label">Selling platform</label>
+            <select className="form-input" value={platform?.id||''} onChange={e=>setPlatform(RESELLER_PLATFORMS.find(p=>p.id===e.target.value)||null)}>
+              <option value="">Select platform</option>
+              {RESELLER_PLATFORMS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          {platform?.id==='custom'&&(
+            <div className="form-group full">
+              <label className="form-label">Custom fee %</label>
+              <input className="form-input" type="number" step="0.1" placeholder="e.g. 10" value={customRate} onChange={e=>setCustomRate(e.target.value)}/>
+            </div>
+          )}
+          <div className="form-group full">
+            <label className="form-label">Target ROI % (optional)</label>
+            <input className="form-input" type="number" step="1" placeholder="e.g. 20" value={targetROI} onChange={e=>setTargetROI(e.target.value)}/>
+          </div>
+        </div>
+        {hasCost && (
+          <div className="fee-breakdown" style={{marginTop:8}}>
+            <div className="fee-row"><span>Total cost (buy + shipping)</span><span>{fmt(totalCost)}</span></div>
+            {platform&&<div className="fee-row fee-deduct"><span>Break-even sell price</span><span style={{fontWeight:700,color:'var(--text)'}}>{fmt(breakEven)}</span></div>}
+            {roi>0&&platform&&<div className="fee-row fee-total pos"><span>Sell for {roi}% ROI</span><span>{fmt(targetSell)}</span></div>}
+            {roi>0&&!platform&&<div className="fee-row fee-total pos"><span>Sell for {roi}% ROI (no fees)</span><span>{fmt(totalCost*(1+roi/100))}</span></div>}
+            {!platform&&<div style={{fontSize:12,color:'var(--muted)',marginTop:8}}>Select a platform to include fees in the calculation.</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function UpgradeWall({ tier, price, feature, desc, onUpgrade }) {
   const isCore = tier === 'Core'
   const colour = isCore ? '#2563eb' : '#7c3aed'
@@ -748,9 +836,39 @@ export default function Dashboard({ session }) {
   const [fetchError, setFetchError] = useState('')
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => { try { return !localStorage.getItem('stocktrack_onboarded') } catch { return false } })
+  // Wishlist (localStorage — no DB needed)
+  const WISHLIST_KEY = 'stocktrack_wishlist'
+  const [wishlist, setWishlist] = useState(() => { try { return JSON.parse(localStorage.getItem('stocktrack_wishlist')||'[]') } catch { return [] } })
+  const [showWishlistForm, setShowWishlistForm] = useState(false)
+  const [wishlistForm, setWishlistForm] = useState({ brand:'', style:'', category:'', targetPrice:'', notes:'' })
+  useEffect(() => { try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlist)) } catch {} }, [wishlist]) // eslint-disable-line react-hooks/exhaustive-deps
+  function addWishlistItem() { if (!wishlistForm.brand.trim()) return; setWishlist(w=>[{ id:Date.now(), ...wishlistForm, createdAt: new Date().toISOString() }, ...w]); setWishlistForm({brand:'',style:'',category:'',targetPrice:'',notes:''}); setShowWishlistForm(false) }
+  function removeWishlistItem(id) { setWishlist(w=>w.filter(i=>i.id!==id)) }
+  // Bulk selection (Pro feature)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [bulkTag, setBulkTag] = useState('')
+  const [showBulkTagInput, setShowBulkTagInput] = useState(false)
+  function clearSelection() { setSelectedIds(new Set()); setShowBulkTagInput(false); setBulkTag('') }
+  async function bulkDelete() {
+    if (!window.confirm(`Delete ${selectedIds.size} item${selectedIds.size!==1?'s':''}? This cannot be undone.`)) return
+    await Promise.all([...selectedIds].map(id => supabase.from('stock').delete().eq('id', id)))
+    clearSelection(); fetchItems()
+  }
+  async function bulkAddTag() {
+    if (!bulkTag.trim()) return
+    const ids = [...selectedIds]
+    const affected = items.filter(i => ids.includes(i.id))
+    await Promise.all(affected.map(i => {
+      const existing = (i.tags||'').split(',').map(t=>t.trim()).filter(Boolean)
+      const merged = [...new Set([...existing, bulkTag.trim()])].join(', ')
+      return supabase.from('stock').update({ tags: merged }).eq('id', i.id)
+    }))
+    clearSelection(); fetchItems()
+  }
   function dismissOnboarding() { try { localStorage.setItem('stocktrack_onboarded','1') } catch {}; setShowOnboarding(false) }
   const [chartMonths, setChartMonths] = useState(6)
   const [metricsSources, setMetricsSources] = useState({ reseller: true, breaker: true, collector: false })
+  const [reportMonth, setReportMonth] = useState(() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` })
 
   function toggleSource(key) {
     setMetricsSources(s => ({ ...s, [key]: !s[key] }))
@@ -1408,6 +1526,58 @@ export default function Dashboard({ session }) {
     setCsvRows(null); fetchItems()
   }
 
+  function parseEbayCsvImport(file) {
+    setEbayCsvError(''); setEbayCsvRows(null)
+    const reader = new FileReader()
+    reader.onload = e => {
+      try {
+        const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean)
+        if (lines.length < 2) { setEbayCsvError('File appears empty'); return }
+        const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim().toLowerCase())
+        const rows = lines.slice(1).map(line => {
+          const vals = []
+          let cur = '', inQ = false
+          for (const ch of line) {
+            if (ch==='"') { inQ=!inQ }
+            else if (ch===','&&!inQ) { vals.push(cur.trim()); cur='' }
+            else cur+=ch
+          }
+          vals.push(cur.trim())
+          const row = {}
+          headers.forEach((h,i) => { row[h] = (vals[i]||'').replace(/^"|"$/g,'').trim() })
+          return row
+        }).filter(r => r['item title']||r['order number']||r['transaction id'])
+        if (rows.length===0) { setEbayCsvError('No valid eBay rows found. Make sure you downloaded from Seller Hub → Orders.'); return }
+        setEbayCsvRows(rows)
+      } catch { setEbayCsvError('Could not parse CSV file') }
+    }
+    reader.readAsText(file)
+  }
+
+  async function importEbayCsvRows() {
+    if (!ebayCsvRows||ebayCsvRows.length===0) return
+    setEbayCsvImporting(true); setEbayCsvError('')
+    const toInsert = ebayCsvRows.map(r => {
+      const title = r['item title']||r['title']||''
+      const qty = parseInt(r['quantity']||r['qty']||'1')||1
+      const salePrice = parseFloat(r['item price']||r['sale price']||r['total price']||r['order total']||'0')||0
+      const saleDate = r['sale date']||r['order date']||r['paid on date']||null
+      const parsedDate = saleDate ? (() => { try { return new Date(saleDate).toISOString().slice(0,10) } catch { return null } })() : null
+      return Array.from({length:qty},()=>({
+        category: 'Miscellaneous', brand: 'eBay Import', style: title,
+        purchase_price: 0, sale_price: salePrice,
+        sold_at: parsedDate ? new Date(parsedDate).toISOString() : new Date().toISOString(),
+        status: 'sold', item_condition: 'Brand New',
+        purchase_platform: 'eBay', batch_id: crypto.randomUUID(),
+        user_id: session.user.id
+      }))
+    }).flat()
+    const { error } = await supabase.from('stock').insert(toInsert)
+    setEbayCsvImporting(false)
+    if (error) { setEbayCsvError(error.message); return }
+    setEbayCsvRows(null); fetchItems()
+  }
+
   async function fetchBreaks() {
     setBreaksLoading(true)
     const { data } = await supabase.from('breaks').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false })
@@ -1490,6 +1660,10 @@ export default function Dashboard({ session }) {
   const [csvRows, setCsvRows] = useState(null)
   const [csvImporting, setCsvImporting] = useState(false)
   const [csvError, setCsvError] = useState('')
+  const [csvMode, setCsvMode] = useState('template')
+  const [ebayCsvRows, setEbayCsvRows] = useState(null)
+  const [ebayCsvError, setEbayCsvError] = useState('')
+  const [ebayCsvImporting, setEbayCsvImporting] = useState(false)
   const [orderCart, setOrderCart] = useState([])
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderPlatform, setOrderPlatform] = useState(null)
@@ -1567,6 +1741,25 @@ export default function Dashboard({ session }) {
   }
   function openTaxReportPrint({ year, resellerProfit, breakerProfit, totalExpenses, grossProfit, taxableProfit, estimatedTax, estimatedNI, totalLiability, utr }) {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tax Summary ${year}/${year+1}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:700px;margin:0 auto}h1{font-size:24px;font-weight:800;color:#16a34a;margin-bottom:4px}.subtitle{font-size:14px;color:#666;margin-bottom:32px}.section{margin-bottom:28px}.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}.row{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid #f0f4f8}.row:last-child{border-bottom:none}.row-label{color:#555}.row-value{font-weight:500}.total-row{display:flex;justify-content:space-between;padding:12px 0;font-size:16px;font-weight:700;border-top:2px solid #1a2332;margin-top:4px}.pos{color:#16a34a}.neg{color:#dc2626}.disclaimer{margin-top:32px;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#92400e;line-height:1.6}@media print{body{padding:20px}}</style></head><body><h1>UK Self-Assessment Summary</h1><div class="subtitle">Tax Year ${year}/${String(year+1).slice(2)} &nbsp;(6 Apr ${year} – 5 Apr ${year+1})${utr?`&nbsp; &nbsp; UTR: ${utr}`:''}</div><div class="section"><div class="section-title">Income</div><div class="row"><span class="row-label">Reseller profit</span><span class="row-value ${resellerProfit>=0?'pos':'neg'}">£${resellerProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Breaker profit</span><span class="row-value ${breakerProfit>=0?'pos':'neg'}">£${breakerProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Gross profit</span><span class="row-value">£${grossProfit.toFixed(2)}</span></div></div><div class="section"><div class="section-title">Deductions</div><div class="row"><span class="row-label">Business expenses</span><span class="row-value neg">−£${totalExpenses.toFixed(2)}</span></div></div><div class="section"><div class="section-title">Tax Calculation</div><div class="row"><span class="row-label">Taxable profit</span><span class="row-value">£${taxableProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Income Tax (estimate)</span><span class="row-value ${estimatedTax>0?'neg':''}">£${estimatedTax.toFixed(2)}</span></div><div class="row"><span class="row-label">Class 4 NI (estimate)</span><span class="row-value ${estimatedNI>0?'neg':''}">£${estimatedNI.toFixed(2)}</span></div><div class="total-row"><span>Total estimated liability</span><span class="${totalLiability>0?'neg':''}">£${totalLiability.toFixed(2)}</span></div></div><div class="disclaimer">⚠ Estimate only, based on sole trader rates for ${year}/${year+1}. Does not account for other income, trading allowance, or other reliefs. Always confirm with a qualified accountant before submitting your Self Assessment.</div></body></html>`
+    const win = window.open('', '_blank', 'width=900,height=700')
+    win.document.write(html); win.document.close(); win.focus()
+    setTimeout(() => win.print(), 400)
+  }
+
+  function openMonthlyReportPrint(monthKey) {
+    const [y, m] = monthKey.split('-')
+    const label = new Date(parseInt(y), parseInt(m)-1).toLocaleString('default',{month:'long',year:'numeric'})
+    const soldInMonth = items.filter(i=>i.status==='sold'&&getMonthKey(i.sold_at)===monthKey)
+    const expInMonth = expenses.filter(e=>getMonthKey(e.date)===monthKey)
+    const revenue = soldInMonth.reduce((s,i)=>s+(i.sale_price||0),0)
+    const cost = soldInMonth.reduce((s,i)=>s+(i.purchase_price||0),0)
+    const fees = soldInMonth.reduce((s,i)=>s+(i.fee_amount||0)+(i.shipping_fee||0),0)
+    const grossPL = revenue - cost
+    const totalExp = expInMonth.reduce((s,e)=>s+(e.amount||0),0)
+    const netPL = grossPL - fees - totalExp
+    const rows = soldInMonth.map(i=>`<tr><td>${i.brand||''} ${i.style||''}</td><td>${i.colourway||''}</td><td>£${(i.sale_price||0).toFixed(2)}</td><td>£${(i.purchase_price||0).toFixed(2)}</td><td class="${((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0))>=0?'pos':'neg'}">£${((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)).toFixed(2)}</td></tr>`).join('')
+    const expRows = expInMonth.map(e=>`<tr><td>${e.category}</td><td>${e.description||''}</td><td class="neg">−£${(e.amount||0).toFixed(2)}</td></tr>`).join('')
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Monthly Report – ${label}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:800px;margin:0 auto}h1{font-size:22px;font-weight:800;color:#16a34a;margin-bottom:4px}.subtitle{font-size:13px;color:#666;margin-bottom:28px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}.stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px}.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;margin-bottom:4px}.stat-value{font-size:18px;font-weight:800}.section{margin-bottom:24px}.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:6px 8px;color:#999;font-weight:600;font-size:11px;border-bottom:2px solid #e2e8f0}td{padding:7px 8px;border-bottom:1px solid #f0f4f8}.pos{color:#16a34a;font-weight:600}.neg{color:#dc2626;font-weight:600}@media print{body{padding:20px}}</style></head><body><h1>Monthly Report</h1><div class="subtitle">${label} · Generated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div><div class="stats"><div class="stat"><div class="stat-label">Items sold</div><div class="stat-value">${soldInMonth.length}</div></div><div class="stat"><div class="stat-label">Revenue</div><div class="stat-value">£${revenue.toFixed(2)}</div></div><div class="stat"><div class="stat-label">Gross P&L</div><div class="stat-value ${grossPL>=0?'pos':'neg'}">£${grossPL.toFixed(2)}</div></div><div class="stat"><div class="stat-label">Net P&L</div><div class="stat-value ${netPL>=0?'pos':'neg'}">£${netPL.toFixed(2)}</div></div></div>${soldInMonth.length>0?`<div class="section"><div class="section-title">Sales (${soldInMonth.length})</div><table><thead><tr><th>Item</th><th>Variant</th><th>Sale price</th><th>Cost</th><th>P&L</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}${expInMonth.length>0?`<div class="section"><div class="section-title">Expenses (${expInMonth.length})</div><table><thead><tr><th>Category</th><th>Description</th><th>Amount</th></tr></thead><tbody>${expRows}</tbody></table></div>`:''}</body></html>`
     const win = window.open('', '_blank', 'width=900,height=700')
     win.document.write(html); win.document.close(); win.focus()
     setTimeout(() => win.print(), 400)
@@ -1941,6 +2134,20 @@ export default function Dashboard({ session }) {
               <button className={`type-btn ${stockTab==='checklist'?'active':''}`} onClick={()=>{setStockTab('checklist');setTimeout(()=>{window.scrollTo({top:0,behavior:'instant'});document.documentElement.scrollTop=0;document.body.scrollTop=0},50)}}>
                 Checklist
               </button>
+              <button className={`type-btn ${stockTab==='wishlist'?'active':''} ${!isCore?'locked-tab':''}`} onClick={()=>setStockTab('wishlist')}>
+                Wishlist{!isCore&&<span className="tab-lock">Core</span>}
+              </button>
+              {isPro&&selectedIds.size>0&&(
+                <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
+                  <span style={{fontSize:12,color:'var(--muted)',fontWeight:600}}>{selectedIds.size} selected</span>
+                  {!showBulkTagInput
+                    ? <button className="btn sm" onClick={()=>setShowBulkTagInput(true)}>+ Tag</button>
+                    : <><input className="form-input" style={{margin:0,height:30,width:120,fontSize:12}} placeholder="Tag name" value={bulkTag} onChange={e=>setBulkTag(e.target.value)} onKeyDown={e=>e.key==='Enter'&&bulkAddTag()} autoFocus/><button className="btn sm primary" onClick={bulkAddTag}>Apply</button></>
+                  }
+                  <button className="btn sm danger" onClick={bulkDelete}>Delete</button>
+                  <button className="btn sm" onClick={clearSelection}>✕</button>
+                </div>
+              )}
             </div>
 
             {stockTab==='inventory'&&(
@@ -2010,8 +2217,12 @@ export default function Dashboard({ session }) {
                       const storageLabel=batch.units[0]?.storage_location||null
                       const targetLabel=batch.units[0]?.target_price?`Target: ${fmt(batch.units[0].target_price)}`:null
                       const tags=(batch.units[0]?.tags||'').split(',').map(t=>t.trim()).filter(Boolean)
+                      const batchUnitIds=batch.units.map(u=>u.id)
+                      const batchSelected=batchUnitIds.every(id=>selectedIds.has(id))
+                      function toggleBatchSelect(e){e.stopPropagation();setSelectedIds(s=>{const n=new Set(s);if(batchSelected){batchUnitIds.forEach(id=>n.delete(id))}else{batchUnitIds.forEach(id=>n.add(id))};return n})}
                       return (
                         <div key={batch.key} className="inv-list-row" onClick={()=>setBatchModal(batch)}>
+                          {isPro&&<div style={{paddingTop:14,paddingRight:4,flexShrink:0}} onClick={toggleBatchSelect}><input type="checkbox" checked={batchSelected} onChange={()=>{}} style={{cursor:'pointer',width:15,height:15}}/></div>}
                           <div className="inv-list-main">
                             <div style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600,marginBottom:2}}>{batch.category}</div>
                             <div style={{fontWeight:700,fontSize:15,color:'var(--text)',lineHeight:1.25}}>{batch.brand||'—'}</div>
@@ -2195,6 +2406,57 @@ export default function Dashboard({ session }) {
               )
             })()}
             {stockTab==='checklist'&&<StockChecklist items={items} breaks={breaks} clearedBatch={clearedBatch} onAddItem={(onSuccess)=>{addItemSuccessCallback.current=onSuccess||null;setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
+
+            {stockTab==='wishlist'&&!isCore&&<UpgradeWall tier="Core" price="£12/mo" feature="Restock Wishlist" desc="Track items you want to buy next, with price targets and one-click add to stock." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
+            {stockTab==='wishlist'&&isCore&&(
+              <div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                  <div style={{fontSize:13,color:'var(--muted)'}}>Items you want to restock. Hit "Purchased" when you buy one to add it straight to inventory.</div>
+                  <button className="btn primary sm" onClick={()=>setShowWishlistForm(f=>!f)}>{showWishlistForm?'✕ Cancel':'+ Add item'}</button>
+                </div>
+                {showWishlistForm&&(
+                  <div className="chart-card" style={{marginBottom:16}}>
+                    <div className="chart-title" style={{marginBottom:12}}>Add to wishlist</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                      <div className="form-group" style={{margin:0}}><label className="form-label">Brand / Item *</label><input className="form-input" style={{margin:0}} placeholder="e.g. Nike, Charizard" value={wishlistForm.brand} onChange={e=>setWishlistForm(f=>({...f,brand:e.target.value}))}/></div>
+                      <div className="form-group" style={{margin:0}}><label className="form-label">Style / Description</label><input className="form-input" style={{margin:0}} placeholder="e.g. Air Max 95, Booster Box" value={wishlistForm.style} onChange={e=>setWishlistForm(f=>({...f,style:e.target.value}))}/></div>
+                      <div className="form-group" style={{margin:0}}><label className="form-label">Category</label><select className="form-input" style={{margin:0}} value={wishlistForm.category} onChange={e=>setWishlistForm(f=>({...f,category:e.target.value}))}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+                      <div className="form-group" style={{margin:0}}><label className="form-label">Target buy price (£)</label><input className="form-input" style={{margin:0}} type="number" step="0.01" placeholder="0.00" value={wishlistForm.targetPrice} onChange={e=>setWishlistForm(f=>({...f,targetPrice:e.target.value}))}/></div>
+                      <div className="form-group" style={{margin:0,gridColumn:'1/-1'}}><label className="form-label">Notes</label><input className="form-input" style={{margin:0}} placeholder="Source, size, colourway..." value={wishlistForm.notes} onChange={e=>setWishlistForm(f=>({...f,notes:e.target.value}))}/></div>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'flex-end',marginTop:12}}><button className="btn primary" onClick={addWishlistItem} disabled={!wishlistForm.brand.trim()}>Add to wishlist</button></div>
+                  </div>
+                )}
+                {wishlist.length===0?(
+                  <div className="empty"><div className="empty-icon">🛒</div><div className="empty-title">Your wishlist is empty</div><div style={{marginTop:6}}>Add items you want to restock and track your target buy prices</div></div>
+                ):(
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    {wishlist.map(w=>(
+                      <div key={w.id} className="chart-card" style={{display:'flex',alignItems:'center',gap:16,padding:'14px 16px'}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                            {w.category&&<span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--muted)'}}>{w.category}</span>}
+                            <span style={{fontWeight:700,fontSize:15}}>{w.brand}</span>
+                            {w.style&&<span style={{fontSize:13,color:'var(--text2)'}}>{w.style}</span>}
+                            {w.targetPrice&&<span style={{fontSize:11,fontWeight:700,color:'#7c3aed',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:20,padding:'2px 8px'}}>🎯 Target £{parseFloat(w.targetPrice).toFixed(2)}</span>}
+                          </div>
+                          {w.notes&&<div style={{fontSize:12,color:'var(--muted)',marginTop:4}}>{w.notes}</div>}
+                          <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>{new Date(w.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+                        </div>
+                        <div style={{display:'flex',gap:8,flexShrink:0}}>
+                          <button className="btn sm success" onClick={()=>{
+                            const pf={...EMPTY_FORM,category:w.category||'',brand:w.brand||'',style:w.style||'',notes:w.notes||'',batch_total_cost:w.targetPrice||''}
+                            removeWishlistItem(w.id)
+                            setForm(pf);setEditItem(null);setSaveError('');setShowAdd(true)
+                          }}>✓ Purchased</button>
+                          <button className="btn sm danger" onClick={()=>removeWishlistItem(w.id)}>Remove</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -2237,7 +2499,16 @@ export default function Dashboard({ session }) {
 
             {metricsTab==='reseller'&&(
               <div>
-                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:16}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:8}}>
+                  {isPro?(
+                    <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                      <span style={{fontSize:12,color:'var(--muted)',fontWeight:600}}>Monthly report:</span>
+                      <select className="form-input" style={{margin:0,width:'auto',fontSize:12}} value={reportMonth} onChange={e=>setReportMonth(e.target.value)}>
+                        {getLast(12).map(({key,label})=><option key={key} value={key}>{label}</option>)}
+                      </select>
+                      <button className="btn sm" onClick={()=>openMonthlyReportPrint(reportMonth)}>↓ PDF</button>
+                    </div>
+                  ):<div/>}
                   <div className="metrics-sources">
                     <span className="metrics-sources-label">Data sources:</span>
                     {[{key:'reseller',label:'Reseller'},{key:'breaker',label:'Breaker'}].map(s=>(
@@ -2539,12 +2810,14 @@ export default function Dashboard({ session }) {
             <div className="page-header"><h1 className="page-title">Tools</h1><p className="page-subtitle">Calculators and utilities</p></div>
             <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
               <button className={`type-btn ${toolTab==='fee'?'active':''}`} onClick={()=>switchToolTab('fee')}>Fee Calculator</button>
+              <button className={`type-btn ${toolTab==='profit-calc'?'active':''}`} onClick={()=>switchToolTab('profit-calc')}>Profit Calc</button>
               <button className={`type-btn ${toolTab==='csv'?'active':''} ${!isCore?'locked-tab':''}`} onClick={()=>switchToolTab('csv')}>CSV Import{!isCore&&<span className="tab-lock">Core</span>}</button>
               <button className={`type-btn ${toolTab==='invoice'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>switchToolTab('invoice')}>Invoice{!isPro&&<span className="tab-lock">Pro</span>}</button>
               <button className={`type-btn ${toolTab==='sku'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>switchToolTab('sku')}>SKU Lookup{!isPro&&<span className="tab-lock">Pro</span>}</button>
               <button className={`type-btn ${toolTab==='ai-desc'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>switchToolTab('ai-desc')}>AI Description{!isPro&&<span className="tab-lock">Pro</span>}</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
+            {toolTab==='profit-calc'&&<ProfitCalcTool/>}
             {toolTab==='csv'&&!isCore&&<UpgradeWall tier="Core" price="£12/mo" feature="CSV Import" desc="Bulk import your existing inventory via a spreadsheet." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
             {toolTab==='invoice'&&!isPro&&<UpgradeWall tier="Pro" price="£20/mo" feature="Invoice Generator" desc="Create and send professional invoices to your buyers." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
             {toolTab==='sku'&&!isPro&&<UpgradeWall tier="Pro" price="£20/mo" feature="SKU Lookup" desc="Instantly look up product details, images and market pricing by SKU." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
@@ -2676,7 +2949,11 @@ export default function Dashboard({ session }) {
             })()}
             {toolTab==='csv'&&(
               <div style={{maxWidth:680}}>
-                <div className="chart-card" style={{marginBottom:16}}>
+                <div style={{display:'flex',gap:8,marginBottom:16}}>
+                  <button className={`type-btn ${csvMode!=='ebay'?'active':''}`} onClick={()=>setCsvMode('template')}>Template import</button>
+                  <button className={`type-btn ${csvMode==='ebay'?'active':''}`} onClick={()=>setCsvMode('ebay')}>eBay sold import</button>
+                </div>
+                {csvMode!=='ebay'&&<div className="chart-card" style={{marginBottom:16}}>
                   <div className="chart-title" style={{marginBottom:4}}>CSV Import</div>
                   <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Bulk-add stock from a spreadsheet. Download the template, fill it in, then upload it here.</div>
                   <button className="btn sm" onClick={downloadCSVTemplate} style={{marginBottom:16}}>↓ Download template CSV</button>
@@ -2687,8 +2964,24 @@ export default function Dashboard({ session }) {
                   </div>
                   <input id="csv-file-input" type="file" accept=".csv" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f)parseCsvImport(f);e.target.value=''}}/>
                   {csvError&&<div style={{background:'#fff5f5',border:'1px solid #fed7d7',borderRadius:'var(--radius)',padding:'10px 14px',fontSize:13,color:'var(--red)',marginTop:12}}>{csvError}</div>}
-                </div>
-                {csvRows&&csvRows.length>0&&(
+                </div>}
+                {csvMode==='ebay'&&(
+                  <div className="chart-card" style={{marginBottom:16}}>
+                    <div className="chart-title" style={{marginBottom:4}}>eBay Sold Listings Import</div>
+                    <div style={{fontSize:13,color:'var(--muted)',marginBottom:12}}>Import your eBay sold history to log revenue. Go to <b>eBay → Seller Hub → Orders → Download report</b> and export as CSV.</div>
+                    <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'var(--radius)',padding:'10px 14px',fontSize:12,color:'#1e40af',marginBottom:16,lineHeight:1.6}}>
+                      <b>Tip:</b> eBay's "Download report" exports columns including <i>Order number, Item title, Quantity, Item price, Order total, Sale date</i>. We'll map these automatically.
+                    </div>
+                    <div className="csv-drop-zone" onClick={()=>document.getElementById('ebay-csv-input').click()}>
+                      <div style={{fontSize:32,marginBottom:8}}>📂</div>
+                      <div style={{fontWeight:600,marginBottom:4}}>Click to select your eBay CSV</div>
+                      <div style={{fontSize:12,color:'var(--muted)'}}>Downloaded from eBay Seller Hub → Orders → Download report</div>
+                    </div>
+                    <input id="ebay-csv-input" type="file" accept=".csv" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f)parseEbayCsvImport(f);e.target.value=''}}/>
+                    {ebayCsvError&&<div style={{background:'#fff5f5',border:'1px solid #fed7d7',borderRadius:'var(--radius)',padding:'10px 14px',fontSize:13,color:'var(--red)',marginTop:12}}>{ebayCsvError}</div>}
+                  </div>
+                )}
+                {csvRows&&csvRows.length>0&&csvMode!=='ebay'&&(
                   <div className="chart-card">
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                       <div><div className="chart-title" style={{margin:0}}>{csvRows.length} row{csvRows.length!==1?'s':''} ready to import</div></div>
@@ -2713,6 +3006,32 @@ export default function Dashboard({ session }) {
                         </tbody>
                       </table>
                       {csvRows.length>20&&<div style={{fontSize:12,color:'var(--muted)',padding:'8px',textAlign:'center'}}>…and {csvRows.length-20} more rows</div>}
+                    </div>
+                  </div>
+                )}
+                {ebayCsvRows&&ebayCsvRows.length>0&&csvMode==='ebay'&&(
+                  <div className="chart-card">
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                      <div><div className="chart-title" style={{margin:0}}>{ebayCsvRows.length} eBay sale{ebayCsvRows.length!==1?'s':''} ready to import</div><div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>Will be added as sold items with £0 purchase cost — edit afterwards if needed</div></div>
+                      <div style={{display:'flex',gap:8}}>
+                        <button className="btn sm" onClick={()=>setEbayCsvRows(null)}>Cancel</button>
+                        <button className="btn primary sm" onClick={importEbayCsvRows} disabled={ebayCsvImporting}>{ebayCsvImporting?'Importing...':'Import all'}</button>
+                      </div>
+                    </div>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                        <thead><tr style={{borderBottom:'2px solid var(--border)'}}>{['Item title','Sale price','Sale date'].map(h=><th key={h} style={{textAlign:'left',padding:'4px 8px',color:'var(--muted)',fontWeight:600}}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {ebayCsvRows.slice(0,20).map((r,i)=>(
+                            <tr key={i} style={{borderBottom:'1px solid var(--surface2)'}}>
+                              <td style={{padding:'4px 8px',maxWidth:240,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r['item title']||r['title']||'—'}</td>
+                              <td style={{padding:'4px 8px'}}>£{parseFloat(r['item price']||r['sale price']||r['order total']||'0').toFixed(2)}</td>
+                              <td style={{padding:'4px 8px'}}>{r['sale date']||r['order date']||r['paid on date']||'—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {ebayCsvRows.length>20&&<div style={{fontSize:12,color:'var(--muted)',padding:'8px',textAlign:'center'}}>…and {ebayCsvRows.length-20} more rows</div>}
                     </div>
                   </div>
                 )}
@@ -3637,6 +3956,7 @@ export default function Dashboard({ session }) {
               {['profile','plan','preferences'].map(t=>(
                 <button key={t} className={`type-btn ${settingsTab===t?'active':''}`} onClick={()=>setSettingsTab(t)} style={{textTransform:'capitalize'}}>{t}</button>
               ))}
+              <button className={`type-btn ${settingsTab==='team'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>setSettingsTab('team')}>Team{!isPro&&<span className="tab-lock">Pro</span>}</button>
             </div>
 
             {settingsTab==='profile'&&(
@@ -3728,6 +4048,29 @@ export default function Dashboard({ session }) {
                     <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{darkMode?'Currently dark':'Currently light'}</div>
                   </div>
                   <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }}>{darkMode ? '☀️ Switch to light' : '🌙 Switch to dark'}</button>
+                </div>
+                <div style={{marginTop:16}} className="form-actions">
+                  <button className="btn" onClick={()=>setShowSettings(false)}>Close</button>
+                </div>
+              </div>
+            )}
+
+            {settingsTab==='team'&&!isPro&&<UpgradeWall tier="Pro" price="£20/mo" feature="Team Access" desc="Invite a collaborator to view or edit your stock — perfect for a business partner or VA." onUpgrade={()=>setSettingsTab('plan')}/>}
+            {settingsTab==='team'&&isPro&&(
+              <div>
+                <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Invite someone to access your account. They can view and edit your stock but cannot change your plan or delete your account.</div>
+                <div style={{display:'flex',gap:8,marginBottom:20}}>
+                  <input className="form-input" style={{flex:1,margin:0}} type="email" placeholder="Collaborator's email address" id="team-invite-email"/>
+                  <button className="btn primary" onClick={()=>{
+                    const emailInput = document.getElementById('team-invite-email')
+                    const email = emailInput?.value?.trim()
+                    if (!email) return
+                    alert(`Team invites are coming soon! We'll notify ${email} when this feature is live.`)
+                    if (emailInput) emailInput.value = ''
+                  }}>Send invite</button>
+                </div>
+                <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'var(--radius)',padding:'12px 14px',fontSize:12,color:'#1e40af',lineHeight:1.6}}>
+                  <b>Coming soon:</b> Full team access with role-based permissions (view-only vs. full edit). We'll notify you when it's ready — enter an email above to reserve a spot for your collaborator.
                 </div>
                 <div style={{marginTop:16}} className="form-actions">
                   <button className="btn" onClick={()=>setShowSettings(false)}>Close</button>
