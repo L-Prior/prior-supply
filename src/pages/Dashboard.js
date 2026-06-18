@@ -696,6 +696,26 @@ function FeeCalculator() {
   )
 }
 
+function UpgradeWall({ tier, price, feature, desc, onUpgrade }) {
+  const isCore = tier === 'Core'
+  const colour = isCore ? '#2563eb' : '#7c3aed'
+  const bg = isCore ? '#eff6ff' : '#f5f3ff'
+  const border = isCore ? '#bfdbfe' : '#ddd6fe'
+  return (
+    <div style={{textAlign:'center',padding:'48px 24px',background:bg,border:`1px solid ${border}`,borderRadius:'var(--radius-lg)',marginTop:8}}>
+      <div style={{fontSize:32,marginBottom:12}}>{isCore ? '⚡' : '🚀'}</div>
+      <div style={{fontWeight:700,fontSize:18,color:'var(--text)',marginBottom:6}}>{feature} is a {tier} feature</div>
+      <div style={{fontSize:13,color:'var(--muted)',maxWidth:380,margin:'0 auto 20px'}}>{desc}</div>
+      <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'white',border:`1px solid ${border}`,borderRadius:'var(--radius-lg)',padding:'12px 20px',marginBottom:20}}>
+        <span style={{fontWeight:700,fontSize:20,color:colour}}>{price}</span>
+        <span style={{fontSize:12,color:'var(--muted)'}}>/ month</span>
+      </div>
+      <br/>
+      <button className="btn primary" style={{background:colour,borderColor:colour}} onClick={onUpgrade}>Upgrade to {tier}</button>
+    </div>
+  )
+}
+
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const addItemSuccessCallback = React.useRef(null)
@@ -1612,7 +1632,10 @@ export default function Dashboard({ session }) {
 
   function switchToolTab(tab) { setToolTab(tab); setTimeout(()=>window.scrollTo({top:0,behavior:'instant'}),50) }
   const [userPlan, setUserPlan] = useState('pro') // default pro until Stripe is set up
-  const FREE_LIMIT = 30
+  const FREE_LIMIT = 30 // collector items on free plan
+  const isFree = userPlan === 'free'
+  const isCore = userPlan === 'core' || userPlan === 'pro'
+  const isPro = userPlan === 'pro'
 
   const EXPENSE_CATEGORIES = ['Packaging', 'Shipping Supplies', 'Equipment', 'Platform Subscriptions', 'Advertising', 'Software', 'Travel', 'Professional Services', 'Other']
   const [expensesLoading, setExpensesLoading] = useState(false)
@@ -1752,12 +1775,12 @@ export default function Dashboard({ session }) {
     return { totalValue, byCategory, categoryChartData, topItems, growthData, total: collectorItems.length, avgValue }
   }, [collectorItems])
   const NAV_ITEMS = [
-    {id:'home',    label:'Home',      icon:'🏠'},
-    {id:'stock',   label:'Inventory', icon:'📦'},
-    {id:'breaks',  label:'Breaker',   icon:'🃏'},
-    {id:'collector',label:'Collector',icon:'🗂️'},
-    {id:'finance', label:'Finance',   icon:'💹'},
-    {id:'tools',   label:'Tools',     icon:'🔧'},
+    {id:'home',      label:'Home',                          icon:'🏠'},
+    {id:'stock',     label:'Inventory',                     icon:'📦'},
+    {id:'breaks',    label:'Breaker',  locked:isFree,       icon:'🃏'},
+    {id:'collector', label:isFree?'My Items':'Collector',   icon:'🗂️'},
+    {id:'finance',   label:'Finance',  locked:isFree,       icon:'💹'},
+    {id:'tools',     label:'Tools',                         icon:'🔧'},
   ]
 
   function navTo(id) { setPage(id); window.scrollTo(0,0) }
@@ -1770,9 +1793,10 @@ export default function Dashboard({ session }) {
         <div className="sidebar-brand"><span className="brand-mark"/>StockTrack</div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map(n=>(
-            <button key={n.id} className={`sidebar-nav-btn ${page===n.id?'active':''}`} onClick={()=>navTo(n.id)}>
+            <button key={n.id} className={`sidebar-nav-btn ${page===n.id?'active':''} ${n.locked?'locked':''}`} onClick={()=>navTo(n.id)}>
               <span className="sidebar-nav-icon">{n.icon}</span>
               <span>{n.label}</span>
+              {n.locked&&<span className="nav-lock">Core</span>}
             </button>
           ))}
         </nav>
@@ -2179,15 +2203,26 @@ export default function Dashboard({ session }) {
           <div>
             <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
               <div><h1 className="page-title">Finance</h1><p className="page-subtitle">Performance metrics, expenses &amp; payouts</p></div>
-              {financeTab==='expenses'&&<button className="btn primary" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add expense</button>}
+              {isCore&&financeTab==='expenses'&&<button className="btn primary" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add expense</button>}
             </div>
-            <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
-              <button className={`type-btn ${financeTab==='metrics'?'active':''}`} onClick={()=>setFinanceTab('metrics')}>Metrics</button>
-              <button className={`type-btn ${financeTab==='expenses'?'active':''}`} onClick={()=>setFinanceTab('expenses')}>Expenses</button>
-              <button className={`type-btn ${financeTab==='payouts'?'active':''}`} onClick={()=>setFinanceTab('payouts')}>
-                Payouts{(()=>{const n=items.filter(i=>i.status==='sold'&&i.payout_status==='pending').length;return n>0?<span style={{marginLeft:4,background:'#fef3c7',color:'#d97706',borderRadius:10,padding:'1px 6px',fontSize:11}}>{n}</span>:null})()}
-              </button>
-            </div>
+            {isFree?(
+              <div>
+                <div className="stats-bar" style={{gridTemplateColumns:'repeat(3,1fr)',marginBottom:24}}>
+                  <div className="stat-card"><div className="stat-label">Units in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
+                  <div className="stat-card"><div className="stat-label">Total sold</div><div className="stat-value">{stats.sold}</div></div>
+                  <div className="stat-card"><div className="stat-label">All-time P&amp;L</div><div className={`stat-value ${stats.pl>0?'pos':stats.pl<0?'neg':''}`}>{stats.pl>=0?'+':''}{fmt(stats.pl)}</div></div>
+                </div>
+                <UpgradeWall tier="Core" price="£12/mo" feature="Finance dashboard" desc="Full P&L charts, expense tracking, payout management and monthly breakdowns." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>
+              </div>
+            ):(
+              <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
+                <button className={`type-btn ${financeTab==='metrics'?'active':''}`} onClick={()=>setFinanceTab('metrics')}>Metrics</button>
+                <button className={`type-btn ${financeTab==='expenses'?'active':''}`} onClick={()=>setFinanceTab('expenses')}>Expenses</button>
+                <button className={`type-btn ${financeTab==='payouts'?'active':''}`} onClick={()=>setFinanceTab('payouts')}>
+                  Payouts{(()=>{const n=items.filter(i=>i.status==='sold'&&i.payout_status==='pending').length;return n>0?<span style={{marginLeft:4,background:'#fef3c7',color:'#d97706',borderRadius:10,padding:'1px 6px',fontSize:11}}>{n}</span>:null})()}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -2197,7 +2232,7 @@ export default function Dashboard({ session }) {
             <div style={{display:'flex',gap:8,marginBottom:24}}>
               <button className={`type-btn ${metricsTab==='reseller'?'active':''}`} onClick={()=>setMetricsTab('reseller')}>Reseller & Breaker</button>
               <button className={`type-btn ${metricsTab==='collector'?'active':''}`} onClick={()=>setMetricsTab('collector')}>Collector</button>
-              <button className={`type-btn ${metricsTab==='tax'?'active':''}`} onClick={()=>setMetricsTab('tax')}>Tax Summary</button>
+              <button className={`type-btn ${metricsTab==='tax'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>setMetricsTab('tax')}>Tax Summary{!isPro&&<span className="tab-lock">Pro</span>}</button>
             </div>
 
             {metricsTab==='reseller'&&(
@@ -2240,7 +2275,7 @@ export default function Dashboard({ session }) {
                   </div>
                 )
               })()}
-              {platformData.length > 0 && (
+              {platformData.length > 0 && isPro && (
                 <div className="chart-card full">
                   <div className="chart-header"><div><div className="chart-title">Profit by Platform</div><div className="chart-subtitle">Net P&amp;L per selling platform (all time)</div></div></div>
                   <ResponsiveContainer width="100%" height={260}>
@@ -2254,7 +2289,7 @@ export default function Dashboard({ session }) {
                   </ResponsiveContainer>
                 </div>
               )}
-              {topBuyers.length > 0 && (
+              {topBuyers.length > 0 && isPro && (
                 <div className="chart-card full">
                   <div className="chart-header"><div><div className="chart-title">Top Buyers</div><div className="chart-subtitle">Repeat customers by purchase count</div></div></div>
                   <div style={{display:'flex',flexDirection:'column',gap:0}}>
@@ -2340,7 +2375,8 @@ export default function Dashboard({ session }) {
               </div>
             )}
 
-            {metricsTab==='tax'&&(()=>{
+            {metricsTab==='tax'&&!isPro&&<UpgradeWall tier="Pro" price="£20/mo" feature="Tax Summary" desc="Self-assessment ready income summary, VAT tracking and PDF export." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
+            {metricsTab==='tax'&&isPro&&(()=>{
               const txStart = new Date(selectedTaxYear, 3, 6)
               const txEnd = new Date(selectedTaxYear + 1, 3, 5, 23, 59, 59)
               const inYear = d => { const dt = new Date(d); return dt >= txStart && dt <= txEnd }
@@ -2446,7 +2482,7 @@ export default function Dashboard({ session }) {
 
         {page==='collector'&&(
           <div>
-            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">Collector</h1><p className="page-subtitle">Your personal collection</p></div><button className="btn primary" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={userPlan==='free'&&collectorItems.length>=FREE_LIMIT}>+ Add item</button></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">{isFree ? 'My Items' : 'Collector'}</h1><p className="page-subtitle">{isFree ? 'Your items — up to 30 free' : 'Your personal collection'}</p></div><button className="btn primary" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={isFree&&collectorItems.length>=FREE_LIMIT}>+ Add item</button></div>
 
             {/* Free tier limit warning */}
             {userPlan==='free'&&(
@@ -2503,12 +2539,16 @@ export default function Dashboard({ session }) {
             <div className="page-header"><h1 className="page-title">Tools</h1><p className="page-subtitle">Calculators and utilities</p></div>
             <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
               <button className={`type-btn ${toolTab==='fee'?'active':''}`} onClick={()=>switchToolTab('fee')}>Fee Calculator</button>
-              <button className={`type-btn ${toolTab==='invoice'?'active':''}`} onClick={()=>switchToolTab('invoice')}>Invoice Generator</button>
-              <button className={`type-btn ${toolTab==='sku'?'active':''}`} onClick={()=>switchToolTab('sku')}>SKU Lookup</button>
-              <button className={`type-btn ${toolTab==='csv'?'active':''}`} onClick={()=>switchToolTab('csv')}>CSV Import</button>
-              <button className={`type-btn ${toolTab==='ai-desc'?'active':''}`} onClick={()=>switchToolTab('ai-desc')}>AI Description</button>
+              <button className={`type-btn ${toolTab==='csv'?'active':''} ${!isCore?'locked-tab':''}`} onClick={()=>switchToolTab('csv')}>CSV Import{!isCore&&<span className="tab-lock">Core</span>}</button>
+              <button className={`type-btn ${toolTab==='invoice'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>switchToolTab('invoice')}>Invoice{!isPro&&<span className="tab-lock">Pro</span>}</button>
+              <button className={`type-btn ${toolTab==='sku'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>switchToolTab('sku')}>SKU Lookup{!isPro&&<span className="tab-lock">Pro</span>}</button>
+              <button className={`type-btn ${toolTab==='ai-desc'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>switchToolTab('ai-desc')}>AI Description{!isPro&&<span className="tab-lock">Pro</span>}</button>
             </div>
             {toolTab==='fee'&&<FeeCalculator/>}
+            {toolTab==='csv'&&!isCore&&<UpgradeWall tier="Core" price="£12/mo" feature="CSV Import" desc="Bulk import your existing inventory via a spreadsheet." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
+            {toolTab==='invoice'&&!isPro&&<UpgradeWall tier="Pro" price="£20/mo" feature="Invoice Generator" desc="Create and send professional invoices to your buyers." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
+            {toolTab==='sku'&&!isPro&&<UpgradeWall tier="Pro" price="£20/mo" feature="SKU Lookup" desc="Instantly look up product details, images and market pricing by SKU." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
+            {toolTab==='ai-desc'&&!isPro&&<UpgradeWall tier="Pro" price="£20/mo" feature="AI Description Generator" desc="Generate platform-optimised listing descriptions in seconds." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
             {toolTab==='invoice'&&(()=>{
               const invTotal = invLines.reduce((s,l)=>s+(parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0),0)
               const bizDetails = {...blankBiz,...invBiz}
@@ -2924,7 +2964,8 @@ export default function Dashboard({ session }) {
 
         {page==='breaks'&&(
           <div>
-            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">Breaker</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div><button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">Breaker</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div>{isCore&&<button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button>}</div>
+            {isFree&&<UpgradeWall tier="Core" price="£12/mo" feature="Break tracking" desc="Track box breaks, spot sales, pack runs and the P&L for each one." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
             <div className="stats-bar">
               <div className="stat-card"><div className="stat-label">Total entries</div><div className="stat-value">{breakStats.total}</div></div>
               <div className="stat-card"><div className="stat-label">Active / Upcoming</div><div className="stat-value amber">{breakStats.active}</div></div>
@@ -3633,23 +3674,47 @@ export default function Dashboard({ session }) {
 
             {settingsTab==='plan'&&(
               <div>
-                <div className="chart-card" style={{marginBottom:16}}>
+                {/* Current plan badge */}
+                <div className="chart-card" style={{marginBottom:20}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <div>
-                      <div style={{fontWeight:700,fontSize:16,textTransform:'capitalize'}}>{userPlan} Plan</div>
+                      <div style={{fontWeight:700,fontSize:16,textTransform:'capitalize'}}>{userPlan === 'core' ? 'Core' : userPlan === 'pro' ? 'Pro' : 'Free'} Plan</div>
                       <div style={{fontSize:13,color:'var(--muted)',marginTop:4}}>
-                        {userPlan==='free'?`${collectorItems.length}/${FREE_LIMIT} collector items used`:userPlan==='pro'?'Unlimited inventory & all features':'All features unlocked'}
+                        {isFree ? `${collectorItems.length}/${FREE_LIMIT} collection items used` : isCore && !isPro ? 'Full inventory, breaks, finance & expenses' : 'All features unlocked'}
                       </div>
                     </div>
-                    <span style={{fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:10,background:userPlan==='free'?'var(--surface2)':'#dcfce7',color:userPlan==='free'?'var(--muted)':'#15803d',border:`1px solid ${userPlan==='free'?'var(--border)':'#86efac'}`}}>{userPlan==='free'?'Free':'Active'}</span>
+                    <span style={{fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:10,
+                      background:isFree?'var(--surface2)':isPro?'#dcfce7':'#eff6ff',
+                      color:isFree?'var(--muted)':isPro?'#15803d':'#2563eb',
+                      border:`1px solid ${isFree?'var(--border)':isPro?'#86efac':'#bfdbfe'}`
+                    }}>{isFree?'Free':isPro?'Pro ✓':'Core ✓'}</span>
                   </div>
                 </div>
-                {userPlan==='free'&&(
-                  <div style={{padding:'14px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius)',fontSize:13,color:'var(--text2)'}}>
-                    Upgrade to Pro to remove the {FREE_LIMIT}-item collector limit and unlock all features. Pricing coming soon.
-                  </div>
-                )}
-                <div style={{marginTop:16}} className="form-actions">
+
+                {/* Tier cards */}
+                <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+                  {[
+                    {id:'core', label:'Core', price:'£12', colour:'#2563eb', bg:'#eff6ff', border:'#bfdbfe', features:['Unlimited inventory & collection','Expense tracking','Break tracker','Finance charts & metrics','CSV export']},
+                    {id:'pro',  label:'Pro',  price:'£20', colour:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe', features:['Everything in Core','AI description generator','SKU product lookup','Invoice generator','Tax summary & PDF export','Platform P&L & top buyers']},
+                  ].map(t=>(
+                    <div key={t.id} style={{padding:'14px 16px',background:userPlan===t.id?t.bg:'var(--surface2)',border:`1px solid ${userPlan===t.id?t.border:'var(--border)'}`,borderRadius:'var(--radius)'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                        <div style={{fontWeight:700,fontSize:14,color:userPlan===t.id?t.colour:'var(--text)'}}>{t.label}</div>
+                        <div style={{fontWeight:700,fontSize:15,color:userPlan===t.id?t.colour:'var(--muted)'}}>{t.price}<span style={{fontSize:11,fontWeight:400}}>/mo</span></div>
+                      </div>
+                      <ul style={{margin:0,padding:'0 0 0 16px',listStyle:'none',display:'flex',flexDirection:'column',gap:3}}>
+                        {t.features.map(f=><li key={f} style={{fontSize:12,color:'var(--text2)',display:'flex',alignItems:'center',gap:6}}><span style={{color:t.colour,fontWeight:700}}>✓</span>{f}</li>)}
+                      </ul>
+                      {userPlan!==t.id&&(userPlan==='free'||(userPlan==='core'&&t.id==='pro'))&&(
+                        <button style={{marginTop:12,width:'100%',padding:'8px',borderRadius:'var(--radius)',background:t.colour,color:'white',border:'none',fontWeight:600,fontSize:13,cursor:'pointer'}}>
+                          Upgrade to {t.label} — coming soon
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="form-actions">
                   <button className="btn" onClick={()=>setShowSettings(false)}>Close</button>
                 </div>
               </div>
@@ -3678,8 +3743,8 @@ export default function Dashboard({ session }) {
       {/* ── Mobile bottom nav ────────────────────────────────────────────── */}
       <nav className="bottom-nav">
         {NAV_ITEMS.map(n=>(
-          <button key={n.id} className={`bottom-nav-item ${page===n.id?'active':''}`} onClick={()=>navTo(n.id)}>
-            <span className="bottom-nav-icon">{n.icon}</span>
+          <button key={n.id} className={`bottom-nav-item ${page===n.id?'active':''} ${n.locked?'locked':''}`} onClick={()=>navTo(n.id)}>
+            <span className="bottom-nav-icon">{n.icon}{n.locked&&<span className="bottom-nav-lock">🔒</span>}</span>
             <span>{n.label}</span>
           </button>
         ))}
