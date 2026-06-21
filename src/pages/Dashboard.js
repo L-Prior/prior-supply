@@ -1645,7 +1645,7 @@ export default function Dashboard({ session }) {
     return { totalPL, completed, active, total: breaks.length }
   }, [breaks])
 
-  const [darkMode, setDarkMode] = useState(() => { try { return localStorage.getItem('stocktrack_dark') === 'true' } catch { return false } })
+  const [darkMode, setDarkMode] = useState(() => { try { const stored = localStorage.getItem('stocktrack_dark'); return stored === null ? true : stored === 'true' } catch { return true } })
   const GOAL_KEY = 'stocktrack_goal'
   const [monthlyGoal, setMonthlyGoal] = useState(() => { try { return parseFloat(localStorage.getItem('stocktrack_goal') || '0') } catch { return 0 } })
   const [editingGoal, setEditingGoal] = useState(false)
@@ -1967,13 +1967,45 @@ export default function Dashboard({ session }) {
     const avgValue = collectorItems.length ? totalValue / collectorItems.length : 0
     return { totalValue, byCategory, categoryChartData, topItems, growthData, total: collectorItems.length, avgValue }
   }, [collectorItems])
+  const NAV_ICONS = {
+    home: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+      </svg>
+    ),
+    stock: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+      </svg>
+    ),
+    breaks: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+    collector: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+      </svg>
+    ),
+    finance: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+      </svg>
+    ),
+    tools: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  }
   const NAV_ITEMS = [
-    {id:'home',      label:'Home',                          icon:'🏠'},
-    {id:'stock',     label:'Inventory',                     icon:'📦'},
-    {id:'breaks',    label:'Breaker',  locked:isFree,       icon:'🃏'},
-    {id:'collector', label:isFree?'My Items':'Collector',   icon:'🗂️'},
-    {id:'finance',   label:'Finance',  locked:isFree,       icon:'💹'},
-    {id:'tools',     label:'Tools',                         icon:'🔧'},
+    {id:'home',      label:'Home'                        },
+    {id:'stock',     label:'Inventory'                   },
+    {id:'breaks',    label:'Breaker',  locked:isFree     },
+    {id:'collector', label:isFree?'My Items':'Collector' },
+    {id:'finance',   label:'Finance',  locked:isFree     },
+    {id:'tools',     label:'Tools'                       },
   ]
 
   function navTo(id) { setPage(id); window.scrollTo(0,0) }
@@ -1987,7 +2019,7 @@ export default function Dashboard({ session }) {
         <nav className="sidebar-nav">
           {NAV_ITEMS.map(n=>(
             <button key={n.id} className={`sidebar-nav-btn ${page===n.id?'active':''} ${n.locked?'locked':''}`} onClick={()=>navTo(n.id)}>
-              <span className="sidebar-nav-icon">{n.icon}</span>
+              <span className="sidebar-nav-icon">{NAV_ICONS[n.id]}</span>
               <span>{n.label}</span>
               {n.locked&&<span className="nav-lock">Core</span>}
             </button>
@@ -1997,7 +2029,9 @@ export default function Dashboard({ session }) {
           <a href="/" className="sidebar-footer-link">← Back to site</a>
           <div className="sidebar-footer-email">{displayName || session.user.email}</div>
           <div className="sidebar-footer-actions">
-            <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode ? '☀️' : '🌙'}</button>
+            <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
+  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</button>
             <button className="btn sm" title="Account settings" onClick={()=>{setShowSettings(true);setSettingsTab('profile')}}>⚙️</button>
             <button className="btn sm" onClick={signOut}>Sign out</button>
           </div>
@@ -2016,7 +2050,9 @@ export default function Dashboard({ session }) {
             {page==='collector'&&<button className="btn primary sm" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={userPlan==='free'&&collectorItems.length>=FREE_LIMIT}>+ Add</button>}
             {page==='finance'&&financeTab==='expenses'&&<button className="btn primary sm" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add</button>}
             <div className="user-pill">
-              <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode ? '☀️' : '🌙'}</button>
+              <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
+  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</button>
               <button className="btn sm" onClick={signOut}>Sign out</button>
             </div>
           </div>
@@ -4047,7 +4083,7 @@ export default function Dashboard({ session }) {
                     <div style={{fontWeight:600,fontSize:14}}>Dark mode</div>
                     <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{darkMode?'Currently dark':'Currently light'}</div>
                   </div>
-                  <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }}>{darkMode ? '☀️ Switch to light' : '🌙 Switch to dark'}</button>
+                  <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }}>{darkMode ? 'Switch to light' : 'Switch to dark'}</button>
                 </div>
                 <div style={{marginTop:16}} className="form-actions">
                   <button className="btn" onClick={()=>setShowSettings(false)}>Close</button>
@@ -4087,7 +4123,7 @@ export default function Dashboard({ session }) {
       <nav className="bottom-nav">
         {NAV_ITEMS.map(n=>(
           <button key={n.id} className={`bottom-nav-item ${page===n.id?'active':''} ${n.locked?'locked':''}`} onClick={()=>navTo(n.id)}>
-            <span className="bottom-nav-icon">{n.icon}{n.locked&&<span className="bottom-nav-lock">🔒</span>}</span>
+            <span className="bottom-nav-icon">{NAV_ICONS[n.id]}{n.locked&&<span className="bottom-nav-lock">🔒</span>}</span>
             <span>{n.label}</span>
           </button>
         ))}
