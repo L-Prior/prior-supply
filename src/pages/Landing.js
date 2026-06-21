@@ -1,13 +1,71 @@
 import React, { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
+/* ── Stroke SVG icons ─────────────────────────────────────────────── */
+const Icon = ({ children }) => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    {children}
+  </svg>
+)
+
 const FEATURES = [
-  { icon: '📦', title: 'Stock tracking', desc: 'Track every item you own — sneakers, Pokémon cards, Lego, clothing and more. Add in seconds, find anything instantly.' },
-  { icon: '💰', title: 'P&L at a glance', desc: 'See exactly what you paid, what you sold for, and what you made. Per item, per month, all time — always accurate.' },
-  { icon: '📊', title: 'Powerful analytics', desc: 'Best brands, sell-through rates, ROI charts, monthly trends. Know your business inside out.' },
-  { icon: '🃏', title: 'Break management', desc: 'Run live breaks, track spots by buyer, manage payouts. Per-spot P&L built in.' },
-  { icon: '⚡', title: 'Composite rankings', desc: 'Best & worst performers scored by profit, ROI, and sale speed. Stop guessing what to buy next.' },
-  { icon: '🔒', title: 'Completely private', desc: 'Every account is fully isolated. Your stock and your numbers are only ever visible to you.' },
+  {
+    icon: <Icon><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></Icon>,
+    title: 'Stock tracking',
+    desc: 'Track every item you own — sneakers, Pokémon cards, Lego, clothing and more. Add in seconds, find anything instantly.',
+  },
+  {
+    icon: <Icon><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></Icon>,
+    title: 'P&L at a glance',
+    desc: 'See exactly what you paid, what you sold for, and what you made. Per item, per month, all time — always accurate.',
+  },
+  {
+    icon: <Icon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></Icon>,
+    title: 'Powerful analytics',
+    desc: 'Best brands, sell-through rates, ROI charts, monthly trends. Know your business inside out.',
+  },
+  {
+    icon: <Icon><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></Icon>,
+    title: 'Break management',
+    desc: 'Run live breaks, track spots by buyer, manage payouts. Per-spot P&L built in.',
+  },
+  {
+    icon: <Icon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Icon>,
+    title: 'Composite rankings',
+    desc: 'Best & worst performers scored by profit, ROI, and sale speed. Stop guessing what to buy next.',
+  },
+  {
+    icon: <Icon><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></Icon>,
+    title: 'Completely private',
+    desc: 'Every account is fully isolated. Your stock and your numbers are only ever visible to you.',
+  },
+]
+
+const HOW_STEPS = [
+  {
+    num: '01',
+    title: 'Add your inventory',
+    desc: 'Log any item in seconds — purchase price, condition, size, notes. Works for any category.',
+    color: '#f59e0b',
+  },
+  {
+    num: '02',
+    title: 'Mark it sold',
+    desc: 'Record sale price, platform fees and shipping. P&L updates the moment you save.',
+    color: '#818cf8',
+  },
+  {
+    num: '03',
+    title: 'Own your numbers',
+    desc: 'Revenue, profit, ROI, best performers. Every metric you need, always accurate, always private.',
+    color: '#34d399',
+  },
+]
+
+const CONNECTOR_GRADIENTS = [
+  'linear-gradient(90deg, #f59e0b, #818cf8)',
+  'linear-gradient(90deg, #818cf8, #34d399)',
 ]
 
 const PLANS = [
@@ -67,7 +125,9 @@ export default function Landing({ session }) {
   // Scroll reveal — fires once per element when it enters the viewport
   useEffect(() => {
     const obs = new IntersectionObserver(
-      (entries) => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('lp-visible'); obs.unobserve(e.target) } }),
+      (entries) => entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('lp-visible'); obs.unobserve(e.target) }
+      }),
       { threshold: 0.1 }
     )
     document.querySelectorAll('.lp-reveal').forEach(el => obs.observe(el))
@@ -76,6 +136,12 @@ export default function Landing({ session }) {
 
   return (
     <div className="lp">
+
+      {/* ── Continuous background lines ───────────────────── */}
+      <div className="lp-bg-lines" aria-hidden="true">
+        <div className="lp-bg-line lp-bg-line-l" />
+        <div className="lp-bg-line lp-bg-line-r" />
+      </div>
 
       {/* ── Nav ───────────────────────────────────────────── */}
       <nav className="lp-nav">
@@ -105,7 +171,7 @@ export default function Landing({ session }) {
         <div className="lp-orb lp-orb-3" />
 
         <div className="lp-hero-content">
-          <div className="lp-badge lp-reveal">Built for resellers &amp; collectors 🏆</div>
+          <div className="lp-badge lp-reveal">Built for resellers &amp; collectors</div>
 
           <h1 className="lp-hero-title lp-reveal">
             Track your stock.<br />
@@ -161,10 +227,61 @@ export default function Landing({ session }) {
                 className="lp-feature-card lp-reveal"
                 style={{ transitionDelay: `${i * 0.07}s` }}
               >
-                <span className="lp-feature-icon">{f.icon}</span>
+                <div className="lp-feature-icon">{f.icon}</div>
                 <div className="lp-feature-title">{f.title}</div>
                 <div className="lp-feature-desc">{f.desc}</div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ──────────────────────────────────── */}
+      <section className="lp-how">
+        <div className="lp-container">
+          <div className="lp-eyebrow lp-reveal lp-center">How it works</div>
+          <h2 className="lp-section-title lp-reveal lp-center">
+            Simple by design.<br /><span className="lp-gold-text">Powerful by default.</span>
+          </h2>
+
+          <div className="lp-how-row">
+            {HOW_STEPS.map((step, i) => (
+              <React.Fragment key={step.num}>
+                <div
+                  className="lp-how-step lp-reveal"
+                  style={{ transitionDelay: `${i * 0.13}s` }}
+                >
+                  <div
+                    className="lp-how-node"
+                    style={{
+                      background: `${step.color}14`,
+                      border: `1px solid ${step.color}35`,
+                      color: step.color,
+                      boxShadow: `0 0 20px ${step.color}22`,
+                    }}
+                  >
+                    {step.num}
+                  </div>
+                  <div className="lp-how-title">{step.title}</div>
+                  <div className="lp-how-desc">{step.desc}</div>
+                </div>
+
+                {i < 2 && (
+                  <div
+                    className="lp-how-connector lp-reveal"
+                    aria-hidden="true"
+                    style={{ transitionDelay: `${i * 0.13 + 0.07}s` }}
+                  >
+                    {/* static track */}
+                    <div className="lp-how-track" />
+                    {/* animated pulse bead */}
+                    <div
+                      className="lp-how-pulse"
+                      style={{ background: CONNECTOR_GRADIENTS[i], animationDelay: `${i * 0.9}s` }}
+                    />
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </div>
         </div>
@@ -179,7 +296,7 @@ export default function Landing({ session }) {
               <h3 className="lp-shop-title">Sneaker care, sorted</h3>
               <p className="lp-shop-desc">Crease protectors, shoe trees, laces, storage boxes and more — all in one place. Pro members get exclusive discounts on every order.</p>
             </div>
-            <div className="lp-shop-pill">🛍️ Pro members save on every order</div>
+            <div className="lp-shop-pill">Pro members save on every order</div>
           </div>
         </div>
       </section>

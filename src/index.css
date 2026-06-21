@@ -2626,6 +2626,8 @@ tbody td {
   font-family: 'Inter', system-ui, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
+  z-index: 1;
 }
 .lp-container {
   max-width: 1140px;
@@ -2675,6 +2677,44 @@ tbody td {
   margin: 0 0 56px;
 }
 
+/* ── Dot grid + vertical guide lines ────────────────────────────── */
+.lp {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+.lp-bg-lines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.lp-bg-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.lp-bg-line-l {
+  left: calc(50% - 570px);
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(245,158,11,0.12) 15%,
+    rgba(99,102,241,0.09) 45%,
+    rgba(52,211,153,0.08) 75%,
+    transparent 100%
+  );
+}
+.lp-bg-line-r {
+  right: calc(50% - 570px);
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(99,102,241,0.09) 20%,
+    rgba(245,158,11,0.10) 55%,
+    rgba(52,211,153,0.07) 80%,
+    transparent 100%
+  );
+}
+
 /* ── Nav ──────────────────────────────────────────────────────────── */
 .lp-nav {
   position: sticky;
@@ -2692,7 +2732,7 @@ tbody td {
   height: 64px;
 }
 .lp-brand { display: flex; align-items: center; text-decoration: none; }
-.lp-logo { height: 32px; display: block; }
+.lp-logo { height: 52px; display: block; }
 .lp-nav-links {
   display: flex;
   align-items: center;
@@ -2931,10 +2971,22 @@ tbody td {
   box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(245,158,11,0.08);
 }
 .lp-feature-icon {
-  font-size: 30px;
-  display: block;
-  margin-bottom: 14px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(245,158,11,0.07);
+  border: 1px solid rgba(245,158,11,0.14);
+  color: #f59e0b;
+  margin-bottom: 18px;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.lp-feature-card:hover .lp-feature-icon {
+  background: rgba(245,158,11,0.12);
+  border-color: rgba(245,158,11,0.28);
+  box-shadow: 0 0 18px rgba(245,158,11,0.18);
 }
 .lp-feature-title {
   font-size: 17px;
@@ -3124,6 +3176,97 @@ tbody td {
 .lp-footer-link:hover { color: #8890b5; }
 .lp-footer-sep { color: #2a2f48; font-size: 13px; }
 
+/* ── Utility ─────────────────────────────────────────────────────── */
+.lp-center { text-align: center; }
+.lp-center.lp-section-sub { margin-left: auto; margin-right: auto; }
+
+/* ── How it works ────────────────────────────────────────────────── */
+.lp-how {
+  padding: 90px 0 80px;
+  position: relative;
+}
+.lp-how .lp-section-title {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.lp-how-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+}
+.lp-how-step {
+  flex: 1;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 12px;
+}
+.lp-how-node {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+  position: relative;
+  transition: box-shadow 0.3s;
+}
+.lp-how-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #e8eaf2;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.lp-how-desc {
+  font-size: 14px;
+  color: #6670a0;
+  line-height: 1.65;
+}
+
+/* Connector between steps */
+.lp-how-connector {
+  flex-shrink: 0;
+  width: 100px;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 30px; /* align with node center (64px node / 2 = 32px) */
+}
+.lp-how-track {
+  width: 100%;
+  height: 2px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 99px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated bead that travels along the track */
+@keyframes lp-pulse-travel {
+  0%   { left: -40%; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { left: 110%; opacity: 0; }
+}
+.lp-how-pulse {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40%;
+  height: 100%;
+  border-radius: 99px;
+  animation: lp-pulse-travel 2.2s ease-in-out infinite;
+  filter: blur(1px);
+}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .lp-hero { padding: 80px 20px 60px; }
@@ -3139,6 +3282,19 @@ tbody td {
   .lp-hero-ctas { flex-direction: column; align-items: stretch; }
   .lp-hero-ctas .lp-btn-gold,
   .lp-hero-ctas .lp-btn-ghost { justify-content: center; }
+  /* How it works — stack vertically on mobile */
+  .lp-how-row { flex-direction: column; align-items: center; gap: 0; }
+  .lp-how-connector { width: 2px; height: 56px; padding-top: 0; flex-direction: column; align-items: center; padding-left: 0; }
+  .lp-how-track { width: 2px; height: 100%; }
+  @keyframes lp-pulse-travel {
+    0%   { top: -40%; opacity: 0; left: auto; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 110%; opacity: 0; }
+  }
+  .lp-how-pulse { top: -40%; left: 50%; transform: translateX(-50%); width: 100%; height: 40%; animation-name: lp-pulse-travel; }
+  .lp-bg-line-l, .lp-bg-line-r { display: none; }
+  .lp-logo { height: 40px; }
 }
 @media (max-width: 480px) {
   .lp-nav-inner { padding: 0 16px; }
