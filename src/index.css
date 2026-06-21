@@ -1845,8 +1845,6 @@ tbody td {
 .bottom-nav-item.active { color: var(--accent); }
 .bottom-nav-icon { font-size: 18px; line-height: 1; }
 
-/* Dark mode sidebar */
-.dark-mode .sidebar { background: var(--surface); border-right-color: var(--border); }
 
 @media (max-width: 768px) {
   .landing-nav-hide-mobile {
@@ -2557,7 +2555,7 @@ tbody td {
 
 /* ── Logo image sizing ───────────────────────────────── */
 .sidebar-logo {
-  height: 32px;
+  height: 44px;
   width: auto;
   display: block;
 }

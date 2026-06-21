@@ -1344,7 +1344,31 @@ export default function Dashboard({ session }) {
   const brandData = useMemo(() => { const map = {}; items.filter(i=>i.status==='sold').forEach(i => { const b=i.brand||'Unknown'; if(!map[b])map[b]=0; map[b]+=(i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0) }); return Object.entries(map).map(([brand,pl])=>({brand,pl:parseFloat(pl.toFixed(2))})).sort((a,b)=>b.pl-a.pl).slice(0,8) }, [items])
   const avgPLData = useMemo(() => getLast(6).map(({ key, label }) => { const sold = items.filter(i=>i.status==='sold'&&getMonthKey(i.sold_at)===key); const avg = sold.length ? sold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)),0)/sold.length : 0; return { label, avg: parseFloat(avg.toFixed(2)) } }), [items])
   const sellThroughData = useMemo(() => { const map = {}; items.forEach(i => { const cat=i.category||'Other'; if(!map[cat])map[cat]={total:0,sold:0}; map[cat].total++; if(i.status==='sold')map[cat].sold++ }); return Object.entries(map).map(([cat,{total,sold}])=>({cat,rate:parseFloat(((sold/total)*100).toFixed(1))})) }, [items])
-  const bestWorst = useMemo(() => { const sold = items.filter(i=>i.status==='sold'&&i.sale_price!=null).map(i=>({...i,pl:(i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)})).sort((a,b)=>b.pl-a.pl); return { best: sold.slice(0,5), worst: sold.slice(-5).reverse() } }, [items])
+  const bestWorst = useMemo(() => {
+    const sold = items.filter(i => i.status === 'sold' && i.sale_price != null).map(i => {
+      const pl = (i.sale_price||0) - (i.purchase_price||0) - (i.fee_amount||0) - (i.shipping_fee||0)
+      const roi = (i.purchase_price||0) > 0 ? (pl / i.purchase_price) * 100 : 0
+      const days = (i.purchase_date && i.sold_at)
+        ? Math.max(0, Math.round((new Date(i.sold_at) - new Date(i.purchase_date)) / 86400000))
+        : null
+      return { ...i, pl, roi, days }
+    })
+    if (sold.length === 0) return { best: [], worst: [] }
+    const pls = sold.map(i => i.pl), rois = sold.map(i => i.roi)
+    const validDays = sold.filter(i => i.days !== null).map(i => i.days)
+    const minPL = Math.min(...pls), maxPL = Math.max(...pls)
+    const minROI = Math.min(...rois), maxROI = Math.max(...rois)
+    const minDays = validDays.length ? Math.min(...validDays) : 0
+    const maxDays = validDays.length ? Math.max(...validDays) : 1
+    const norm = (v, min, max) => max === min ? 0.5 : (v - min) / (max - min)
+    const scored = sold.map(i => {
+      const plScore = norm(i.pl, minPL, maxPL)
+      const roiScore = norm(i.roi, minROI, maxROI)
+      const speedScore = i.days !== null ? 1 - norm(i.days, minDays, maxDays) : 0.5
+      return { ...i, score: plScore * 0.4 + roiScore * 0.4 + speedScore * 0.2 }
+    }).sort((a, b) => b.score - a.score)
+    return { best: scored.slice(0, 5), worst: scored.slice(-5).reverse() }
+  }, [items])
 
   const platformData = useMemo(() => {
     const map = {}
@@ -2557,11 +2581,53 @@ export default function Dashboard({ session }) {
                 <div className="metrics-grid">
               <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Gross P&L vs net after expenses</div></div><div className="chart-controls">{[3,6,12].map(m=><button key={m} className={`chart-btn ${chartMonths===m?'active':''}`} onClick={()=>setChartMonths(m)}>{m}M</button>)}</div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/><Bar dataKey="pl" name="Gross P&L" fill="#16a34a" radius={[4,4,0,0]}/><Bar dataKey="netPL" name="Net (after expenses)" fill="#22c55e" radius={[4,4,0,0]} opacity={0.7}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Revenue vs Cost vs Expenses</div><div className="chart-subtitle">Monthly comparison</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={plChartData} margin={{top:10,right:10,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/><Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4,4,0,0]}/><Bar dataKey="cost" name="Stock cost" fill="#e3e8ef" radius={[4,4,0,0]}/><Bar dataKey="expenses" name="Expenses" fill="#f59e0b" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div>
-              <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Stock by Category</div><div className="chart-subtitle">All items</div></div></div><ResponsiveContainer width="100%" height={260}><PieChart><Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={3}>{categoryData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/></PieChart></ResponsiveContainer></div>
+              <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Stock by Category</div><div className="chart-subtitle">All items</div></div></div><ResponsiveContainer width="100%" height={300}><PieChart margin={{top:0,right:20,bottom:10,left:20}}><Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="44%" innerRadius={70} outerRadius={105} paddingAngle={3}>{categoryData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Legend/></PieChart></ResponsiveContainer></div>
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Sell-Through Rate</div><div className="chart-subtitle">% sold per category</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={sellThroughData} layout="vertical" margin={{top:10,right:20,left:10,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false}/><XAxis type="number" domain={[0,100]} tickFormatter={v=>v+'%'} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="cat" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} width={80}/><Tooltip formatter={v=>v+'%'} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Bar dataKey="rate" name="Sell-through %" fill="#22c55e" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Top Brands by Profit</div><div className="chart-subtitle">All-time</div></div></div><ResponsiveContainer width="100%" height={260}><BarChart data={brandData} layout="vertical" margin={{top:10,right:20,left:10,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" horizontal={false}/><XAxis type="number" tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="brand" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false} width={70}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Bar dataKey="pl" name="Profit" fill="#16a34a" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></div>
               <div className="chart-card half"><div className="chart-header"><div><div className="chart-title">Avg Profit per Sale</div><div className="chart-subtitle">Last 6 months</div></div></div><ResponsiveContainer width="100%" height={260}><LineChart data={avgPLData} margin={{top:10,right:20,left:0,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#e3e8ef" vertical={false}/><XAxis dataKey="label" tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={fmtShort} tick={{fontSize:12,fill:'#8792a2'}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius:8,border:'1px solid #e3e8ef'}}/><Line type="monotone" dataKey="avg" name="Avg P&L" stroke="#16a34a" strokeWidth={2} dot={{fill:'#16a34a',r:4}}/></LineChart></ResponsiveContainer></div>
-              <div className="chart-card full"><div className="chart-header"><div><div className="chart-title">Best & Worst Performers</div><div className="chart-subtitle">Top and bottom 5 sold items by profit</div></div></div><div className="two-col"><div><div className="perf-label green">🏆 Best performers</div>{bestWorst.best.length===0?<div className="td-muted" style={{fontSize:13}}>No sold items yet</div>:bestWorst.best.map((item,i)=>(<div key={item.id} className="perf-row"><div className="perf-rank">{i+1}</div><div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div></div><div className="perf-pl pos">+{fmt(item.pl)}</div></div>))}</div><div><div className="perf-label red">📉 Worst performers</div>{bestWorst.worst.length===0?<div className="td-muted" style={{fontSize:13}}>No sold items yet</div>:bestWorst.worst.map((item,i)=>(<div key={item.id} className="perf-row"><div className="perf-rank">{i+1}</div><div className="perf-info"><div className="perf-name">{item.brand} {item.style}</div><div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div></div><div className={`perf-pl ${item.pl>=0?'pos':'neg'}`}>{item.pl>=0?'+':''}{fmt(item.pl)}</div></div>))}</div></div></div>
+              <div className="chart-card full">
+                <div className="chart-header"><div><div className="chart-title">Best & Worst Performers</div><div className="chart-subtitle">Ranked by composite score: profit · ROI · sale speed</div></div></div>
+                <div className="two-col">
+                  <div>
+                    <div className="perf-label green">🏆 Best performers</div>
+                    {bestWorst.best.length===0
+                      ? <div className="td-muted" style={{fontSize:13}}>No sold items yet</div>
+                      : bestWorst.best.map((item,i)=>(
+                        <div key={item.id} className="perf-row">
+                          <div className="perf-rank">{i+1}</div>
+                          <div className="perf-info">
+                            <div className="perf-name">{item.brand} {item.style}</div>
+                            <div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div>
+                          </div>
+                          <div style={{display:'flex',gap:5,alignItems:'center',flexShrink:0,flexWrap:'wrap',justifyContent:'flex-end'}}>
+                            <span className="perf-pl pos">+{fmt(item.pl)}</span>
+                            <span style={{fontSize:10,fontWeight:700,padding:'2px 5px',borderRadius:4,background:'rgba(245,158,11,0.12)',color:'var(--amber)',whiteSpace:'nowrap'}}>{item.roi>=0?'+':''}{item.roi.toFixed(0)}% ROI</span>
+                            {item.days!==null&&<span style={{fontSize:10,fontWeight:700,padding:'2px 5px',borderRadius:4,background:'rgba(96,165,250,0.12)',color:'var(--blue)',whiteSpace:'nowrap'}}>{item.days}d</span>}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  <div>
+                    <div className="perf-label red">📉 Worst performers</div>
+                    {bestWorst.worst.length===0
+                      ? <div className="td-muted" style={{fontSize:13}}>No sold items yet</div>
+                      : bestWorst.worst.map((item,i)=>(
+                        <div key={item.id} className="perf-row">
+                          <div className="perf-rank">{i+1}</div>
+                          <div className="perf-info">
+                            <div className="perf-name">{item.brand} {item.style}</div>
+                            <div className="perf-sub">{item.colourway}{item.size?` · UK ${item.size}`:''}</div>
+                          </div>
+                          <div style={{display:'flex',gap:5,alignItems:'center',flexShrink:0,flexWrap:'wrap',justifyContent:'flex-end'}}>
+                            <span className={`perf-pl ${item.pl>=0?'pos':'neg'}`}>{item.pl>=0?'+':''}{fmt(item.pl)}</span>
+                            <span style={{fontSize:10,fontWeight:700,padding:'2px 5px',borderRadius:4,background:'rgba(248,113,113,0.12)',color:'var(--red)',whiteSpace:'nowrap'}}>{item.roi>=0?'+':''}{item.roi.toFixed(0)}% ROI</span>
+                            {item.days!==null&&<span style={{fontSize:10,fontWeight:700,padding:'2px 5px',borderRadius:4,background:'rgba(96,165,250,0.12)',color:'var(--blue)',whiteSpace:'nowrap'}}>{item.days}d</span>}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
               {expenses.length>0&&(()=>{
                 const byCategory = {}
                 expenses.forEach(e=>{if(!byCategory[e.category])byCategory[e.category]=0;byCategory[e.category]+=(e.amount||0)})
