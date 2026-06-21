@@ -2406,7 +2406,8 @@ tbody td {
 }
 
 /* Base */
-.dark-mode body, .dark-mode .app { background: var(--bg); color: var(--text); }
+.dark-mode { background: var(--bg); color: var(--text); }
+.dark-mode .app-body { background: var(--bg); }
 
 /* Sidebar — distinctly darker than content */
 .dark-mode .sidebar {
