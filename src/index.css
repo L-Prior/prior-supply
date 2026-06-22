@@ -3267,6 +3267,78 @@ tbody td {
   filter: blur(1px);
 }
 
+/* ── Scroll-tracking beacon ──────────────────────────────────────── */
+.lp-beacon {
+  position: fixed;
+  right: 22px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  transition: top 0.08s linear;
+}
+.lp-beacon-core {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff9e0 0%, #f7b731 40%, #d97706 100%);
+  box-shadow: 0 0 10px rgba(245,158,11,0.9), 0 0 24px rgba(245,158,11,0.5), 0 0 48px rgba(245,158,11,0.2);
+  position: relative;
+  z-index: 2;
+}
+.lp-beacon-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(245,158,11,0.35);
+  animation: lp-beacon-pulse 2s ease-out infinite;
+}
+.lp-beacon-ring-2 {
+  width: 42px;
+  height: 42px;
+  border-color: rgba(245,158,11,0.15);
+  animation-delay: 0.5s;
+}
+@keyframes lp-beacon-pulse {
+  0%   { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+/* The trailing line drawn from top of viewport down to the dot */
+.lp-beacon-trail {
+  position: fixed;
+  right: 26px;
+  top: 0;
+  width: 2px;
+  border-radius: 99px;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(245,158,11,0.08) 20%,
+    rgba(245,158,11,0.35) 75%,
+    rgba(245,158,11,0.6) 100%
+  );
+  pointer-events: none;
+  z-index: 59;
+  transition: height 0.08s linear;
+}
+
+/* ── Legal pages ─────────────────────────────────────────────────── */
+.legal-brand {
+  margin: 24px 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.legal-logo {
+  height: 40px;
+  display: block;
+  opacity: 0.9;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .lp-hero { padding: 80px 20px 60px; }
@@ -3294,6 +3366,7 @@ tbody td {
   }
   .lp-how-pulse { top: -40%; left: 50%; transform: translateX(-50%); width: 100%; height: 40%; animation-name: lp-pulse-travel; }
   .lp-bg-line-l, .lp-bg-line-r { display: none; }
+  .lp-beacon, .lp-beacon-trail { display: none; }
   .lp-logo { height: 40px; }
 }
 @media (max-width: 480px) {

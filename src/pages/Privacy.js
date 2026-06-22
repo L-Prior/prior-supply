@@ -5,28 +5,33 @@ export default function Privacy() {
   return (
     <div className="legal-wrap">
       <div className="legal-inner">
-        <Link to="/" className="legal-back">← Back to StockTrack</Link>
+        <Link to="/" className="legal-back">← Back to ITS VAULTED</Link>
+
+        <div className="legal-brand">
+          <img src="/logo-dark.svg" alt="ITS VAULTED" className="legal-logo" />
+        </div>
+
         <h1 className="legal-title">Privacy Policy</h1>
         <p className="legal-date">Last updated: June 2026</p>
 
-        <p>StockTrack ("we", "our", or "us") is committed to protecting your personal data. This policy explains what information we collect, how we use it, and your rights under the UK General Data Protection Regulation (UK GDPR).</p>
+        <p>ITS VAULTED ("we", "our", or "us") is committed to protecting your personal data. This policy explains what information we collect, how we use it, and your rights under the UK General Data Protection Regulation (UK GDPR).</p>
 
         <h2>1. Who we are</h2>
-        <p>StockTrack is an inventory and profit-tracking tool for resellers and collectors, operated as a sole trader business in the United Kingdom. For data protection queries, contact us at: <strong>hello@stocktrack.app</strong></p>
+        <p>ITS VAULTED is an inventory and profit-tracking tool for resellers and collectors, operated as a sole trader business in the United Kingdom. For data protection queries, contact us at: <strong><a href="mailto:hello@its-vaulted.com">hello@its-vaulted.com</a></strong></p>
 
         <h2>2. What data we collect</h2>
         <ul>
           <li><strong>Account data:</strong> your email address and password (stored securely via Supabase Auth)</li>
           <li><strong>Profile data:</strong> username, display name, VAT registration status</li>
           <li><strong>Inventory data:</strong> item details, purchase prices, sale prices, fees, platforms, and any notes you enter</li>
-          <li><strong>Financial data:</strong> profit/loss records, expenses, and break-down data you log</li>
+          <li><strong>Financial data:</strong> profit/loss records, expenses, and break data you log</li>
           <li><strong>Usage data:</strong> standard server logs (IP address, browser type, timestamps) retained for up to 30 days</li>
         </ul>
         <p>We do not collect payment card numbers. Payment processing (when available) will be handled by Stripe, who have their own privacy policy.</p>
 
         <h2>3. How we use your data</h2>
         <ul>
-          <li>To provide and maintain the StockTrack service</li>
+          <li>To provide and maintain the ITS VAULTED service</li>
           <li>To authenticate your account and keep your data secure</li>
           <li>To calculate and display your inventory metrics and profit reports</li>
           <li>To send transactional emails (account confirmation, password reset) — no marketing without your consent</li>
@@ -61,22 +66,25 @@ export default function Privacy() {
           <li><strong>Object</strong> — object to processing based on legitimate interests</li>
           <li><strong>Restriction</strong> — request we restrict processing in certain circumstances</li>
         </ul>
-        <p>To exercise any right not available self-serve in the app, email <strong>hello@stocktrack.app</strong>. We will respond within 30 days.</p>
+        <p>To exercise any right not available self-serve in the app, email <strong><a href="mailto:hello@its-vaulted.com">hello@its-vaulted.com</a></strong>. We will respond within 30 days.</p>
 
         <h2>8. Cookies</h2>
-        <p>StockTrack uses only functional cookies and browser localStorage to keep you signed in and remember your preferences (e.g. dark mode, view mode). We do not use advertising or analytics cookies.</p>
+        <p>ITS VAULTED uses only functional cookies and browser localStorage to keep you signed in and remember your preferences (e.g. dark mode, view mode). We do not use advertising or analytics cookies.</p>
 
         <h2>9. Security</h2>
         <p>All data is transmitted over HTTPS. Passwords are hashed and never stored in plain text. Your data is logically isolated — no other user can access your inventory or financial records.</p>
 
         <h2>10. Children</h2>
-        <p>StockTrack is not directed at children under 13. We do not knowingly collect data from anyone under 13. If you believe a child has created an account, contact us and we will delete it.</p>
+        <p>ITS VAULTED is not directed at children under 13. We do not knowingly collect data from anyone under 13. If you believe a child has created an account, contact us and we will delete it.</p>
 
         <h2>11. Changes to this policy</h2>
         <p>We may update this policy from time to time. We will notify registered users of material changes by email. Continued use of the service after notice constitutes acceptance.</p>
 
         <h2>12. Complaints</h2>
         <p>If you are unhappy with how we handle your data, you have the right to complain to the Information Commissioner's Office (ICO) at <a href="https://ico.org.uk" target="_blank" rel="noopener noreferrer">ico.org.uk</a>.</p>
+
+        <h2>13. Contact</h2>
+        <p>For any privacy-related queries: <strong><a href="mailto:hello@its-vaulted.com">hello@its-vaulted.com</a></strong></p>
       </div>
     </div>
   )

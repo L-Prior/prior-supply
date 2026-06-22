@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 /* ── Stroke SVG icons ─────────────────────────────────────────────── */
@@ -134,6 +134,18 @@ export default function Landing({ session }) {
     return () => obs.disconnect()
   }, [])
 
+  // Scroll-tracking beacon
+  const [scrollPct, setScrollPct] = useState(0)
+  useEffect(() => {
+    const onScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement
+      const max = scrollHeight - clientHeight
+      setScrollPct(max > 0 ? Math.min(scrollTop / max, 1) : 0)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
     <div className="lp">
 
@@ -141,6 +153,19 @@ export default function Landing({ session }) {
       <div className="lp-bg-lines" aria-hidden="true">
         <div className="lp-bg-line lp-bg-line-l" />
         <div className="lp-bg-line lp-bg-line-r" />
+      </div>
+
+      {/* ── Scroll-tracking beacon ────────────────────────── */}
+      <div
+        className="lp-beacon"
+        aria-hidden="true"
+        style={{ top: `calc(${scrollPct * 88}vh + 32px)` }}
+      >
+        <div className="lp-beacon-core" />
+        <div className="lp-beacon-ring" />
+        <div className="lp-beacon-ring lp-beacon-ring-2" />
+        {/* Trailing line above the dot */}
+        <div className="lp-beacon-trail" style={{ height: `calc(${scrollPct * 88}vh)` }} />
       </div>
 
       {/* ── Nav ───────────────────────────────────────────── */}

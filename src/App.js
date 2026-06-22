@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from './supabase'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -8,6 +8,12 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import ResetPassword from './pages/ResetPassword'
 import './index.css'
+
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
 
 function ProtectedRoute({ session, children }) {
   if (session === null) return <Navigate to="/login" replace />
@@ -27,6 +33,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Landing session={session} />} />
         <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <Login />} />
