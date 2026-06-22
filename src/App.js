@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import ResetPassword from './pages/ResetPassword'
+import Admin from './pages/Admin'
 import './index.css'
 
 function ScrollToTop() {
@@ -45,6 +46,7 @@ export default function App() {
             <Dashboard session={session} />
           </ProtectedRoute>
         } />
+        <Route path="/admin" element={<Admin session={session} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

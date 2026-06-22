@@ -1882,10 +1882,13 @@ export default function Dashboard({ session }) {
     fetchExpenses()
   }
 
+  const [isSuspended, setIsSuspended] = useState(false)
+
   useEffect(() => { if (session) fetchProfile() }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
   async function fetchProfile() {
-    const { data } = await supabase.from('profiles').select('plan, vat_registered, vat_number, display_name').eq('id', session.user.id).single()
+    const { data } = await supabase.from('profiles').select('plan, vat_registered, vat_number, display_name, suspended').eq('id', session.user.id).single()
     if (data) {
+      if (data.suspended) { setIsSuspended(true); return }
       setUserPlan(data.plan || 'free')
       setVatRegistered(!!data.vat_registered)
       setVatNumber(data.vat_number || '')
@@ -2033,6 +2036,35 @@ export default function Dashboard({ session }) {
   ]
 
   function navTo(id) { setPage(id); window.scrollTo(0,0) }
+
+  // ── Account suspension screen ──────────────────────────────────────────
+  if (isSuspended) {
+    return (
+      <div className="suspended-wrap">
+        <div className="suspended-card">
+          <img src="/logo-dark.svg" alt="ITS VAULTED" className="suspended-logo" />
+          <div className="suspended-icon">🔒</div>
+          <h1 className="suspended-title">Account temporarily suspended</h1>
+          <p className="suspended-body">
+            Access to your account has been temporarily restricted while we investigate
+            a security concern. Your data is safe and has not been deleted.
+          </p>
+          <p className="suspended-body">
+            Please contact us and we'll help you regain access and send your data:
+          </p>
+          <a href="mailto:hello@its-vaulted.com" className="suspended-cta">
+            hello@its-vaulted.com
+          </a>
+          <button
+            className="suspended-signout"
+            onClick={() => supabase.auth.signOut()}
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={darkMode ? 'app dark-mode' : 'app'}>
