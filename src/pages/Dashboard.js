@@ -68,6 +68,7 @@ const EMPTY_FORM = {
   purchase_platform: '', purchase_date: '', notes: '', long_term: false,
   shipping_cost: '', target_price: '', storage_location: '',
   tags: '',
+  purchase_vat_rate: '0',
   units: [{ ...EMPTY_UNIT }]
 }
 
@@ -916,6 +917,7 @@ export default function Dashboard({ session }) {
       colour: form.colour || null, item_name: form.item_name || null, description: form.description || null,
       storage_location: form.storage_location || null,
       tags: form.tags ? form.tags.trim() : null,
+      purchase_vat_rate: parseFloat(form.purchase_vat_rate) || 0,
       batch_id: batchId, user_id: session.user.id, status: 'in_stock'
     }
     let error
@@ -998,7 +1000,7 @@ export default function Dashboard({ session }) {
     const totalCost = parseFloat(batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
     const sameSize = batchUnits.filter(u => u.size === item.size)
     const qty = sameSize.length > 1 ? sameSize.length : 1
-    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, target_price: item.target_price||'', storage_location: item.storage_location||'', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', tags: item.tags||'', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
+    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, target_price: item.target_price||'', storage_location: item.storage_location||'', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', tags: item.tags||'', purchase_vat_rate: item.purchase_vat_rate!=null ? String(item.purchase_vat_rate) : '0', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
     setEditItem(item); setShowAdd(true)
   }
 
@@ -1106,7 +1108,7 @@ export default function Dashboard({ session }) {
   function resetSellModal() {
     setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null)
     setCustomFeeRate(''); setPayoutStatus('pending'); setShippingFee(''); setBuyerName('')
-    setSoldDate(new Date().toISOString().slice(0, 10))
+    setSoldDate(new Date().toISOString().slice(0, 10)); setSaleVatRate('0')
   }
 
   function handleEditSold(item) {
@@ -1138,7 +1140,7 @@ export default function Dashboard({ session }) {
       return
     }
 
-    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, shipping_fee: shipAmt, payout_status: payoutStatus, buyer_name: buyerName || null, sold_at }
+    const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, shipping_fee: shipAmt, payout_status: payoutStatus, buyer_name: buyerName || null, sold_at, sale_vat_rate: parseFloat(saleVatRate) || 0 }
     if (sellItem._bulkIds) {
       const idsToSell = sellItem._bulkIds
       const perUnitFee = parseFloat((feeAmt / idsToSell.length).toFixed(2))
@@ -1677,6 +1679,12 @@ export default function Dashboard({ session }) {
   const [buyerName, setBuyerName] = useState('')
   const [vatRegistered, setVatRegistered] = useState(false)
   const [vatNumber, setVatNumber] = useState('')
+  const [vatScheme, setVatScheme] = useState('standard')
+  const [vatFlatRate, setVatFlatRate] = useState('')
+  const [businessType, setBusinessType] = useState('sole_trader')
+  const [companyNumber, setCompanyNumber] = useState('')
+  const [registeredAddress, setRegisteredAddress] = useState('')
+  const [saleVatRate, setSaleVatRate] = useState('0')
   const [breakSpots, setBreakSpots] = useState([])
   const [slotsBreak, setSlotsBreak] = useState(null)
   const [spotForm, setSpotForm] = useState({ buyer_name: '', notes: '' })
@@ -1854,10 +1862,56 @@ export default function Dashboard({ session }) {
   const isCore = userPlan === 'core' || userPlan === 'pro'
   const isPro = userPlan === 'pro'
 
+  // VAT stats — only computed when user is Pro + VAT registered
+  const vatStats = useMemo(() => {
+    if (!vatRegistered || !isPro) return null
+    const exVat = (price, rate) => rate > 0 ? (price||0) / (1 + rate/100) : (price||0)
+    const vatAmt = (price, rate) => (price||0) - exVat(price, rate)
+    const quarterKey = (dateStr) => {
+      if (!dateStr) return null
+      const d = new Date(dateStr)
+      if (isNaN(d)) return null
+      return `Q${Math.floor(d.getMonth()/3)+1} ${d.getFullYear()}`
+    }
+    const quarters = {}
+    const ensure = (q) => { if (!quarters[q]) quarters[q] = { outputVat: 0, inputVat: 0, exVatSales: 0, exVatCost: 0, exVatProfit: 0, fees: 0 } }
+    items.filter(i => i.status === 'sold' && i.sale_price != null).forEach(i => {
+      const q = quarterKey(i.sold_at)
+      if (!q) return
+      ensure(q)
+      const outVat = vatAmt(i.sale_price, i.sale_vat_rate || 0)
+      const inVat  = vatAmt(i.purchase_price, i.purchase_vat_rate || 0)
+      const saleEx = exVat(i.sale_price, i.sale_vat_rate || 0)
+      const costEx = exVat(i.purchase_price, i.purchase_vat_rate || 0)
+      quarters[q].outputVat  += outVat
+      quarters[q].inputVat   += inVat
+      quarters[q].exVatSales += saleEx
+      quarters[q].exVatCost  += costEx
+      quarters[q].fees       += (i.fee_amount||0) + (i.shipping_fee||0)
+      quarters[q].exVatProfit += saleEx - costEx - (i.fee_amount||0) - (i.shipping_fee||0)
+    })
+    expenses.forEach(e => {
+      const q = quarterKey(e.date)
+      if (!q) return
+      ensure(q)
+      const inVat = vatAmt(e.amount, e.vat_rate || 0)
+      quarters[q].inputVat   += inVat
+      quarters[q].exVatProfit -= exVat(e.amount, e.vat_rate || 0)
+    })
+    const sortedQs = Object.entries(quarters).sort(([a],[b]) => {
+      const [aq,ay] = a.split(' '); const [bq,by] = b.split(' ')
+      return by !== ay ? Number(by) - Number(ay) : Number(bq.slice(1)) - Number(aq.slice(1))
+    })
+    const totOut = Object.values(quarters).reduce((s,q) => s + q.outputVat, 0)
+    const totIn  = Object.values(quarters).reduce((s,q) => s + q.inputVat, 0)
+    const totProfit = Object.values(quarters).reduce((s,q) => s + q.exVatProfit, 0)
+    return { quarters: sortedQs, totalOutputVat: totOut, totalInputVat: totIn, netVatPayable: totOut - totIn, totalExVatProfit: totProfit }
+  }, [items, expenses, vatRegistered, isPro])
+
   const EXPENSE_CATEGORIES = ['Packaging', 'Shipping Supplies', 'Equipment', 'Platform Subscriptions', 'Advertising', 'Software', 'Travel', 'Professional Services', 'Other']
   const [expensesLoading, setExpensesLoading] = useState(false)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
-  const [expenseForm, setExpenseForm] = useState({ date: '', amount: '', category: 'Packaging', description: '' })
+  const [expenseForm, setExpenseForm] = useState({ date: '', amount: '', category: 'Packaging', description: '', vat_rate: '0' })
   const [expenseSaving, setExpenseSaving] = useState(false)
 
   useEffect(() => { if (session && (page === 'expenses' || page === 'finance')) fetchExpenses() }, [page, session]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1871,8 +1925,8 @@ export default function Dashboard({ session }) {
 
   async function saveExpense() {
     setExpenseSaving(true)
-    const { error } = await supabase.from('expenses').insert([{ user_id: session.user.id, date: expenseForm.date, amount: parseFloat(expenseForm.amount), category: expenseForm.category, description: expenseForm.description || null }])
-    if (!error) { setShowExpenseForm(false); setExpenseForm({ date: '', amount: '', category: 'Packaging', description: '' }); fetchExpenses() }
+    const { error } = await supabase.from('expenses').insert([{ user_id: session.user.id, date: expenseForm.date, amount: parseFloat(expenseForm.amount), category: expenseForm.category, description: expenseForm.description || null, vat_rate: parseFloat(expenseForm.vat_rate) || 0 }])
+    if (!error) { setShowExpenseForm(false); setExpenseForm({ date: '', amount: '', category: 'Packaging', description: '', vat_rate: '0' }); fetchExpenses() }
     setExpenseSaving(false)
   }
 
@@ -1886,13 +1940,18 @@ export default function Dashboard({ session }) {
 
   useEffect(() => { if (session) fetchProfile() }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
   async function fetchProfile() {
-    const { data } = await supabase.from('profiles').select('plan, vat_registered, vat_number, display_name, suspended').eq('id', session.user.id).single()
+    const { data } = await supabase.from('profiles').select('plan, vat_registered, vat_number, display_name, suspended, business_type, company_number, registered_address, vat_scheme, vat_flat_rate_pct').eq('id', session.user.id).single()
     if (data) {
       if (data.suspended) { setIsSuspended(true); return }
       setUserPlan(data.plan || 'free')
       setVatRegistered(!!data.vat_registered)
       setVatNumber(data.vat_number || '')
       setDisplayName(data.display_name || '')
+      setBusinessType(data.business_type || 'sole_trader')
+      setCompanyNumber(data.company_number || '')
+      setRegisteredAddress(data.registered_address || '')
+      setVatScheme(data.vat_scheme || 'standard')
+      setVatFlatRate(data.vat_flat_rate_pct ? String(data.vat_flat_rate_pct) : '')
     }
   }
 
@@ -1901,7 +1960,7 @@ export default function Dashboard({ session }) {
   }
 
   async function saveVATSettings() {
-    await supabase.from('profiles').update({ vat_registered: vatRegistered, vat_number: vatNumber || null }).eq('id', session.user.id)
+    await supabase.from('profiles').update({ vat_registered: vatRegistered, vat_number: vatNumber || null, business_type: businessType, company_number: companyNumber || null, registered_address: registeredAddress || null, vat_scheme: vatScheme, vat_flat_rate_pct: vatFlatRate ? parseFloat(vatFlatRate) : null }).eq('id', session.user.id)
   }
 
   // Collector state
@@ -2572,6 +2631,7 @@ export default function Dashboard({ session }) {
               <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
                 <button className={`type-btn ${financeTab==='metrics'?'active':''}`} onClick={()=>setFinanceTab('metrics')}>Metrics</button>
                 <button className={`type-btn ${financeTab==='expenses'?'active':''}`} onClick={()=>setFinanceTab('expenses')}>Expenses</button>
+                {isPro&&vatRegistered&&<button className={`type-btn ${financeTab==='vat'?'active':''}`} onClick={()=>setFinanceTab('vat')}>VAT Return</button>}
                 <button className={`type-btn ${financeTab==='payouts'?'active':''}`} onClick={()=>setFinanceTab('payouts')}>
                   Payouts{(()=>{const n=items.filter(i=>i.status==='sold'&&i.payout_status==='pending').length;return n>0?<span style={{marginLeft:4,background:'#fef3c7',color:'#d97706',borderRadius:10,padding:'1px 6px',fontSize:11}}>{n}</span>:null})()}
                 </button>
@@ -2863,9 +2923,32 @@ export default function Dashboard({ session }) {
                       <button className={`type-btn ${vatRegistered?'active':''}`} onClick={()=>setVatRegistered(true)}>VAT Registered</button>
                     </div>
                     {vatRegistered && (
-                      <div style={{display:'flex',gap:8,marginBottom:8}}>
-                        <input className="form-input" style={{margin:0,flex:1,fontFamily:'monospace',letterSpacing:'0.06em'}} placeholder="GB123456789" value={vatNumber} onChange={e=>setVatNumber(e.target.value)} maxLength={12}/>
-                        <button className="btn sm primary" onClick={saveVATSettings}>Save</button>
+                      <div>
+                        <div style={{display:'flex',gap:8,marginBottom:8}}>
+                          <input className="form-input" style={{margin:0,flex:1,fontFamily:'monospace',letterSpacing:'0.06em'}} placeholder="GB123456789" value={vatNumber} onChange={e=>setVatNumber(e.target.value)} maxLength={12}/>
+                        </div>
+                        <div className="form-group" style={{marginBottom:8}}>
+                          <label className="form-label" style={{fontSize:11}}>Business type</label>
+                          <div className="type-toggle">
+                            <button className={`type-btn ${businessType==='sole_trader'?'active':''}`} onClick={()=>setBusinessType('sole_trader')}>Sole Trader</button>
+                            <button className={`type-btn ${businessType==='ltd'?'active':''}`} onClick={()=>setBusinessType('ltd')}>Ltd Company</button>
+                          </div>
+                        </div>
+                        {businessType==='ltd'&&(
+                          <input className="form-input" style={{marginBottom:8}} placeholder="Company number (e.g. 12345678)" value={companyNumber} onChange={e=>setCompanyNumber(e.target.value)} maxLength={8}/>
+                        )}
+                        <div className="form-group" style={{marginBottom:8}}>
+                          <label className="form-label" style={{fontSize:11}}>VAT scheme</label>
+                          <select className="form-input" style={{margin:0}} value={vatScheme} onChange={e=>setVatScheme(e.target.value)}>
+                            <option value="standard">Standard rate (20%)</option>
+                            <option value="flat_rate">Flat rate scheme</option>
+                            <option value="cash">Cash accounting</option>
+                          </select>
+                        </div>
+                        {vatScheme==='flat_rate'&&(
+                          <input className="form-input" style={{marginBottom:8}} type="number" step="0.1" placeholder="Flat rate % (e.g. 7.5)" value={vatFlatRate} onChange={e=>setVatFlatRate(e.target.value)}/>
+                        )}
+                        <button className="btn sm primary" onClick={saveVATSettings}>Save VAT settings</button>
                       </div>
                     )}
                     {!vatRegistered && <button className="btn sm primary" onClick={saveVATSettings}>Save</button>}
@@ -3310,6 +3393,16 @@ export default function Dashboard({ session }) {
                       <label className="form-label">Description</label>
                       <input className="form-input" placeholder="e.g. Bubble wrap rolls x 200" value={expenseForm.description} onChange={e=>setExpenseForm(f=>({...f,description:e.target.value}))}/>
                     </div>
+                    {isPro&&vatRegistered&&(
+                      <div className="form-group">
+                        <label className="form-label" style={{fontSize:11}}>VAT on this expense</label>
+                        <select className="form-input" style={{margin:0}} value={expenseForm.vat_rate||'0'} onChange={e=>setExpenseForm(f=>({...f,vat_rate:e.target.value}))}>
+                          <option value="0">No VAT (0%)</option>
+                          <option value="5">Reduced rate (5%)</option>
+                          <option value="20">Standard rate (20%)</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                   <div className="form-actions">
                     <button className="btn" onClick={()=>setShowExpenseForm(false)}>Cancel</button>
@@ -3356,6 +3449,73 @@ export default function Dashboard({ session }) {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(page==='finance'&&financeTab==='vat')&&(
+          <div>
+            {!vatStats ? (
+              <div style={{textAlign:'center',padding:'40px 0',color:'var(--muted)'}}>No VAT data yet. Add VAT rates when logging stock purchases and sales.</div>
+            ) : (
+              <div>
+                {/* Summary boxes */}
+                <div className="stats-bar" style={{gridTemplateColumns:'repeat(3,1fr)',marginBottom:24}}>
+                  <div className="stat-card">
+                    <div className="stat-label">Box 1 — Output VAT</div>
+                    <div className="stat-value" style={{color:'var(--red)'}}>{fmt(vatStats.totalOutputVat)}</div>
+                    <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>VAT charged on sales</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Box 4 — Input VAT</div>
+                    <div className="stat-value" style={{color:'var(--green)'}}>{fmt(vatStats.totalInputVat)}</div>
+                    <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>VAT reclaimed on purchases</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Box 5 — Net Payable</div>
+                    <div className={`stat-value ${vatStats.netVatPayable>0?'neg':'pos'}`}>{fmt(vatStats.netVatPayable)}</div>
+                    <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>Due to HMRC</div>
+                  </div>
+                </div>
+                <div className="stat-card" style={{marginBottom:24}}>
+                  <div className="stat-label">Ex-VAT Profit (all time)</div>
+                  <div className={`stat-value ${vatStats.totalExVatProfit>=0?'pos':'neg'}`}>{vatStats.totalExVatProfit>=0?'+':''}{fmt(vatStats.totalExVatProfit)}</div>
+                  <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>Your profit after stripping out VAT</div>
+                </div>
+                {/* Quarterly breakdown */}
+                <div className="chart-card">
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:16}}>Quarterly Breakdown</div>
+                  {vatStats.quarters.length === 0 ? (
+                    <div style={{color:'var(--muted)',fontSize:13}}>No quarterly data yet</div>
+                  ) : (
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                        <thead>
+                          <tr style={{borderBottom:'1px solid var(--border)'}}>
+                            {['Quarter','Output VAT','Input VAT','Net Payable','Ex-VAT Profit'].map(h=>(
+                              <th key={h} style={{padding:'8px 12px',textAlign:'right',fontWeight:600,color:'var(--muted)',fontSize:11,whiteSpace:'nowrap'}}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vatStats.quarters.map(([q, d]) => (
+                            <tr key={q} style={{borderBottom:'1px solid var(--border2)'}}>
+                              <td style={{padding:'10px 12px',fontWeight:600}}>{q}</td>
+                              <td style={{padding:'10px 12px',textAlign:'right',color:'var(--red)'}}>{fmt(d.outputVat)}</td>
+                              <td style={{padding:'10px 12px',textAlign:'right',color:'var(--green)'}}>{fmt(d.inputVat)}</td>
+                              <td style={{padding:'10px 12px',textAlign:'right',fontWeight:600,color:d.outputVat-d.inputVat>0?'var(--red)':'var(--green)'}}>{fmt(d.outputVat-d.inputVat)}</td>
+                              <td style={{padding:'10px 12px',textAlign:'right',fontWeight:600,color:d.exVatProfit>=0?'var(--green)':'var(--red)'}}>{d.exVatProfit>=0?'+':''}{fmt(d.exVatProfit)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div style={{fontSize:11,color:'var(--muted)',marginTop:12,padding:'10px 14px',background:'var(--surface2)',borderRadius:'var(--radius)'}}>
+                  ⚠️ Based on VAT rates you've entered per item. Verify against your actual VAT account and always confirm with your accountant before submitting a return.
                 </div>
               </div>
             )}
@@ -3751,6 +3911,19 @@ export default function Dashboard({ session }) {
             </div>}
             {saveError&&<div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {saveError}</div>}
             <div className="form-actions">
+              {isPro&&vatRegistered&&(
+                <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'12px 14px',marginBottom:12}}>
+                  <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:'var(--accent)'}}>VAT Settings (Pro)</div>
+                  <div className="form-group" style={{marginBottom:0}}>
+                    <label className="form-label" style={{fontSize:11}}>Purchase VAT rate</label>
+                    <select className="form-input" style={{margin:0}} value={form.purchase_vat_rate||'0'} onChange={e=>setForm(f=>({...f,purchase_vat_rate:e.target.value}))}>
+                      <option value="0">No VAT (0%)</option>
+                      <option value="5">Reduced rate (5%)</option>
+                      <option value="20">Standard rate (20%)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
               <button className="btn" onClick={()=>{addItemSuccessCallback.current=null;setShowAdd(false);setEditItem(null);setForm(EMPTY_FORM);setSaveError('')}}>Cancel</button>
               <button className="btn primary" onClick={saveItem} disabled={saving||!form.category}>{saving?'Saving...':editItem?'Save changes':'Add item'}</button>
             </div>
@@ -4049,6 +4222,16 @@ export default function Dashboard({ session }) {
                 <button className={`type-btn ${payoutStatus==='paid'?'active':''}`} onClick={()=>setPayoutStatus('paid')}>✅ Paid out</button>
               </div>
             </div>
+            {isPro&&vatRegistered&&(
+              <div className="form-group">
+                <label className="form-label" style={{fontSize:11}}>Sale VAT rate</label>
+                <select className="form-input" value={saleVatRate} onChange={e=>setSaleVatRate(e.target.value)}>
+                  <option value="0">No VAT (0%)</option>
+                  <option value="5">Reduced rate (5%)</option>
+                  <option value="20">Standard rate (20%)</option>
+                </select>
+              </div>
+            )}
             <div className="form-actions" style={{marginTop:16}}>
               <button className="btn" onClick={resetSellModal}>Cancel</button>
               <button className="btn primary" onClick={markSold} disabled={saving||!salePrice}>{saving?'Saving...':sellItem._editMode?'Save changes':'Confirm sale'}</button>
@@ -4117,10 +4300,10 @@ export default function Dashboard({ session }) {
                     try {
                       const { data: { session: s } } = await supabase.auth.getSession()
                       const res = await fetch('/api/delete-account', { method:'POST', headers:{ Authorization:`Bearer ${s.access_token}`, 'Content-Type':'application/json' } })
-                      if (!res.ok) { const d=await res.json(); alert(d.error||'Deletion failed. Please contact hello@stocktrack.app'); return }
+                      if (!res.ok) { const d=await res.json(); alert(d.error||'Deletion failed. Please contact hello@its-vaulted.com'); return }
                       await supabase.auth.signOut()
                       navigate('/')
-                    } catch(e) { alert('Something went wrong. Please contact hello@stocktrack.app') }
+                    } catch(e) { alert('Something went wrong. Please contact hello@its-vaulted.com') }
                   }}>Delete my account</button>
                 </div>
               </div>
