@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 
 // ── Change this to your Supabase service role key env var or keep checking email ──
-const ADMIN_EMAIL = process.env.REACT_APP_ADMIN_EMAIL || 'lukeprior@icloud.com'
+const ADMIN_EMAIL = 'prior.luke.04@gmail.com'
 
 export default function Admin({ session }) {
   const [users, setUsers] = useState([])
