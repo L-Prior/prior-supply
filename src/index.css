@@ -1626,8 +1626,16 @@ tbody td {
 /* Legal pages (Privacy, Terms) */
 .legal-wrap {
   min-height: 100vh;
-  background: var(--bg);
+  background: #06091a;
+  color: #e4e6f0;
   padding: 40px 20px 80px;
+  /* Override CSS vars so all children get dark-mode equivalents */
+  --bg: #06091a;
+  --text: #e4e6f0;
+  --text2: #9bafd4;
+  --muted: #5a6a98;
+  --border: #1a2540;
+  --accent: #f59e0b;
 }
 
 .legal-inner {
@@ -2374,16 +2382,16 @@ tbody td {
    Near-black backgrounds · Gold accent · High contrast
    ═══════════════════════════════════════════════════════════════ */
 .dark-mode {
-  --bg: #08090e;
-  --surface: #0e1018;
-  --surface2: #141620;
-  --border: #1e2030;
-  --border2: #262840;
-  --text: #e4e6f0;
-  --text2: #8890b5;
-  --muted: #525878;
-  --faint: #282a40;
-  --sidebar-bg: #060710;
+  --bg: #080f1e;
+  --surface: #0d1628;
+  --surface2: #111e34;
+  --border: #1c2d48;
+  --border2: #253858;
+  --text: #eaecf8;
+  --text2: #8fa8d4;
+  --muted: #4f6590;
+  --faint: #1a2a44;
+  --sidebar-bg: #060c18;
   /* Brighter green/red for dark backgrounds */
   --green: #34d399;
   --green-bg: rgba(52,211,153,0.08);
