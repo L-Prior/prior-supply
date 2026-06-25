@@ -2277,10 +2277,10 @@ export default function Dashboard({ session }) {
             </div>
             <div style={{display:'flex',gap:8,marginBottom:16}}>
               <button className={`type-btn ${stockTab==='inventory'?'active':''}`} onClick={()=>setStockTab('inventory')}>
-                Stock <span style={{marginLeft:4,background:'rgba(245,158,11,0.18)',color:'#f59e0b',borderRadius:10,padding:'1px 7px',fontSize:11,fontWeight:600}}>{stats.inStock}</span>
+                Stock <span className="tab-count">{stats.inStock}</span>
               </button>
               <button className={`type-btn ${stockTab==='history'?'active':''}`} onClick={()=>setStockTab('history')}>
-                Sold <span style={{marginLeft:4,background:'rgba(245,158,11,0.18)',color:'#f59e0b',borderRadius:10,padding:'1px 7px',fontSize:11,fontWeight:600}}>{stats.sold}</span>
+                Sold <span className="tab-count">{stats.sold}</span>
               </button>
               <button className={`type-btn ${stockTab==='checklist'?'active':''}`} onClick={()=>{setStockTab('checklist');setTimeout(()=>{window.scrollTo({top:0,behavior:'instant'});document.documentElement.scrollTop=0;document.body.scrollTop=0},50)}}>
                 Checklist
