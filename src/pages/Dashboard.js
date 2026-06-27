@@ -495,8 +495,8 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
               </div>
             </div>
             {showFlagForm&&(
-              <div style={{background:'#fffbeb',border:'1px solid #f59e0b',borderRadius:'var(--radius)',padding:'12px 14px',marginBottom:16}}>
-                <div style={{fontSize:13,fontWeight:600,color:'#92400e',marginBottom:8}}>Describe the unlisted item</div>
+              <div style={{background:'var(--amber-bg)',border:'1px solid rgba(245,158,11,0.4)',borderRadius:'var(--radius)',padding:'12px 14px',marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--amber)',marginBottom:8}}>Describe the unlisted item</div>
                 <div style={{display:'flex',gap:8}}>
                   <input className="form-input" placeholder="e.g. Nike Air Max 95 UK 9 — not in system" value={flagNote} onChange={e=>setFlagNote(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addUnlisted()} autoFocus style={{flex:1}}/>
                   <button className="btn primary sm" onClick={addUnlisted} disabled={!flagNote.trim()}>Add</button>
@@ -580,12 +580,12 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
                 const row = rowData[id]
                 if (!row) return null
                 return (
-                  <div key={id} style={{background:'#fff5f5',border:'1px solid #fed7d7',borderRadius:'var(--radius)',padding:'14px 16px'}}>
+                  <div key={id} style={{background:'var(--red-bg)',border:'1px solid var(--red-border)',borderRadius:'var(--radius)',padding:'14px 16px'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12,flexWrap:'wrap'}}>
                       <div style={{flex:1}}>
                         <div style={{fontWeight:600,fontSize:14,color:'var(--text)'}}>{row.brand} {row.style}</div>
                         <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{[row.colourway,row.sizeDisplay!=='—'?row.sizeDisplay:null,row.sku].filter(Boolean).join(' · ')}</div>
-                        {notes[id]&&<div style={{marginTop:8,fontSize:13,color:'#c53030',background:'#fff5f5',padding:'6px 10px',borderRadius:6,border:'1px solid #feb2b2'}}>📝 {notes[id]}</div>}
+                        {notes[id]&&<div style={{marginTop:8,fontSize:13,color:'var(--red)',background:'var(--red-bg)',padding:'6px 10px',borderRadius:6,border:'1px solid var(--red-border)'}}>📝 {notes[id]}</div>}
                       </div>
                       <div style={{display:'flex',gap:8,flexShrink:0}}>
                         {row.itemId&&<button className="btn sm primary" onClick={()=>{const item=items.find(i=>i.id===row.itemId);if(item)onEditItem(item)}}>Edit item</button>}
@@ -618,7 +618,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
           ):(
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
               {unlisted.map(u=>(
-                <div key={u.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',background:'#fffbeb',border:'1px solid #f59e0b',borderRadius:'var(--radius)'}}>
+                <div key={u.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',background:'var(--amber-bg)',border:'1px solid rgba(245,158,11,0.4)',borderRadius:'var(--radius)'}}>
                   <div style={{flex:1,fontSize:13,color:'var(--text)'}}>{u.note}</div>
                   <button className="btn primary sm" onClick={()=>{onAddItem(()=>removeUnlisted(u.id))}}>+ Add to stock</button>
                   <button className="btn sm danger" onClick={()=>removeUnlisted(u.id)}>Del</button>

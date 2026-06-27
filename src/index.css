@@ -2252,7 +2252,7 @@ tbody td {
 .checklist-col.discrepancy { flex: 1; min-width: 0; }
 
 .checklist-row.flagged {
-  background: #fffbeb !important;
+  background: var(--amber-bg) !important;
   border-left: 3px solid #f59e0b;
 }
 
