@@ -334,7 +334,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
 }
 
 function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, onSellItem }) {
-  const STORAGE_KEY = 'stocktrack_checklist'
+  const STORAGE_KEY = 'iv_checklist'
 
   function loadSaved() {
     try {
@@ -823,7 +823,7 @@ export default function Dashboard({ session }) {
   const [shippingFee, setShippingFee] = useState('')
   const [soldDate, setSoldDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [stockTab, setStockTab] = useState('inventory')
-  const [viewMode, setViewMode] = useState(()=>{ try { return localStorage.getItem('stocktrack_viewmode')||'grid' } catch { return 'grid' } })
+  const [viewMode, setViewMode] = useState(()=>{ try { return localStorage.getItem('iv_viewmode')||'grid' } catch { return 'grid' } })
   const [clearedBatch, setClearedBatch] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [search, setSearch] = useState('')
@@ -836,10 +836,10 @@ export default function Dashboard({ session }) {
   const [saveError, setSaveError] = useState('')
   const [fetchError, setFetchError] = useState('')
   const [settingsSaved, setSettingsSaved] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(() => { try { return !localStorage.getItem('stocktrack_onboarded') } catch { return false } })
+  const [showOnboarding, setShowOnboarding] = useState(() => { try { return !localStorage.getItem('iv_onboarded') } catch { return false } })
   // Wishlist (localStorage — no DB needed)
-  const WISHLIST_KEY = 'stocktrack_wishlist'
-  const [wishlist, setWishlist] = useState(() => { try { return JSON.parse(localStorage.getItem('stocktrack_wishlist')||'[]') } catch { return [] } })
+  const WISHLIST_KEY = 'iv_wishlist'
+  const [wishlist, setWishlist] = useState(() => { try { return JSON.parse(localStorage.getItem('iv_wishlist')||'[]') } catch { return [] } })
   const [showWishlistForm, setShowWishlistForm] = useState(false)
   const [wishlistForm, setWishlistForm] = useState({ brand:'', style:'', category:'', targetPrice:'', notes:'' })
   useEffect(() => { try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlist)) } catch {} }, [wishlist]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -866,7 +866,7 @@ export default function Dashboard({ session }) {
     }))
     clearSelection(); fetchItems()
   }
-  function dismissOnboarding() { try { localStorage.setItem('stocktrack_onboarded','1') } catch {}; setShowOnboarding(false) }
+  function dismissOnboarding() { try { localStorage.setItem('iv_onboarded','1') } catch {}; setShowOnboarding(false) }
   const [chartMonths, setChartMonths] = useState(6)
   const [metricsSources, setMetricsSources] = useState({ reseller: true, breaker: true, collector: false })
   const [reportMonth, setReportMonth] = useState(() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` })
@@ -1188,7 +1188,7 @@ export default function Dashboard({ session }) {
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = `stocktrack-${new Date().toISOString().slice(0,10)}.csv`
+    a.href = url; a.download = `itsvaulted-${new Date().toISOString().slice(0,10)}.csv`
     a.click(); URL.revokeObjectURL(url)
   }
 
@@ -1500,7 +1500,7 @@ export default function Dashboard({ session }) {
     const example = 'Sneakers,Nike,Air Max 95,Pure Money,308497-100,9,2024-01-15,SNKRS,120,Great condition'
     const blob = new Blob([headers + '\n' + example], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = 'stocktrack-import-template.csv'; a.click(); URL.revokeObjectURL(url)
+    const a = document.createElement('a'); a.href = url; a.download = 'itsvaulted-import-template.csv'; a.click(); URL.revokeObjectURL(url)
   }
 
   function parseCsvImport(file) {
@@ -1671,9 +1671,9 @@ export default function Dashboard({ session }) {
     return { totalPL, completed, active, total: breaks.length }
   }, [breaks])
 
-  const [darkMode, setDarkMode] = useState(() => { try { const stored = localStorage.getItem('stocktrack_dark'); return stored === null ? true : stored === 'true' } catch { return true } })
-  const GOAL_KEY = 'stocktrack_goal'
-  const [monthlyGoal, setMonthlyGoal] = useState(() => { try { return parseFloat(localStorage.getItem('stocktrack_goal') || '0') } catch { return 0 } })
+  const [darkMode, setDarkMode] = useState(() => { try { const stored = localStorage.getItem('iv_dark'); return stored === null ? true : stored === 'true' } catch { return true } })
+  const GOAL_KEY = 'iv_goal'
+  const [monthlyGoal, setMonthlyGoal] = useState(() => { try { return parseFloat(localStorage.getItem('iv_goal') || '0') } catch { return 0 } })
   const [editingGoal, setEditingGoal] = useState(false)
   const [goalInput, setGoalInput] = useState('')
   const [buyerName, setBuyerName] = useState('')
@@ -1725,9 +1725,9 @@ export default function Dashboard({ session }) {
   const [financeTab, setFinanceTab] = useState('metrics')
   const currentTaxYear = (()=>{ const n=new Date(); return n.getMonth()>=3?n.getFullYear():n.getFullYear()-1 })()
 
-  const INV_BIZ_KEY = 'stocktrack_biz'
-  const INV_NUM_KEY = 'stocktrack_inv_num'
-  const INV_SAVED_KEY = 'stocktrack_invoices'
+  const INV_BIZ_KEY = 'iv_biz'
+  const INV_NUM_KEY = 'iv_inv_num'
+  const INV_SAVED_KEY = 'iv_invoices'
   const blankBiz = { name: '', address: '', email: '', phone: '', vatNumber: '' }
   const [invBiz, setInvBiz] = useState(()=>{ try { return JSON.parse(localStorage.getItem(INV_BIZ_KEY)||'{}') } catch { return {} } })
   const [invCustomer, setInvCustomer] = useState({ name: '', address: '', email: '' })
@@ -1830,7 +1830,7 @@ export default function Dashboard({ session }) {
     openInvoicePrint(invNumber, invDate, invDueDate, invCustomer, invLines, invNotes, bizDetails, invTotal, true)
   }
 
-  const TAX_UTR_KEY = 'stocktrack_utr'
+  const TAX_UTR_KEY = 'iv_utr'
   const [taxUTR, setTaxUTR] = useState(()=>{ try { return localStorage.getItem(TAX_UTR_KEY)||'' } catch { return '' } })
 
   const [skuQuery, setSkuQuery] = useState('')
@@ -1856,7 +1856,7 @@ export default function Dashboard({ session }) {
   const [selectedTaxYear, setSelectedTaxYear] = useState(currentTaxYear)
 
   function switchToolTab(tab) { setToolTab(tab); setTimeout(()=>window.scrollTo({top:0,behavior:'instant'}),50) }
-  const [userPlan, setUserPlan] = useState('pro') // default pro until Stripe is set up
+  const [userPlan, setUserPlan] = useState('free')
   const FREE_LIMIT = 30 // collector items on free plan
   const isFree = userPlan === 'free'
   const isCore = userPlan === 'core' || userPlan === 'pro'
@@ -2144,7 +2144,7 @@ export default function Dashboard({ session }) {
           <a href="/" className="sidebar-footer-link">← Back to site</a>
           <div className="sidebar-footer-email">{displayName || session.user.email}</div>
           <div className="sidebar-footer-actions">
-            <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
+            <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('iv_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
   ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
   : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</button>
             <button className="btn sm" title="Account settings" onClick={()=>{setShowSettings(true);setSettingsTab('profile')}}>⚙️</button>
@@ -2165,7 +2165,7 @@ export default function Dashboard({ session }) {
             {page==='collector'&&<button className="btn primary sm" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={userPlan==='free'&&collectorItems.length>=FREE_LIMIT}>+ Add</button>}
             {page==='finance'&&financeTab==='expenses'&&<button className="btn primary sm" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add</button>}
             <div className="user-pill">
-              <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
+              <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('iv_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
   ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
   : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</button>
               <button className="btn sm" onClick={signOut}>Sign out</button>
@@ -2323,10 +2323,10 @@ export default function Dashboard({ session }) {
                   {(search||filterBrand||filterStatus||filterCategory||filterTag)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('');setFilterTag('')}}>Clear</button>}
                   <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
                   <div className="view-toggle">
-                    <button className={`view-toggle-btn${viewMode==='grid'?' active':''}`} title="Grid view" onClick={()=>{setViewMode('grid');try{localStorage.setItem('stocktrack_viewmode','grid')}catch{}}}>
+                    <button className={`view-toggle-btn${viewMode==='grid'?' active':''}`} title="Grid view" onClick={()=>{setViewMode('grid');try{localStorage.setItem('iv_viewmode','grid')}catch{}}}>
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="0" width="6" height="6" rx="1" fill="currentColor"/><rect x="8" y="0" width="6" height="6" rx="1" fill="currentColor"/><rect x="0" y="8" width="6" height="6" rx="1" fill="currentColor"/><rect x="8" y="8" width="6" height="6" rx="1" fill="currentColor"/></svg>
                     </button>
-                    <button className={`view-toggle-btn${viewMode==='list'?' active':''}`} title="List view" onClick={()=>{setViewMode('list');try{localStorage.setItem('stocktrack_viewmode','list')}catch{}}}>
+                    <button className={`view-toggle-btn${viewMode==='list'?' active':''}`} title="List view" onClick={()=>{setViewMode('list');try{localStorage.setItem('iv_viewmode','list')}catch{}}}>
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="1" width="14" height="2" rx="1" fill="currentColor"/><rect x="0" y="6" width="14" height="2" rx="1" fill="currentColor"/><rect x="0" y="11" width="14" height="2" rx="1" fill="currentColor"/></svg>
                     </button>
                   </div>
@@ -4364,7 +4364,7 @@ export default function Dashboard({ session }) {
                     <div style={{fontWeight:600,fontSize:14}}>Dark mode</div>
                     <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{darkMode?'Currently dark':'Currently light'}</div>
                   </div>
-                  <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('stocktrack_dark', nd ? 'true' : 'false') } catch {} }}>{darkMode ? 'Switch to light' : 'Switch to dark'}</button>
+                  <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('iv_dark', nd ? 'true' : 'false') } catch {} }}>{darkMode ? 'Switch to light' : 'Switch to dark'}</button>
                 </div>
                 <div style={{marginTop:16}} className="form-actions">
                   <button className="btn" onClick={()=>setShowSettings(false)}>Close</button>
