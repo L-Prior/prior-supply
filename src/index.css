@@ -2327,6 +2327,20 @@ tbody td {
 .checklist-row.row-correct { background: #f0fdf4 !important; }
 .checklist-row.row-incorrect { background: #fff7ed !important; border-left: 3px solid #f59e0b; }
 
+/* Dark mode: swap light mint/amber bg for dark tinted equivalents */
+.dark-mode .checklist-row.row-correct {
+  background: rgba(52,211,153,0.08) !important;
+}
+.dark-mode .checklist-row.row-correct .checklist-col {
+  color: var(--text2);
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.dark-mode .checklist-row.row-incorrect {
+  background: rgba(245,158,11,0.07) !important;
+  border-left: 3px solid #f59e0b;
+}
+
 .discrepancy-input {
   width: 100%;
   font-size: 12px;
