@@ -918,6 +918,16 @@ export default function Dashboard({ session }) {
       storage_location: form.storage_location || null,
       tags: form.tags ? form.tags.trim() : null,
       purchase_vat_rate: parseFloat(form.purchase_vat_rate) || 0,
+      // Topps-specific fields (stored alongside the generic brand/style/colourway/sku)
+      topps_type: form.topps_type || null,
+      topps_card_name: form.topps_card_name || null,
+      topps_set: form.topps_set || null,
+      topps_year: form.topps_year || null,
+      topps_card_number: form.topps_card_number || null,
+      topps_parallel: form.topps_parallel || null,
+      topps_print_run: form.topps_print_run || null,
+      topps_sealed_type: form.topps_sealed_type || null,
+      topps_product_name: form.topps_product_name || null,
       batch_id: batchId, user_id: session.user.id, status: 'in_stock'
     }
     let error
@@ -1000,7 +1010,20 @@ export default function Dashboard({ session }) {
     const totalCost = parseFloat(batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
     const sameSize = batchUnits.filter(u => u.size === item.size)
     const qty = sameSize.length > 1 ? sameSize.length : 1
-    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, target_price: item.target_price||'', storage_location: item.storage_location||'', topps_type: item.topps_type||'', topps_card_name: item.topps_card_name||'', topps_set: item.topps_set||'', topps_year: item.topps_year||'', topps_card_number: item.topps_card_number||'', topps_parallel: item.topps_parallel||'', topps_print_run: item.topps_print_run||'', topps_sealed_type: item.topps_sealed_type||'', topps_product_name: item.topps_product_name||'', brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', tags: item.tags||'', purchase_vat_rate: item.purchase_vat_rate!=null ? String(item.purchase_vat_rate) : '0', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
+    // For Topps items saved before topps_* columns were added, fall back to the
+    // generic fields (style → card name/product name, colourway → set, sku → card number)
+    const isTopps = item.category === 'Topps'
+    setForm({ ...EMPTY_FORM, category: item.category||'', pokemon_type: item.pokemon_type||'', item_condition: item.item_condition||'Brand New', long_term: item.long_term||false, target_price: item.target_price||'', storage_location: item.storage_location||'',
+      topps_type: item.topps_type||'',
+      topps_card_name: item.topps_card_name || (isTopps ? item.style : '') || '',
+      topps_set: item.topps_set || (isTopps ? item.colourway : '') || '',
+      topps_year: item.topps_year||'',
+      topps_card_number: item.topps_card_number || (isTopps ? item.sku : '') || '',
+      topps_parallel: item.topps_parallel||'',
+      topps_print_run: item.topps_print_run||'',
+      topps_sealed_type: item.topps_sealed_type||'',
+      topps_product_name: item.topps_product_name || (isTopps ? item.style : '') || '',
+      brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', tags: item.tags||'', purchase_vat_rate: item.purchase_vat_rate!=null ? String(item.purchase_vat_rate) : '0', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
     setEditItem(item); setShowAdd(true)
   }
 
@@ -3911,17 +3934,14 @@ export default function Dashboard({ session }) {
             </div>}
             {saveError&&<div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {saveError}</div>}
             <div className="form-actions">
-              {isPro&&vatRegistered&&(
+              {form.category&&(
                 <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'12px 14px',marginBottom:12}}>
-                  <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:'var(--accent)'}}>VAT Settings (Pro)</div>
-                  <div className="form-group" style={{marginBottom:0}}>
-                    <label className="form-label" style={{fontSize:11}}>Purchase VAT rate</label>
-                    <select className="form-input" style={{margin:0}} value={form.purchase_vat_rate||'0'} onChange={e=>setForm(f=>({...f,purchase_vat_rate:e.target.value}))}>
-                      <option value="0">No VAT (0%)</option>
-                      <option value="5">Reduced rate (5%)</option>
-                      <option value="20">Standard rate (20%)</option>
-                    </select>
-                  </div>
+                  <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:'var(--muted)'}}>Purchase VAT rate</div>
+                  <select className="form-input" style={{margin:0}} value={form.purchase_vat_rate||'0'} onChange={e=>setForm(f=>({...f,purchase_vat_rate:e.target.value}))}>
+                    <option value="0">No VAT (0%)</option>
+                    <option value="5">Reduced rate (5%)</option>
+                    <option value="20">Standard rate (20%)</option>
+                  </select>
                 </div>
               )}
               <button className="btn" onClick={()=>{addItemSuccessCallback.current=null;setShowAdd(false);setEditItem(null);setForm(EMPTY_FORM);setSaveError('')}}>Cancel</button>
