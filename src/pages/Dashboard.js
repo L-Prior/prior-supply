@@ -2547,14 +2547,14 @@ export default function Dashboard({ session }) {
                             <span className={mPL>=0?'td-pos':'td-neg'}>{mPL>=0?'+':''}{fmt(mPL)} profit</span>
                           </div>
                         </div>
-                        <div style={{overflowX:'auto'}}>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px 80px',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600,minWidth:620}}>
+                        <div>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 84px 58px 58px 58px 68px 82px 70px',gap:6,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600}}>
                             <div>Item</div><div>Platform</div><div>Cost</div><div>Sale</div><div>Fees</div><div>Profit</div><div>Payout</div><div></div>
                           </div>
                           {gItems.map(i => {
                             const profit = (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
                             return (
-                              <div key={i.id} style={{display:'grid',gridTemplateColumns:'1fr 100px 70px 70px 70px 80px 90px 80px',gap:8,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center',minWidth:620}}>
+                              <div key={i.id} style={{display:'grid',gridTemplateColumns:'1fr 84px 58px 58px 58px 68px 82px 70px',gap:6,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center'}}>
                                 <div>
                                   <div style={{fontWeight:500}}>{i.brand} {i.style}</div>
                                   <div style={{fontSize:11,color:'var(--muted)'}}>{[i.colourway,i.size?`UK ${i.size}`:null,i.sold_at?new Date(i.sold_at).toLocaleDateString('en-GB'):null].filter(Boolean).join(' · ')}</div>
@@ -3934,7 +3934,7 @@ export default function Dashboard({ session }) {
             </div>}
             {saveError&&<div style={{color:'#e53e3e',fontSize:13,marginTop:8}}>Error: {saveError}</div>}
             <div className="form-actions">
-              {form.category&&(
+              {isPro&&form.category&&(
                 <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'12px 14px',marginBottom:12}}>
                   <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:'var(--muted)'}}>Purchase VAT rate</div>
                   <select className="form-input" style={{margin:0}} value={form.purchase_vat_rate||'0'} onChange={e=>setForm(f=>({...f,purchase_vat_rate:e.target.value}))}>
