@@ -1805,17 +1805,162 @@ export default function Dashboard({ session }) {
     const [y, m] = monthKey.split('-')
     const label = new Date(parseInt(y), parseInt(m)-1).toLocaleString('default',{month:'long',year:'numeric'})
     const soldInMonth = items.filter(i=>i.status==='sold'&&getMonthKey(i.sold_at)===monthKey)
-    const expInMonth = expenses.filter(e=>getMonthKey(e.date)===monthKey)
-    const revenue = soldInMonth.reduce((s,i)=>s+(i.sale_price||0),0)
-    const cost = soldInMonth.reduce((s,i)=>s+(i.purchase_price||0),0)
-    const fees = soldInMonth.reduce((s,i)=>s+(i.fee_amount||0)+(i.shipping_fee||0),0)
-    const grossPL = revenue - cost
-    const totalExp = expInMonth.reduce((s,e)=>s+(e.amount||0),0)
-    const netPL = grossPL - fees - totalExp
-    const rows = soldInMonth.map(i=>`<tr><td>${i.brand||''} ${i.style||''}</td><td>${i.colourway||''}</td><td>£${(i.sale_price||0).toFixed(2)}</td><td>£${(i.purchase_price||0).toFixed(2)}</td><td class="${((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0))>=0?'pos':'neg'}">£${((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)).toFixed(2)}</td></tr>`).join('')
-    const expRows = expInMonth.map(e=>`<tr><td>${e.category}</td><td>${e.description||''}</td><td class="neg">−£${(e.amount||0).toFixed(2)}</td></tr>`).join('')
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Monthly Report – ${label}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:800px;margin:0 auto}h1{font-size:22px;font-weight:800;color:#16a34a;margin-bottom:4px}.subtitle{font-size:13px;color:#666;margin-bottom:28px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}.stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px}.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;margin-bottom:4px}.stat-value{font-size:18px;font-weight:800}.section{margin-bottom:24px}.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:6px 8px;color:#999;font-weight:600;font-size:11px;border-bottom:2px solid #e2e8f0}td{padding:7px 8px;border-bottom:1px solid #f0f4f8}.pos{color:#16a34a;font-weight:600}.neg{color:#dc2626;font-weight:600}@media print{body{padding:20px}}</style></head><body><h1>Monthly Report</h1><div class="subtitle">${label} · Generated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div><div class="stats"><div class="stat"><div class="stat-label">Items sold</div><div class="stat-value">${soldInMonth.length}</div></div><div class="stat"><div class="stat-label">Revenue</div><div class="stat-value">£${revenue.toFixed(2)}</div></div><div class="stat"><div class="stat-label">Gross P&L</div><div class="stat-value ${grossPL>=0?'pos':'neg'}">£${grossPL.toFixed(2)}</div></div><div class="stat"><div class="stat-label">Net P&L</div><div class="stat-value ${netPL>=0?'pos':'neg'}">£${netPL.toFixed(2)}</div></div></div>${soldInMonth.length>0?`<div class="section"><div class="section-title">Sales (${soldInMonth.length})</div><table><thead><tr><th>Item</th><th>Variant</th><th>Sale price</th><th>Cost</th><th>P&L</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}${expInMonth.length>0?`<div class="section"><div class="section-title">Expenses (${expInMonth.length})</div><table><thead><tr><th>Category</th><th>Description</th><th>Amount</th></tr></thead><tbody>${expRows}</tbody></table></div>`:''}</body></html>`
-    const win = window.open('', '_blank', 'width=900,height=700')
+    const expInMonth  = expenses.filter(e=>getMonthKey(e.date)===monthKey)
+
+    // ── Core financials ──────────────────────────────────────────────
+    const revenue   = soldInMonth.reduce((s,i)=>s+(i.sale_price||0),0)
+    const cost      = soldInMonth.reduce((s,i)=>s+(i.purchase_price||0),0)
+    const platFees  = soldInMonth.reduce((s,i)=>s+(i.fee_amount||0),0)
+    const shipping  = soldInMonth.reduce((s,i)=>s+(i.shipping_fee||0),0)
+    const totalFees = platFees + shipping
+    const grossPL   = revenue - cost
+    const totalExp  = expInMonth.reduce((s,e)=>s+(e.amount||0),0)
+    const netPL     = grossPL - totalFees - totalExp
+
+    // ── VAT (Pro + VAT registered) ───────────────────────────────────
+    const showVat = isPro && vatRegistered
+    const exVatAmt = (price, rate) => rate > 0 ? (price||0) / (1 + rate/100) : (price||0)
+    const vatAmt   = (price, rate) => (price||0) - exVatAmt(price, rate)
+    const outputVat     = showVat ? soldInMonth.reduce((s,i)=>s+vatAmt(i.sale_price,i.sale_vat_rate||0),0) : 0
+    const inputVatStock = showVat ? soldInMonth.reduce((s,i)=>s+vatAmt(i.purchase_price,i.purchase_vat_rate||0),0) : 0
+    const inputVatExp   = showVat ? expInMonth.reduce((s,e)=>s+vatAmt(e.amount,e.vat_rate||0),0) : 0
+    const netVat        = outputVat - inputVatStock - inputVatExp
+    const exVatProfit   = showVat ? soldInMonth.reduce((s,i)=>s+exVatAmt(i.sale_price,i.sale_vat_rate||0)-exVatAmt(i.purchase_price,i.purchase_vat_rate||0)-(i.fee_amount||0)-(i.shipping_fee||0),0) - expInMonth.reduce((s,e)=>s+exVatAmt(e.amount,e.vat_rate||0),0) : 0
+
+    // ── Platform breakdown ───────────────────────────────────────────
+    const platMap = {}
+    soldInMonth.forEach(i => {
+      const p = i.selling_platform || 'Unknown'
+      if (!platMap[p]) platMap[p] = { count:0, revenue:0, netPL:0 }
+      platMap[p].count++
+      platMap[p].revenue += i.sale_price||0
+      platMap[p].netPL   += (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
+    })
+    const platRows = Object.entries(platMap)
+      .sort((a,b)=>b[1].netPL-a[1].netPL)
+      .map(([p,d])=>`<tr><td>${p}</td><td class="right">${d.count}</td><td class="right">£${d.revenue.toFixed(2)}</td><td class="right ${d.netPL>=0?'pos':'neg'}">${d.netPL>=0?'+':''}£${d.netPL.toFixed(2)}</td></tr>`)
+      .join('')
+
+    // ── Category breakdown ───────────────────────────────────────────
+    const catMap = {}
+    soldInMonth.forEach(i => {
+      const c = i.category || 'Uncategorised'
+      if (!catMap[c]) catMap[c] = { count:0, netPL:0 }
+      catMap[c].count++
+      catMap[c].netPL += (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
+    })
+    const catRows = Object.entries(catMap)
+      .sort((a,b)=>b[1].netPL-a[1].netPL)
+      .map(([c,d])=>`<tr><td>${c}</td><td class="right">${d.count}</td><td class="right ${d.netPL>=0?'pos':'neg'}">${d.netPL>=0?'+':''}£${d.netPL.toFixed(2)}</td></tr>`)
+      .join('')
+
+    // ── Sales rows (enhanced) ────────────────────────────────────────
+    const salesRows = soldInMonth
+      .sort((a,b)=>new Date(a.sold_at)-new Date(b.sold_at))
+      .map(i => {
+        const itemNetPL = (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
+        const saleDate  = i.sold_at ? new Date(i.sold_at).toLocaleDateString('en-GB') : '—'
+        const variant   = [i.colourway, i.size?`UK ${i.size}`:null].filter(Boolean).join(' · ') || '—'
+        const payout    = i.payout_status==='paid' ? '✓ Paid' : 'Pending'
+        const vatCol    = showVat ? `<td class="right muted">${i.sale_vat_rate>0?`${i.sale_vat_rate}%`:'—'}</td>` : ''
+        return `<tr>
+          <td>${saleDate}</td>
+          <td><strong>${i.brand||''} ${i.style||''}</strong><br><span class="muted">${variant}</span></td>
+          <td>${i.selling_platform||'—'}</td>
+          <td class="right">£${(i.sale_price||0).toFixed(2)}</td>
+          <td class="right muted">£${(i.purchase_price||0).toFixed(2)}</td>
+          <td class="right muted">${(i.fee_amount||0)+(i.shipping_fee||0)>0?`−£${((i.fee_amount||0)+(i.shipping_fee||0)).toFixed(2)}`:'—'}</td>
+          ${vatCol}
+          <td class="right ${itemNetPL>=0?'pos':'neg'}">${itemNetPL>=0?'+':''}£${itemNetPL.toFixed(2)}</td>
+          <td class="${i.payout_status==='paid'?'pos':'amber'}">${payout}</td>
+        </tr>`
+      }).join('')
+
+    // ── Expense rows ─────────────────────────────────────────────────
+    const expRows = expInMonth
+      .sort((a,b)=>new Date(a.date)-new Date(b.date))
+      .map(e => {
+        const vatCol = showVat ? `<td class="right muted">${e.vat_rate>0?`${e.vat_rate}%`:'—'}</td><td class="right muted">${e.vat_rate>0?`£${vatAmt(e.amount,e.vat_rate).toFixed(2)}`:'—'}</td>` : ''
+        return `<tr><td>${e.date||'—'}</td><td>${e.category}</td><td>${e.description||''}</td><td class="right neg">−£${(e.amount||0).toFixed(2)}</td>${vatCol}</tr>`
+      }).join('')
+
+    const css = `*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:900px;margin:0 auto}
+h1{font-size:22px;font-weight:800;color:#16a34a;margin-bottom:2px}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}
+.subtitle{font-size:13px;color:#666;margin-bottom:28px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:28px}
+.stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px}
+.stat-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;margin-bottom:3px}
+.stat-value{font-size:16px;font-weight:800}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
+th{text-align:left;padding:5px 6px;color:#999;font-weight:600;font-size:10px;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+th.right,td.right{text-align:right}
+td{padding:6px 6px;border-bottom:1px solid #f0f4f8;vertical-align:top}
+.pos{color:#16a34a;font-weight:600}
+.neg{color:#dc2626;font-weight:600}
+.amber{color:#d97706;font-weight:600}
+.muted{color:#888}
+.vat-box{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:12px 16px;margin-bottom:28px}
+.vat-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #fde68a}
+.vat-row:last-child{border-bottom:none;font-weight:700;font-size:14px;padding-top:10px;margin-top:4px}
+.disclaimer{margin-top:28px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:11px;color:#166534}
+@media print{body{padding:20px}.disclaimer{display:none}}`
+
+    const vatSection = showVat ? `
+      <div class="vat-box">
+        <h2 style="margin:0 0 10px;border:none;padding:0;color:#92400e">VAT Summary (${vatScheme === 'flat_rate' ? `Flat Rate ${vatFlatRate}%` : 'Standard Scheme'})</h2>
+        <div class="vat-row"><span>Output VAT — Box 1 (VAT on sales)</span><span class="neg">£${outputVat.toFixed(2)}</span></div>
+        <div class="vat-row"><span>Input VAT — Box 4 (VAT on purchases)</span><span class="pos">£${(inputVatStock+inputVatExp).toFixed(2)}</span></div>
+        <div class="vat-row"><span>Net VAT payable — Box 5</span><span class="${netVat>=0?'neg':'pos'}">${netVat>=0?'':'−'}£${Math.abs(netVat).toFixed(2)}</span></div>
+        <div class="vat-row" style="margin-top:8px;border-top:1px solid #fde68a"><span>Ex-VAT net profit</span><span class="${exVatProfit>=0?'pos':'neg'}">${exVatProfit>=0?'+':''}£${exVatProfit.toFixed(2)}</span></div>
+      </div>` : ''
+
+    const salesVatHeader = showVat ? '<th class="right">VAT %</th>' : ''
+    const expVatHeader   = showVat ? '<th class="right">VAT %</th><th class="right">VAT £</th>' : ''
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Monthly Report – ${label}</title><style>${css}</style></head><body>
+<h1>Monthly Report — ${label}</h1>
+<div class="subtitle">Generated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}${isPro?' · Pro account':''}</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Items sold</div><div class="stat-value">${soldInMonth.length}</div></div>
+  <div class="stat"><div class="stat-label">Revenue</div><div class="stat-value">£${revenue.toFixed(2)}</div></div>
+  <div class="stat"><div class="stat-label">Gross P&amp;L</div><div class="stat-value ${grossPL>=0?'pos':'neg'}">£${grossPL.toFixed(2)}</div></div>
+  <div class="stat"><div class="stat-label">Fees &amp; shipping</div><div class="stat-value neg">−£${totalFees.toFixed(2)}</div></div>
+  <div class="stat"><div class="stat-label">Expenses</div><div class="stat-value neg">−£${totalExp.toFixed(2)}</div></div>
+  <div class="stat"><div class="stat-label">Net P&amp;L</div><div class="stat-value ${netPL>=0?'pos':'neg'}">${netPL>=0?'+':''}£${netPL.toFixed(2)}</div></div>
+</div>
+
+${vatSection}
+
+${soldInMonth.length>0?`
+<h2>Sales (${soldInMonth.length})</h2>
+<table><thead><tr>
+  <th>Date</th><th>Item</th><th>Platform</th>
+  <th class="right">Sale</th><th class="right">Cost</th><th class="right">Fees</th>
+  ${salesVatHeader}<th class="right">Net P&amp;L</th><th>Payout</th>
+</tr></thead><tbody>${salesRows}</tbody></table>`:''}
+
+${platRows?`
+<h2>By Platform</h2>
+<table><thead><tr><th>Platform</th><th class="right">Sales</th><th class="right">Revenue</th><th class="right">Net P&amp;L</th></tr></thead>
+<tbody>${platRows}</tbody></table>`:''}
+
+${catRows?`
+<h2>By Category</h2>
+<table><thead><tr><th>Category</th><th class="right">Sales</th><th class="right">Net P&amp;L</th></tr></thead>
+<tbody>${catRows}</tbody></table>`:''}
+
+${expInMonth.length>0?`
+<h2>Expenses (${expInMonth.length}) — total −£${totalExp.toFixed(2)}</h2>
+<table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th class="right">Amount</th>${expVatHeader}</tr></thead>
+<tbody>${expRows}</tbody></table>`:''}
+
+<div class="disclaimer">✓ ITS VAULTED Pro Monthly Report · Figures are for reference only and should be reviewed by a qualified accountant before submission to HMRC.</div>
+</body></html>`
+
+    const win = window.open('', '_blank', 'width=1000,height=750')
     win.document.write(html); win.document.close(); win.focus()
     setTimeout(() => win.print(), 400)
   }
