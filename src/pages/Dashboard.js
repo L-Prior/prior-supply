@@ -42,6 +42,8 @@ const BREAKER_PLATFORMS = [
   { id: 'custom', name: 'Custom', type: 'percent', rate: 0 },
 ]
 
+const LISTING_PLATFORMS = ['eBay', 'Depop', 'Vinted', 'StockX', 'Laced', 'Facebook', 'Whatnot', 'Other']
+
 function calcFee(salePrice, platform, customRate = 0) {
   if (!platform || !salePrice) return 0
   const price = parseFloat(salePrice) || 0
@@ -842,6 +844,8 @@ export default function Dashboard({ session }) {
   const [wishlist, setWishlist] = useState(() => { try { return JSON.parse(localStorage.getItem('iv_wishlist')||'[]') } catch { return [] } })
   const [showWishlistForm, setShowWishlistForm] = useState(false)
   const [wishlistForm, setWishlistForm] = useState({ brand:'', style:'', category:'', targetPrice:'', notes:'' })
+  const [listingsFilter, setListingsFilter] = useState('all') // 'all' | 'listed' | 'unlisted'
+  const [listingsSearch, setListingsSearch] = useState('')
   useEffect(() => { try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlist)) } catch {} }, [wishlist]) // eslint-disable-line react-hooks/exhaustive-deps
   function addWishlistItem() { if (!wishlistForm.brand.trim()) return; setWishlist(w=>[{ id:Date.now(), ...wishlistForm, createdAt: new Date().toISOString() }, ...w]); setWishlistForm({brand:'',style:'',category:'',targetPrice:'',notes:''}); setShowWishlistForm(false) }
   function removeWishlistItem(id) { setWishlist(w=>w.filter(i=>i.id!==id)) }
@@ -1126,6 +1130,14 @@ export default function Dashboard({ session }) {
       await supabase.from('stock').update({ long_term: false }).eq('id', batch.units[0].id)
     }
     fetchItems()
+  }
+
+  async function toggleListingPlatform(item, platform) {
+    const current = item.listed_on || []
+    const next = current.includes(platform) ? current.filter(p => p !== platform) : [...current, platform]
+    // Optimistic update
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, listed_on: next } : i))
+    await supabase.from('stock').update({ listed_on: next }).eq('id', item.id)
   }
 
   function resetSellModal() {
@@ -2453,6 +2465,9 @@ ${expInMonth.length>0?`
               <button className={`type-btn ${stockTab==='checklist'?'active':''}`} onClick={()=>{setStockTab('checklist');setTimeout(()=>{window.scrollTo({top:0,behavior:'instant'});document.documentElement.scrollTop=0;document.body.scrollTop=0},50)}}>
                 Checklist
               </button>
+              <button className={`type-btn ${stockTab==='listings'?'active':''}`} onClick={()=>setStockTab('listings')}>
+                Listings{(()=>{const u=items.filter(i=>i.status==='in_stock'&&(!i.listed_on||i.listed_on.length===0)).length;return u>0?<span className="tab-count">{u}</span>:null})()}
+              </button>
               <button className={`type-btn ${stockTab==='wishlist'?'active':''} ${!isCore?'locked-tab':''}`} onClick={()=>setStockTab('wishlist')}>
                 Wishlist{!isCore&&<span className="tab-lock">Core</span>}
               </button>
@@ -2725,6 +2740,88 @@ ${expInMonth.length>0?`
               )
             })()}
             {stockTab==='checklist'&&<StockChecklist items={items} breaks={breaks} clearedBatch={clearedBatch} onAddItem={(onSuccess)=>{addItemSuccessCallback.current=onSuccess||null;setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}} onEditItem={(item)=>{openEdit(item)}} onSellItem={(item)=>{setSellItem(item);setSalePrice('');setSellingPlatform('');setPayoutStatus('pending')}}/>}
+
+            {stockTab==='listings'&&(()=>{
+              const inStock = items.filter(i => i.status === 'in_stock')
+              const filtered = inStock.filter(i => {
+                const listed = i.listed_on && i.listed_on.length > 0
+                if (listingsFilter === 'listed' && !listed) return false
+                if (listingsFilter === 'unlisted' && listed) return false
+                if (listingsSearch) {
+                  const q = listingsSearch.toLowerCase()
+                  const label = [i.brand, i.style, i.colourway, i.size, i.card_name, i.topps_card_name, i.product_name].filter(Boolean).join(' ').toLowerCase()
+                  if (!label.includes(q)) return false
+                }
+                return true
+              })
+              const unlistedCount = inStock.filter(i => !i.listed_on || i.listed_on.length === 0).length
+              const listedCount = inStock.filter(i => i.listed_on && i.listed_on.length > 0).length
+
+              function itemLabel(i) {
+                if (i.category === 'Topps') return [i.topps_card_name || i.brand, i.topps_set || i.style, i.size].filter(Boolean).join(' — ')
+                return [i.brand, i.style, i.colourway, i.size].filter(Boolean).join(' — ')
+              }
+
+              return (
+                <div>
+                  {/* Summary bar */}
+                  <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap',alignItems:'center'}}>
+                    <div style={{display:'flex',gap:6}}>
+                      <button className={`type-btn ${listingsFilter==='all'?'active':''}`} onClick={()=>setListingsFilter('all')}>All <span className="tab-count">{inStock.length}</span></button>
+                      <button className={`type-btn ${listingsFilter==='listed'?'active':''}`} onClick={()=>setListingsFilter('listed')}>Listed <span className="tab-count">{listedCount}</span></button>
+                      <button className={`type-btn ${listingsFilter==='unlisted'?'active':''}`} onClick={()=>setListingsFilter('unlisted')}>Not listed <span className="tab-count">{unlistedCount}</span></button>
+                    </div>
+                    <input className="filter-input" placeholder="Search items…" value={listingsSearch} onChange={e=>setListingsSearch(e.target.value)} style={{flex:1,minWidth:160,maxWidth:300}}/>
+                  </div>
+
+                  {filtered.length === 0 ? (
+                    <div style={{textAlign:'center',padding:'48px 0',color:'var(--muted)',fontSize:14}}>
+                      {listingsFilter === 'unlisted' ? '✓ Everything in stock is listed somewhere.' : 'No items match.'}
+                    </div>
+                  ) : (
+                    <div style={{display:'flex',flexDirection:'column',gap:1,borderRadius:12,overflow:'hidden',border:'1px solid var(--border)'}}>
+                      {/* Header */}
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 320px 90px',gap:12,padding:'10px 16px',background:'var(--surface2)',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--muted)'}}>
+                        <span>Item</span>
+                        <span>Listed on</span>
+                        <span style={{textAlign:'center'}}>Status</span>
+                      </div>
+                      {filtered.map(item => {
+                        const listed = item.listed_on || []
+                        const isListed = listed.length > 0
+                        return (
+                          <div key={item.id} style={{display:'grid',gridTemplateColumns:'1fr 320px 90px',gap:12,padding:'12px 16px',background:'var(--surface)',borderTop:'1px solid var(--border)',alignItems:'center'}}>
+                            {/* Item name */}
+                            <div>
+                              <div style={{fontSize:13,fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{itemLabel(item)}</div>
+                              <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{item.category}</div>
+                            </div>
+                            {/* Platform toggles */}
+                            <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+                              {LISTING_PLATFORMS.map(p => {
+                                const on = listed.includes(p)
+                                return (
+                                  <button key={p} onClick={()=>toggleListingPlatform(item, p)} style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:20,border:'1.5px solid',cursor:'pointer',transition:'all 0.15s',background:on?'var(--accent)':'transparent',borderColor:on?'var(--accent)':'var(--border)',color:on?'#fff':'var(--muted)'}}>
+                                    {p}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            {/* Status pill */}
+                            <div style={{textAlign:'center'}}>
+                              {isListed
+                                ? <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'rgba(52,211,153,0.12)',color:'#059669'}}>Live</span>
+                                : <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'rgba(245,158,11,0.12)',color:'#d97706'}}>Unlisted</span>
+                              }
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {stockTab==='wishlist'&&!isCore&&<UpgradeWall tier="Core" price="£12/mo" feature="Restock Wishlist" desc="Track items you want to buy next, with price targets and one-click add to stock." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
             {stockTab==='wishlist'&&isCore&&(
