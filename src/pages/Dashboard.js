@@ -3261,7 +3261,7 @@ ${expInMonth.length>0?`
                     </div>
 
                     <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'0.06em',marginBottom:10}}>Line items</div>
-                    <table style={{width:'100%',borderCollapse:'collapse',marginBottom:10,tableLayout:'fixed'}}>
+                    <table style={{width:'100%',borderCollapse:'collapse',marginBottom:10,tableLayout:'fixed',minWidth:0}}>
                       <colgroup>
                         <col/>{/* description — takes remaining width */}
                         <col style={{width:60}}/>
