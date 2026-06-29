@@ -918,6 +918,7 @@ tbody td {
   display: flex;
   gap: 6px;
   padding-top: 4px;
+  margin-top: auto;
 }
 
 .item-card-actions .btn.success {
@@ -929,7 +930,7 @@ tbody td {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .item-card {
