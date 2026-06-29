@@ -3271,8 +3271,8 @@ ${expInMonth.length>0?`
                       </colgroup>
                       <thead><tr style={{borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--muted)',textTransform:'uppercase'}}>
                         <th style={{textAlign:'left',padding:'6px 0',fontWeight:700,letterSpacing:'0.05em'}}>Description</th>
-                        <th style={{textAlign:'right',padding:'6px 8px',fontWeight:700,letterSpacing:'0.05em'}}>Qty</th>
-                        <th style={{textAlign:'right',padding:'6px 8px',fontWeight:700,letterSpacing:'0.05em'}}>Unit (£)</th>
+                        <th style={{textAlign:'left',padding:'6px 8px',fontWeight:700,letterSpacing:'0.05em'}}>Qty</th>
+                        <th style={{textAlign:'left',padding:'6px 8px',fontWeight:700,letterSpacing:'0.05em'}}>Unit (£)</th>
                         <th style={{textAlign:'right',padding:'6px 0',fontWeight:700,letterSpacing:'0.05em'}}>Total</th>
                         <th></th>
                       </tr></thead>
@@ -3280,8 +3280,8 @@ ${expInMonth.length>0?`
                         {invLines.map((l,i)=>(
                           <tr key={i} style={{borderBottom:'1px solid var(--border)'}}>
                             <td style={{padding:'6px 0'}}><input className="form-input" style={{margin:0,width:'100%'}} placeholder="Item or service description" value={l.description} onChange={e=>updateInvLine(i,'description',e.target.value)}/></td>
-                            <td style={{padding:'6px 8px'}}><input className="form-input" style={{margin:0,textAlign:'right',width:'100%'}} type="number" min="1" value={l.qty} onChange={e=>updateInvLine(i,'qty',e.target.value)}/></td>
-                            <td style={{padding:'6px 8px'}}><input className="form-input" style={{margin:0,textAlign:'right',width:'100%'}} type="number" step="0.01" min="0" placeholder="0.00" value={l.unitPrice} onChange={e=>updateInvLine(i,'unitPrice',e.target.value)}/></td>
+                            <td style={{padding:'6px 8px'}}><input className="form-input" style={{margin:0,width:'100%'}} type="number" min="1" value={l.qty} onChange={e=>updateInvLine(i,'qty',e.target.value)}/></td>
+                            <td style={{padding:'6px 8px'}}><input className="form-input" style={{margin:0,width:'100%'}} type="number" step="0.01" min="0" placeholder="0.00" value={l.unitPrice} onChange={e=>updateInvLine(i,'unitPrice',e.target.value)}/></td>
                             <td style={{padding:'6px 0',textAlign:'right',fontWeight:600,fontSize:14}}>{fmt((parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0))}</td>
                             <td style={{padding:'6px 0',textAlign:'center'}}>{invLines.length>1&&<button onClick={()=>removeInvLine(i)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:16,lineHeight:1}}>✕</button>}</td>
                           </tr>
