@@ -2837,9 +2837,24 @@ tbody td {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
   padding: 110px 24px 80px;
   overflow: hidden;
+}
+.lp-hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 56px;
+  align-items: center;
+  max-width: 1140px;
+  width: 100%;
+  margin: 0 auto;
+}
+@media (min-width: 980px) {
+  .lp-hero-grid { grid-template-columns: 1.05fr 0.95fr; gap: 40px; }
+  .lp-hero-content { align-items: flex-start !important; text-align: left !important; }
+  .lp-hero-ctas { justify-content: flex-start !important; }
 }
 
 /* Ambient animated orbs */
@@ -2937,6 +2952,281 @@ tbody td {
   font-size: 13px;
   color: #5a6080;
   margin: 0;
+}
+
+/* ── Hero product mockup ──────────────────────────────────────────── */
+@keyframes lp-mockup-float {
+  0%, 100% { transform: translateY(0) rotate(-1.2deg); }
+  50%      { transform: translateY(-14px) rotate(-0.4deg); }
+}
+.lp-mockup-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+.lp-mockup {
+  width: 100%;
+  max-width: 420px;
+  background: linear-gradient(160deg, rgba(20,22,38,0.9) 0%, rgba(10,11,20,0.95) 100%);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(245,158,11,0.06), 0 0 60px rgba(245,158,11,0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  overflow: hidden;
+  animation: lp-mockup-float 7s ease-in-out infinite;
+}
+.lp-mockup-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+}
+.lp-mockup-dot { width: 9px; height: 9px; border-radius: 50%; opacity: 0.85; }
+.lp-mockup-title {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6080;
+  letter-spacing: 0.02em;
+}
+.lp-mockup-body { padding: 22px 20px 24px; }
+.lp-mockup-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.lp-mockup-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 12px 10px;
+}
+.lp-mockup-stat-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4a5070;
+}
+.lp-mockup-stat-value {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #e8eaf2;
+}
+.lp-mockup-up { color: #4ade80; }
+.lp-mockup-rows { display: flex; flex-direction: column; gap: 10px; }
+.lp-mockup-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.lp-mockup-row-swatch {
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.lp-mockup-row-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.lp-mockup-row-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #d8dcf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-mockup-row-sub { font-size: 11px; color: #565c80; }
+.lp-mockup-row-profit {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #4ade80;
+  flex-shrink: 0;
+}
+.lp-mockup-toast {
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16,18,32,0.95);
+  border: 1px solid rgba(52,211,153,0.25);
+  color: #d8dcf0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 99px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px);
+  white-space: nowrap;
+  animation: lp-mockup-float 7s ease-in-out infinite reverse;
+}
+.lp-mockup-toast-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(52,211,153,0.8);
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .lp-mockup { max-width: 100%; }
+}
+
+/* ── Trust strip ──────────────────────────────────────────────────── */
+.lp-trust {
+  position: relative;
+  z-index: 1;
+  padding: 44px 0;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.lp-trust-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 32px;
+}
+.lp-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #7880a8;
+}
+.lp-trust-icon { font-size: 16px; }
+
+/* ── Founder note ─────────────────────────────────────────────────── */
+.lp-founder-wrap { padding: 60px 0 0; }
+.lp-founder-card {
+  position: relative;
+  max-width: 780px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 8px 24px;
+}
+.lp-founder-mark {
+  font-size: 64px;
+  font-weight: 900;
+  color: rgba(245,158,11,0.25);
+  line-height: 1;
+  font-family: Georgia, serif;
+  margin-bottom: -8px;
+}
+.lp-founder-quote {
+  font-size: 19px;
+  font-weight: 500;
+  color: #c8cce0;
+  line-height: 1.7;
+  letter-spacing: -0.01em;
+  margin: 0 0 18px;
+}
+.lp-founder-sig {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f59e0b;
+  letter-spacing: 0.02em;
+}
+
+/* ── FAQ ──────────────────────────────────────────────────────────── */
+.lp-faq-list {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lp-faq-item {
+  background: linear-gradient(145deg, #0e1020 0%, #090b17 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.lp-faq-item.lp-faq-open { border-color: rgba(245,158,11,0.25); }
+.lp-faq-q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 18px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e8eaf2;
+  font-family: inherit;
+}
+.lp-faq-toggle {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(245,158,11,0.1);
+  color: #f59e0b;
+  font-size: 16px;
+  font-weight: 700;
+}
+.lp-faq-a-wrap {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.lp-faq-a {
+  margin: 0;
+  padding: 0 22px 20px;
+  font-size: 14px;
+  color: #7880a8;
+  line-height: 1.65;
+}
+
+/* ── Final CTA banner ────────────────────────────────────────────── */
+.lp-final-cta-wrap { padding: 40px 0 100px; }
+.lp-final-cta {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  padding: 64px 32px;
+  border-radius: 28px;
+  border: 1px solid rgba(245,158,11,0.2);
+  background: linear-gradient(160deg, #16131f 0%, #0c0d18 100%);
+}
+.lp-final-cta-glow {
+  position: absolute;
+  top: -60%; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(circle, rgba(245,158,11,0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+.lp-final-cta-title {
+  position: relative;
+  font-size: clamp(26px, 3.6vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #f0f2fa;
+  margin: 0 0 12px;
+}
+.lp-final-cta-sub {
+  position: relative;
+  font-size: 15px;
+  color: #8890b5;
+  margin: 0 0 28px;
 }
 
 /* Stats glass strip */

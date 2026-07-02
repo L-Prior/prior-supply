@@ -68,6 +68,29 @@ const CONNECTOR_GRADIENTS = [
   'linear-gradient(90deg, #818cf8, #34d399)',
 ]
 
+const FAQS = [
+  {
+    q: 'Do you take a cut of my sales?',
+    a: 'No. ITS VAULTED is a flat monthly subscription — never a percentage of what you sell. What you make is 100% yours.',
+  },
+  {
+    q: 'What happens to my data if I cancel?',
+    a: 'Your data is always exportable to CSV, any time, on any plan. If you cancel, you keep read access to your history — we never hold your inventory hostage.',
+  },
+  {
+    q: 'Can I switch plans later?',
+    a: 'Yes — upgrade or downgrade whenever you like from your account settings. Changes apply on your next billing cycle.',
+  },
+  {
+    q: 'Is my data private?',
+    a: 'Completely. Every account is fully isolated at the database level — nobody else can see your stock, prices, or numbers. Not other users, not us.',
+  },
+  {
+    q: 'Does it work for things other than sneakers?',
+    a: 'Yes — sneakers, Pokémon and trading cards, Lego, clothing, Topps, and a general "collector" catch-all category. If you resell it, you can track it.',
+  },
+]
+
 const PLANS = [
   {
     name: 'Free',
@@ -122,6 +145,8 @@ const PLANS = [
 ]
 
 export default function Landing({ session }) {
+  const [openFaq, setOpenFaq] = useState(0)
+
   // Scroll reveal — fires once per element when it enters the viewport
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -195,24 +220,75 @@ export default function Landing({ session }) {
         <div className="lp-orb lp-orb-2" />
         <div className="lp-orb lp-orb-3" />
 
-        <div className="lp-hero-content">
-          <div className="lp-badge lp-reveal">Built for resellers &amp; collectors</div>
+        <div className="lp-hero-grid">
+          <div className="lp-hero-content">
+            <div className="lp-badge lp-reveal">✦ Built for resellers &amp; collectors</div>
 
-          <h1 className="lp-hero-title lp-reveal">
-            Track your stock.<br />
-            <span className="lp-gold-text">Know your profit.</span>
-          </h1>
+            <h1 className="lp-hero-title lp-reveal">
+              Track your stock.<br />
+              <span className="lp-gold-text">Know your profit.</span>
+            </h1>
 
-          <p className="lp-hero-sub lp-reveal">
-            ITS VAULTED is the cleanest way to manage your reselling business. Add items, mark them sold, and watch your P&amp;L update in real time.
-          </p>
+            <p className="lp-hero-sub lp-reveal">
+              ITS VAULTED is the cleanest way to manage your reselling business. Add items, mark them sold, and watch your P&amp;L update in real time — down to the penny.
+            </p>
 
-          <div className="lp-hero-ctas lp-reveal">
-            <Link to="/login" className="lp-btn-gold lp-btn-lg">Get started free →</Link>
-            <a href="#features" className="lp-btn-ghost lp-btn-lg">See how it works</a>
+            <div className="lp-hero-ctas lp-reveal">
+              <Link to="/login" className="lp-btn-gold lp-btn-lg">Get started free →</Link>
+              <a href="#features" className="lp-btn-ghost lp-btn-lg">See how it works</a>
+            </div>
+
+            <p className="lp-hero-note lp-reveal">No credit card required · Free plan available · 60-second setup</p>
           </div>
 
-          <p className="lp-hero-note lp-reveal">No credit card required · Free plan available</p>
+          {/* Floating product mockup */}
+          <div className="lp-mockup-wrap lp-reveal">
+            <div className="lp-mockup">
+              <div className="lp-mockup-bar">
+                <span className="lp-mockup-dot" style={{ background: '#f7768e' }} />
+                <span className="lp-mockup-dot" style={{ background: '#e0af68' }} />
+                <span className="lp-mockup-dot" style={{ background: '#9ece6a' }} />
+                <span className="lp-mockup-title">Dashboard</span>
+              </div>
+              <div className="lp-mockup-body">
+                <div className="lp-mockup-stats">
+                  <div className="lp-mockup-stat">
+                    <span className="lp-mockup-stat-label">Net P&amp;L</span>
+                    <span className="lp-mockup-stat-value lp-mockup-up">+£4,218</span>
+                  </div>
+                  <div className="lp-mockup-stat">
+                    <span className="lp-mockup-stat-label">In stock</span>
+                    <span className="lp-mockup-stat-value">86</span>
+                  </div>
+                  <div className="lp-mockup-stat">
+                    <span className="lp-mockup-stat-label">ROI</span>
+                    <span className="lp-mockup-stat-value lp-mockup-up">62%</span>
+                  </div>
+                </div>
+                <div className="lp-mockup-rows">
+                  {[
+                    { name: 'Nike Dunk Low', sub: 'Panda · UK9', profit: '+£38.20', color: '#f59e0b' },
+                    { name: 'Charizard VMAX', sub: 'PSA 10', profit: '+£112.00', color: '#818cf8' },
+                    { name: 'Air Max 95', sub: 'Neon · UK8', profit: '+£24.75', color: '#34d399' },
+                  ].map(row => (
+                    <div className="lp-mockup-row" key={row.name}>
+                      <span className="lp-mockup-row-swatch" style={{ background: row.color }} />
+                      <div className="lp-mockup-row-info">
+                        <span className="lp-mockup-row-name">{row.name}</span>
+                        <span className="lp-mockup-row-sub">{row.sub}</span>
+                      </div>
+                      <span className="lp-mockup-row-profit">{row.profit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Floating notification chip */}
+            <div className="lp-mockup-toast">
+              <span className="lp-mockup-toast-dot" />
+              Item sold — P&amp;L updated
+            </div>
+          </div>
         </div>
 
         {/* Stats glass card */}
@@ -230,6 +306,23 @@ export default function Landing({ session }) {
                 <span className="lp-stat-label">{s.label}</span>
               </div>
             </React.Fragment>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Trust strip ───────────────────────────────────── */}
+      <section className="lp-trust">
+        <div className="lp-container lp-trust-inner">
+          {[
+            { icon: '🔒', text: 'Encrypted data, per-account isolation' },
+            { icon: '🇬🇧', text: 'Built in the UK for UK resellers' },
+            { icon: '⚡', text: 'Real-time sync, no refresh needed' },
+            { icon: '🚫', text: 'We never sell your data' },
+          ].map(t => (
+            <div className="lp-trust-item lp-reveal" key={t.text}>
+              <span className="lp-trust-icon">{t.icon}</span>
+              <span>{t.text}</span>
+            </div>
           ))}
         </div>
       </section>
@@ -368,6 +461,57 @@ export default function Landing({ session }) {
                 </Link>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Founder note ──────────────────────────────────── */}
+      <section className="lp-section lp-founder-wrap">
+        <div className="lp-container">
+          <div className="lp-founder-card lp-reveal">
+            <div className="lp-founder-mark">“</div>
+            <p className="lp-founder-quote">
+              I built ITS VAULTED because every spreadsheet I tried broke the moment my stock crossed a few hundred items. I wanted something that felt as fast as adding a note, but told me exactly what I was actually making — no formulas to maintain, no fees taken from my sales.
+            </p>
+            <div className="lp-founder-sig">— Built &amp; maintained independently</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ───────────────────────────────────────────── */}
+      <section className="lp-section" id="faq">
+        <div className="lp-container">
+          <div className="lp-eyebrow lp-reveal lp-center">FAQ</div>
+          <h2 className="lp-section-title lp-reveal lp-center">Questions, answered</h2>
+          <p className="lp-section-sub lp-reveal lp-center">Still unsure? Here's what people usually ask before signing up.</p>
+
+          <div className="lp-faq-list">
+            {FAQS.map((f, i) => {
+              const open = openFaq === i
+              return (
+                <div key={f.q} className={`lp-faq-item lp-reveal${open ? ' lp-faq-open' : ''}`} style={{ transitionDelay: `${i * 0.05}s` }}>
+                  <button className="lp-faq-q" onClick={() => setOpenFaq(open ? -1 : i)} aria-expanded={open}>
+                    <span>{f.q}</span>
+                    <span className="lp-faq-toggle">{open ? '−' : '+'}</span>
+                  </button>
+                  <div className="lp-faq-a-wrap" style={{ maxHeight: open ? 200 : 0 }}>
+                    <p className="lp-faq-a">{f.a}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA banner ─────────────────────────────── */}
+      <section className="lp-final-cta-wrap">
+        <div className="lp-container">
+          <div className="lp-final-cta lp-reveal">
+            <div className="lp-final-cta-glow" />
+            <h2 className="lp-final-cta-title">Ready to know your numbers?</h2>
+            <p className="lp-final-cta-sub">Set up your first item in under a minute. No card required.</p>
+            <Link to="/login" className="lp-btn-gold lp-btn-lg">Get started free →</Link>
           </div>
         </div>
       </section>
