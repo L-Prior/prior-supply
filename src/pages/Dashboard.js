@@ -27,6 +27,7 @@ const RESELLER_PLATFORMS = [
   { id: 'ebay_private', name: 'eBay (Private)', type: 'flat', rate: 0 },
   { id: 'ebay_business', name: 'eBay (Business)', type: 'percent_plus_fixed', rate: 12.8, fixed: 0.40 },
   { id: 'laced', name: 'Laced', type: 'percent', rate: 15 },
+  { id: 'sole_supplier', name: 'Sole Supplier', type: 'percent', rate: 6 },
   { id: 'stockx_l1', name: 'StockX — Level 1 (0–11 sales)', type: 'percent', rate: 12 },
   { id: 'stockx_l2', name: 'StockX — Level 2 (12–39 sales)', type: 'percent', rate: 11.5 },
   { id: 'stockx_l3', name: 'StockX — Level 3 (40–799 sales)', type: 'percent', rate: 11 },
