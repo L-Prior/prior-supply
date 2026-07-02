@@ -42,7 +42,7 @@ const BREAKER_PLATFORMS = [
   { id: 'custom', name: 'Custom', type: 'percent', rate: 0 },
 ]
 
-const LISTING_PLATFORMS = ['eBay', 'Depop', 'Vinted', 'StockX', 'Laced', 'Facebook', 'Whatnot', 'Other']
+const LISTING_PLATFORMS = ['eBay', 'Depop', 'Vinted', 'StockX', 'Laced', 'Facebook', 'Sole Supplier', 'Other']
 
 function calcFee(salePrice, platform, customRate = 0) {
   if (!platform || !salePrice) return 0
