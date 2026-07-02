@@ -42,7 +42,7 @@ export default function ResetPassword() {
       <div className="auth-wrap">
         <div className="auth-card">
           <Link to="/" className="auth-brand" style={{ textDecoration: 'none' }}>
-            <img src="/logo-light.svg" alt="ITS VAULTED" className="auth-logo" />
+            <img src="/logo-dark.svg" alt="ITS VAULTED" className="auth-logo" />
           </Link>
           <h2 className="auth-title">Reset your password</h2>
           <div className="auth-error">This reset link is invalid or has expired. <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>Request a new one</Link>.</div>
@@ -56,7 +56,7 @@ export default function ResetPassword() {
       <div className="auth-wrap">
         <div className="auth-card">
           <Link to="/" className="auth-brand" style={{ textDecoration: 'none' }}>
-            <img src="/logo-light.svg" alt="ITS VAULTED" className="auth-logo" />
+            <img src="/logo-dark.svg" alt="ITS VAULTED" className="auth-logo" />
           </Link>
           <div className="auth-success" style={{ fontSize: 14, textAlign: 'center', padding: 20 }}>
             ✓ Password updated. Redirecting to your dashboard…
@@ -70,7 +70,7 @@ export default function ResetPassword() {
     <div className="auth-wrap">
       <div className="auth-card">
         <Link to="/" className="auth-brand" style={{ textDecoration: 'none' }}>
-          <img src="/logo-light.svg" alt="ITS VAULTED" className="auth-logo" />
+          <img src="/logo-dark.svg" alt="ITS VAULTED" className="auth-logo" />
         </Link>
         <h2 className="auth-title">Set a new password</h2>
         <form onSubmit={handleSubmit} className="auth-form">

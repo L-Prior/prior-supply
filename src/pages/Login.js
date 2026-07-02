@@ -58,7 +58,7 @@ export default function Login() {
     <div className="auth-wrap">
       <div className="auth-card">
         <Link to="/" className="auth-brand" style={{ textDecoration: 'none' }}>
-          <img src="/logo-light.svg" alt="ITS VAULTED" className="auth-logo" />
+          <img src="/logo-dark.svg" alt="ITS VAULTED" className="auth-logo" />
         </Link>
 
         <h2 className="auth-title">
