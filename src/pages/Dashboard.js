@@ -2541,6 +2541,7 @@ ${expInMonth.length>0?`
                 ):viewMode==='list'?(
                   <div className="inv-list">
                     <div className="inv-list-header">
+                      <span/>
                       <span>Item</span>
                       <span>Status &amp; Details</span>
                       <span className="inv-col-num">Cost</span>
@@ -2569,7 +2570,7 @@ ${expInMonth.length>0?`
                       function toggleBatchSelect(e){e.stopPropagation();setSelectedIds(s=>{const n=new Set(s);if(batchSelected){batchUnitIds.forEach(id=>n.delete(id))}else{batchUnitIds.forEach(id=>n.add(id))};return n})}
                       return (
                         <div key={batch.key} className="inv-list-row" onClick={()=>setBatchModal(batch)}>
-                          {isPro&&<div style={{paddingTop:14,paddingRight:4,flexShrink:0}} onClick={toggleBatchSelect}><input type="checkbox" checked={batchSelected} onChange={()=>{}} style={{cursor:'pointer',width:15,height:15}}/></div>}
+                          {isPro?<div style={{paddingTop:14,paddingRight:4,flexShrink:0}} onClick={toggleBatchSelect}><input type="checkbox" checked={batchSelected} onChange={()=>{}} style={{cursor:'pointer',width:15,height:15}}/></div>:<div/>}
                           <div className="inv-list-main">
                             <div style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600,marginBottom:2}}>{batch.category}</div>
                             <div style={{fontWeight:700,fontSize:15,color:'var(--text)',lineHeight:1.25}}>{batch.brand||'—'}</div>
