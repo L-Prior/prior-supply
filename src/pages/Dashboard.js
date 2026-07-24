@@ -474,7 +474,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
   return (
     <div>
       {/* Three tabs */}
-      <div style={{display:'flex',gap:8,marginBottom:20}}>
+      <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
         <button className={`type-btn ${checklistTab==='checklist'?'active':''}`} onClick={()=>setChecklistTab('checklist')}>
           Checklist <span style={{marginLeft:4,background:'var(--border)',borderRadius:10,padding:'1px 6px',fontSize:11}}>{allRows.length}</span>
         </button>
@@ -2349,6 +2349,7 @@ ${expInMonth.length>0?`
               <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('iv_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
   ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
   : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</button>
+              <button className="btn sm" title="Account settings" onClick={()=>{setShowSettings(true);setSettingsTab('profile')}}>⚙️</button>
               <button className="btn sm" onClick={signOut}>Sign out</button>
             </div>
           </div>
@@ -2456,7 +2457,7 @@ ${expInMonth.length>0?`
               <div className="stat-card"><div className="stat-label">Revenue</div><div className="stat-value">{fmt(stats.revenue)}</div></div>
               <div className="stat-card"><div className="stat-label">Net P&L</div><div className={`stat-value ${stats.pl>0?'pos':stats.pl<0?'neg':''}`}>{stats.pl>=0?'+':''}{fmt(stats.pl)}</div></div>
             </div>
-            <div style={{display:'flex',gap:8,marginBottom:16}}>
+            <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
               <button className={`type-btn ${stockTab==='inventory'?'active':''}`} onClick={()=>setStockTab('inventory')}>
                 Stock <span className="tab-count">{stats.inStock}</span>
               </button>
@@ -2767,7 +2768,7 @@ ${expInMonth.length>0?`
                 <div>
                   {/* Summary bar */}
                   <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap',alignItems:'center'}}>
-                    <div style={{display:'flex',gap:6}}>
+                    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                       <button className={`type-btn ${listingsFilter==='all'?'active':''}`} onClick={()=>setListingsFilter('all')}>All <span className="tab-count">{inStock.length}</span></button>
                       <button className={`type-btn ${listingsFilter==='listed'?'active':''}`} onClick={()=>setListingsFilter('listed')}>Listed <span className="tab-count">{listedCount}</span></button>
                       <button className={`type-btn ${listingsFilter==='unlisted'?'active':''}`} onClick={()=>setListingsFilter('unlisted')}>Not listed <span className="tab-count">{unlistedCount}</span></button>
@@ -2909,7 +2910,7 @@ ${expInMonth.length>0?`
         {/* Metrics sub-tab content (Finance > Metrics) */}
         {(page==='finance'&&financeTab==='metrics')&&(
           <div>
-            <div style={{display:'flex',gap:8,marginBottom:24}}>
+            <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap'}}>
               <button className={`type-btn ${metricsTab==='reseller'?'active':''}`} onClick={()=>setMetricsTab('reseller')}>Reseller & Breaker</button>
               <button className={`type-btn ${metricsTab==='collector'?'active':''}`} onClick={()=>setMetricsTab('collector')}>Collector</button>
               <button className={`type-btn ${metricsTab==='tax'?'active':''} ${!isPro?'locked-tab':''}`} onClick={()=>setMetricsTab('tax')}>Tax Summary{!isPro&&<span className="tab-lock">Pro</span>}</button>
@@ -3439,7 +3440,7 @@ ${expInMonth.length>0?`
             })()}
             {toolTab==='csv'&&(
               <div style={{maxWidth:680}}>
-                <div style={{display:'flex',gap:8,marginBottom:16}}>
+                <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
                   <button className={`type-btn ${csvMode!=='ebay'?'active':''}`} onClick={()=>setCsvMode('template')}>Template import</button>
                   <button className={`type-btn ${csvMode==='ebay'?'active':''}`} onClick={()=>setCsvMode('ebay')}>eBay sold import</button>
                 </div>
@@ -4646,8 +4647,8 @@ ${expInMonth.length>0?`
             {settingsTab==='team'&&isPro&&(
               <div>
                 <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Invite someone to access your account. They can view and edit your stock but cannot change your plan or delete your account.</div>
-                <div style={{display:'flex',gap:8,marginBottom:20}}>
-                  <input className="form-input" style={{flex:1,margin:0}} type="email" placeholder="Collaborator's email address" id="team-invite-email"/>
+                <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
+                  <input className="form-input" style={{flex:1,margin:0,minWidth:180}} type="email" placeholder="Collaborator's email address" id="team-invite-email"/>
                   <button className="btn primary" onClick={()=>{
                     const emailInput = document.getElementById('team-invite-email')
                     const email = emailInput?.value?.trim()
