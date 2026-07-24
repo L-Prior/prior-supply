@@ -3436,7 +3436,7 @@ ${expInMonth.length>0?`
                               <button onClick={()=>deleteSavedInvoice(inv.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:14,lineHeight:1,padding:0}}>✕</button>
                             </div>
                             <div style={{color:'var(--muted)',marginBottom:2}}>{inv.customerName||'No customer'}</div>
-                            <div style={{color:'var(--muted)',marginBottom:6}}>{inv.date}</div>
+                            <div style={{color:'var(--muted)',marginBottom:6}}>{inv.date?new Date(inv.date).toLocaleDateString('en-GB'):''}</div>
                             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                               <div style={{fontWeight:600,color:'var(--text)'}}>{fmt(inv.total)}</div>
                               <button className="btn sm" onClick={()=>printSavedInvoice(inv.snapshot)}>Print ↗</button>
@@ -3726,7 +3726,7 @@ ${expInMonth.length>0?`
                     <tbody>
                       {expenses.map(e=>(
                         <tr key={e.id} style={{borderBottom:'1px solid var(--border)'}}>
-                          <td style={{padding:'10px 8px 10px 0',color:'var(--muted)'}}>{e.date}</td>
+                          <td style={{padding:'10px 8px 10px 0',color:'var(--muted)'}}>{e.date?new Date(e.date).toLocaleDateString('en-GB'):'—'}</td>
                           <td style={{padding:'10px 8px'}}><span style={{background:'var(--surface2)',borderRadius:4,padding:'2px 8px',fontSize:11}}>{e.category}</span></td>
                           <td style={{padding:'10px 8px',color:'var(--text)'}}>{e.description||'—'}</td>
                           <td style={{padding:'10px 0 10px 8px',textAlign:'right',fontWeight:600,color:'var(--red)'}}>−{fmt(e.amount)}</td>
@@ -4223,7 +4223,7 @@ ${expInMonth.length>0?`
             <div className="detail-tags">
               {batchModal.category&&<span className="detail-tag"><span className="detail-tag-label">Category</span>{batchModal.category}</span>}
               {batchModal.sku&&<span className="detail-tag"><span className="detail-tag-label">SKU</span>{batchModal.sku}</span>}
-              {batchModal.purchase_date&&<span className="detail-tag"><span className="detail-tag-label">Purchased</span>{batchModal.purchase_date}</span>}
+              {batchModal.purchase_date&&<span className="detail-tag"><span className="detail-tag-label">Purchased</span>{new Date(batchModal.purchase_date).toLocaleDateString('en-GB')}</span>}
               {batchModal.purchase_platform&&<span className="detail-tag"><span className="detail-tag-label">From</span>{batchModal.purchase_platform}</span>}
               {batchModal.units[0]?.target_price&&<span className="detail-tag"><span className="detail-tag-label">Target</span>{fmt(batchModal.units[0].target_price)}</span>}
             </div>
