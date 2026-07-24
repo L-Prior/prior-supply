@@ -1708,6 +1708,17 @@ export default function Dashboard({ session }) {
   }, [breaks])
 
   const [darkMode, setDarkMode] = useState(() => { try { const stored = localStorage.getItem('iv_dark'); return stored === null ? true : stored === 'true' } catch { return true } })
+  // Keep <body> in sync with dashboard theme — otherwise body's background stays
+  // the light default, and any sliver of it revealed by mobile Safari's elastic
+  // overscroll (or a safe-area/viewport resize) shows up as a jarring white strip.
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark-mode', darkMode)
+    document.body.classList.toggle('dark-mode', darkMode)
+    return () => {
+      document.documentElement.classList.remove('dark-mode')
+      document.body.classList.remove('dark-mode')
+    }
+  }, [darkMode])
   const GOAL_KEY = 'iv_goal'
   const [monthlyGoal, setMonthlyGoal] = useState(() => { try { return parseFloat(localStorage.getItem('iv_goal') || '0') } catch { return 0 } })
   const [editingGoal, setEditingGoal] = useState(false)
