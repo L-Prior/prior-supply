@@ -2756,7 +2756,7 @@ ${expInMonth.length>0?`
                 if (listingsFilter === 'unlisted' && listed) return false
                 if (listingsSearch) {
                   const q = listingsSearch.toLowerCase()
-                  const label = [i.brand, i.style, i.colourway, i.size, i.sku, i.card_name, i.topps_card_name, i.product_name].filter(Boolean).join(' ').toLowerCase()
+                  const label = [i.brand, i.style, i.colourway, i.pokemon_sealed_type, i.topps_sealed_type, i.size, i.sku, i.card_name, i.topps_card_name, i.product_name].filter(Boolean).join(' ').toLowerCase()
                   if (!label.includes(q)) return false
                 }
                 return true
@@ -2765,9 +2765,9 @@ ${expInMonth.length>0?`
               const listedCount = inStock.filter(i => i.listed_on && i.listed_on.length > 0).length
 
               function itemLabel(i, isGroup) {
-                if (i.category === 'Topps') return [i.topps_card_name || i.brand, i.topps_set || i.style, i.size].filter(Boolean).join(' — ')
+                if (i.category === 'Topps') return [i.topps_card_name || i.brand, i.topps_set || i.style, i.topps_sealed_type, i.size].filter(Boolean).join(' — ')
                 const styleOrSku = i.style || (!isGroup && i.sku ? `#${i.sku}` : null)
-                return [i.brand, styleOrSku, i.colourway, i.size].filter(Boolean).join(' — ')
+                return [i.brand, styleOrSku, i.colourway, i.pokemon_sealed_type, i.size].filter(Boolean).join(' — ')
               }
 
               // Deliberately excludes `sku` (card/serial number) — items that are otherwise
@@ -2775,7 +2775,7 @@ ${expInMonth.length>0?`
               // Pokémon singles from the same set) should collapse into one row, not fragment
               // into a wall of visually-identical entries.
               function groupKey(i) {
-                return [i.category, i.brand, i.style, i.colourway, i.size, i.graded, i.grading_company, i.grade].filter(Boolean).join('|') || i.id
+                return [i.category, i.brand, i.style, i.colourway, i.pokemon_sealed_type, i.topps_sealed_type, i.size, i.graded, i.grading_company, i.grade].filter(Boolean).join('|') || i.id
               }
 
               const groupMap = {}
