@@ -847,6 +847,7 @@ export default function Dashboard({ session }) {
   const [wishlistForm, setWishlistForm] = useState({ brand:'', style:'', category:'', targetPrice:'', notes:'' })
   const [listingsFilter, setListingsFilter] = useState('all') // 'all' | 'listed' | 'unlisted'
   const [listingsSearch, setListingsSearch] = useState('')
+  const [expandedListingGroups, setExpandedListingGroups] = useState(() => new Set())
   useEffect(() => { try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlist)) } catch {} }, [wishlist]) // eslint-disable-line react-hooks/exhaustive-deps
   function addWishlistItem() { if (!wishlistForm.brand.trim()) return; setWishlist(w=>[{ id:Date.now(), ...wishlistForm, createdAt: new Date().toISOString() }, ...w]); setWishlistForm({brand:'',style:'',category:'',targetPrice:'',notes:''}); setShowWishlistForm(false) }
   function removeWishlistItem(id) { setWishlist(w=>w.filter(i=>i.id!==id)) }
@@ -1131,14 +1132,6 @@ export default function Dashboard({ session }) {
       await supabase.from('stock').update({ long_term: false }).eq('id', batch.units[0].id)
     }
     fetchItems()
-  }
-
-  async function toggleListingPlatform(item, platform) {
-    const current = item.listed_on || []
-    const next = current.includes(platform) ? current.filter(p => p !== platform) : [...current, platform]
-    // Optimistic update
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, listed_on: next } : i))
-    await supabase.from('stock').update({ listed_on: next }).eq('id', item.id)
   }
 
   function resetSellModal() {
@@ -2763,7 +2756,7 @@ ${expInMonth.length>0?`
                 if (listingsFilter === 'unlisted' && listed) return false
                 if (listingsSearch) {
                   const q = listingsSearch.toLowerCase()
-                  const label = [i.brand, i.style, i.colourway, i.size, i.card_name, i.topps_card_name, i.product_name].filter(Boolean).join(' ').toLowerCase()
+                  const label = [i.brand, i.style, i.colourway, i.size, i.sku, i.card_name, i.topps_card_name, i.product_name].filter(Boolean).join(' ').toLowerCase()
                   if (!label.includes(q)) return false
                 }
                 return true
@@ -2771,9 +2764,50 @@ ${expInMonth.length>0?`
               const unlistedCount = inStock.filter(i => !i.listed_on || i.listed_on.length === 0).length
               const listedCount = inStock.filter(i => i.listed_on && i.listed_on.length > 0).length
 
-              function itemLabel(i) {
+              function itemLabel(i, isGroup) {
                 if (i.category === 'Topps') return [i.topps_card_name || i.brand, i.topps_set || i.style, i.size].filter(Boolean).join(' — ')
-                return [i.brand, i.style, i.colourway, i.size].filter(Boolean).join(' — ')
+                const styleOrSku = i.style || (!isGroup && i.sku ? `#${i.sku}` : null)
+                return [i.brand, styleOrSku, i.colourway, i.size].filter(Boolean).join(' — ')
+              }
+
+              // Deliberately excludes `sku` (card/serial number) — items that are otherwise
+              // identical but differ only by an un-shown per-unit number (e.g. many blank-style
+              // Pokémon singles from the same set) should collapse into one row, not fragment
+              // into a wall of visually-identical entries.
+              function groupKey(i) {
+                return [i.category, i.brand, i.style, i.colourway, i.size, i.graded, i.grading_company, i.grade].filter(Boolean).join('|') || i.id
+              }
+
+              const groupMap = {}
+              const groupOrder = []
+              filtered.forEach(i => {
+                const key = groupKey(i)
+                if (!groupMap[key]) { groupMap[key] = []; groupOrder.push(key) }
+                groupMap[key].push(i)
+              })
+              const groups = groupOrder.map(k => groupMap[k])
+
+              function groupPlatformOn(group, p) { return group.every(i => (i.listed_on||[]).includes(p)) }
+              function groupIsListed(group) { return group.some(i => i.listed_on && i.listed_on.length > 0) }
+              async function toggleGroupPlatform(group, p) {
+                const turnOn = !groupPlatformOn(group, p)
+                const updates = group.map(i => {
+                  const current = i.listed_on || []
+                  const next = turnOn ? (current.includes(p) ? current : [...current, p]) : current.filter(x => x !== p)
+                  return { id: i.id, next }
+                })
+                setItems(prev => prev.map(i => {
+                  const u = updates.find(u => u.id === i.id)
+                  return u ? { ...i, listed_on: u.next } : i
+                }))
+                await Promise.all(updates.map(u => supabase.from('stock').update({ listed_on: u.next }).eq('id', u.id)))
+              }
+              function toggleGroupExpand(key) {
+                setExpandedListingGroups(prev => {
+                  const n = new Set(prev)
+                  if (n.has(key)) n.delete(key); else n.add(key)
+                  return n
+                })
               }
 
               return (
@@ -2788,47 +2822,73 @@ ${expInMonth.length>0?`
                     <input className="filter-input" placeholder="Search items…" value={listingsSearch} onChange={e=>setListingsSearch(e.target.value)} style={{flex:1,minWidth:160,maxWidth:300}}/>
                   </div>
 
-                  {filtered.length === 0 ? (
+                  {groups.length === 0 ? (
                     <div style={{textAlign:'center',padding:'48px 0',color:'var(--muted)',fontSize:14}}>
                       {listingsFilter === 'unlisted' ? '✓ Everything in stock is listed somewhere.' : 'No items match.'}
                     </div>
                   ) : (
                     <div style={{display:'flex',flexDirection:'column',gap:1,borderRadius:12,overflow:'hidden',border:'1px solid var(--border)'}}>
                       {/* Header */}
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 320px 90px',gap:12,padding:'10px 16px',background:'var(--surface2)',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--muted)'}}>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 320px 90px 24px',gap:12,padding:'10px 16px',background:'var(--surface2)',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--muted)'}}>
                         <span>Item</span>
                         <span>Listed on</span>
                         <span style={{textAlign:'center'}}>Status</span>
+                        <span/>
                       </div>
-                      {filtered.map(item => {
-                        const listed = item.listed_on || []
-                        const isListed = listed.length > 0
+                      {groups.map(group => {
+                        const rep = group[0]
+                        const key = groupKey(rep)
+                        const qty = group.length
+                        const isExpanded = expandedListingGroups.has(key)
+                        const isListed = groupIsListed(group)
                         return (
-                          <div key={item.id} style={{display:'grid',gridTemplateColumns:'1fr 320px 90px',gap:12,padding:'12px 16px',background:'var(--surface)',borderTop:'1px solid var(--border)',alignItems:'center'}}>
-                            {/* Item name */}
-                            <div>
-                              <div style={{fontSize:13,fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{itemLabel(item)}</div>
-                              <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{item.category}</div>
+                          <React.Fragment key={key}>
+                            <div onClick={()=>toggleGroupExpand(key)} style={{display:'grid',gridTemplateColumns:'1fr 320px 90px 24px',gap:12,padding:'12px 16px',background:'var(--surface)',borderTop:'1px solid var(--border)',alignItems:'center',cursor:'pointer'}}>
+                              {/* Item name */}
+                              <div>
+                                <div style={{fontSize:13,fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',display:'flex',alignItems:'center',gap:8}}>
+                                  <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{itemLabel(rep, qty > 1)}</span>
+                                  {qty > 1 && <span style={{flexShrink:0,fontSize:11,fontWeight:700,color:'var(--accent)',background:'rgba(99,102,241,0.1)',borderRadius:20,padding:'1px 8px'}}>×{qty}</span>}
+                                </div>
+                                <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{rep.category}</div>
+                              </div>
+                              {/* Platform toggles */}
+                              <div style={{display:'flex',flexWrap:'wrap',gap:5}} onClick={e=>e.stopPropagation()}>
+                                {LISTING_PLATFORMS.map(p => {
+                                  const on = groupPlatformOn(group, p)
+                                  return (
+                                    <button key={p} onClick={()=>toggleGroupPlatform(group, p)} style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:20,border:'1.5px solid',cursor:'pointer',transition:'all 0.15s',background:on?'var(--accent)':'transparent',borderColor:on?'var(--accent)':'var(--border)',color:on?'#fff':'var(--muted)'}}>
+                                      {p}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                              {/* Status pill */}
+                              <div style={{textAlign:'center'}}>
+                                {isListed
+                                  ? <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'rgba(52,211,153,0.12)',color:'#059669'}}>Live</span>
+                                  : <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'rgba(245,158,11,0.12)',color:'#d97706'}}>Unlisted</span>
+                                }
+                              </div>
+                              {/* Expand chevron */}
+                              <div style={{textAlign:'center',color:'var(--muted)',fontSize:11,transform:isExpanded?'rotate(180deg)':'none',transition:'transform 0.15s'}}>▾</div>
                             </div>
-                            {/* Platform toggles */}
-                            <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
-                              {LISTING_PLATFORMS.map(p => {
-                                const on = listed.includes(p)
-                                return (
-                                  <button key={p} onClick={()=>toggleListingPlatform(item, p)} style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:20,border:'1.5px solid',cursor:'pointer',transition:'all 0.15s',background:on?'var(--accent)':'transparent',borderColor:on?'var(--accent)':'var(--border)',color:on?'#fff':'var(--muted)'}}>
-                                    {p}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                            {/* Status pill */}
-                            <div style={{textAlign:'center'}}>
-                              {isListed
-                                ? <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'rgba(52,211,153,0.12)',color:'#059669'}}>Live</span>
-                                : <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'rgba(245,158,11,0.12)',color:'#d97706'}}>Unlisted</span>
-                              }
-                            </div>
-                          </div>
+                            {isExpanded && (
+                              <div style={{padding:'10px 16px 14px 16px',background:'var(--surface2)',borderTop:'1px dashed var(--border)',display:'flex',flexDirection:'column',gap:8}}>
+                                {group.map((i, idx) => (
+                                  <div key={i.id} style={{display:'flex',flexWrap:'wrap',gap:14,fontSize:12,color:'var(--muted)',alignItems:'center'}}>
+                                    {qty > 1 && <span style={{fontWeight:700,color:'var(--text)',minWidth:18}}>{i.sku ? `#${i.sku}` : `#${idx+1}`}</span>}
+                                    {i.purchase_price != null && i.purchase_price !== '' && <span>💰 Cost £{Number(i.purchase_price).toFixed(2)}</span>}
+                                    {i.target_price != null && i.target_price !== '' && <span>🎯 Target £{Number(i.target_price).toFixed(2)}</span>}
+                                    {i.purchase_date && <span>📅 {new Date(i.purchase_date).toLocaleDateString('en-GB')}</span>}
+                                    {i.graded && (i.grading_company || i.grade) && <span>🏅 {[i.grading_company, i.grade].filter(Boolean).join(' ')}</span>}
+                                    {!i.graded && i.condition && <span>{i.condition}</span>}
+                                    {i.notes && <span style={{fontStyle:'italic'}}>"{i.notes}"</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </React.Fragment>
                         )
                       })}
                     </div>
