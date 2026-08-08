@@ -848,6 +848,9 @@ export default function Dashboard({ session }) {
   const [listingsFilter, setListingsFilter] = useState('all') // 'all' | 'listed' | 'unlisted'
   const [listingsSearch, setListingsSearch] = useState('')
   const [expandedListingGroups, setExpandedListingGroups] = useState(() => new Set())
+  const [listingsCategory, setListingsCategory] = useState('')
+  const [listingsPlatform, setListingsPlatform] = useState('') // '' | platform | 'none'
+  const [listingsSort, setListingsSort] = useState('name_asc')
   useEffect(() => { try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlist)) } catch {} }, [wishlist]) // eslint-disable-line react-hooks/exhaustive-deps
   function addWishlistItem() { if (!wishlistForm.brand.trim()) return; setWishlist(w=>[{ id:Date.now(), ...wishlistForm, createdAt: new Date().toISOString() }, ...w]); setWishlistForm({brand:'',style:'',category:'',targetPrice:'',notes:''}); setShowWishlistForm(false) }
   function removeWishlistItem(id) { setWishlist(w=>w.filter(i=>i.id!==id)) }
@@ -2754,6 +2757,7 @@ ${expInMonth.length>0?`
                 const listed = i.listed_on && i.listed_on.length > 0
                 if (listingsFilter === 'listed' && !listed) return false
                 if (listingsFilter === 'unlisted' && listed) return false
+                if (listingsCategory && i.category !== listingsCategory) return false
                 if (listingsSearch) {
                   const q = listingsSearch.toLowerCase()
                   const label = [i.brand, i.style, i.colourway, i.pokemon_sealed_type, i.topps_sealed_type, i.size, i.sku, i.card_name, i.topps_card_name, i.product_name].filter(Boolean).join(' ').toLowerCase()
@@ -2763,6 +2767,7 @@ ${expInMonth.length>0?`
               })
               const unlistedCount = inStock.filter(i => !i.listed_on || i.listed_on.length === 0).length
               const listedCount = inStock.filter(i => i.listed_on && i.listed_on.length > 0).length
+              const listingsCategories = [...new Set(inStock.map(i => i.category).filter(Boolean))].sort()
 
               function itemLabel(i, isGroup) {
                 if (i.category === 'Topps') return [i.topps_card_name || i.brand, i.topps_set || i.style, i.topps_sealed_type, i.size].filter(Boolean).join(' — ')
@@ -2785,10 +2790,28 @@ ${expInMonth.length>0?`
                 if (!groupMap[key]) { groupMap[key] = []; groupOrder.push(key) }
                 groupMap[key].push(i)
               })
-              const groups = groupOrder.map(k => groupMap[k])
 
               function groupPlatformOn(group, p) { return group.every(i => (i.listed_on||[]).includes(p)) }
               function groupIsListed(group) { return group.some(i => i.listed_on && i.listed_on.length > 0) }
+              // Union of every platform any unit in the group is listed on.
+              function groupPlatforms(group) { return [...new Set(group.flatMap(i => i.listed_on || []))] }
+
+              let groups = groupOrder.map(k => groupMap[k])
+              // Platform filter: 'none' = nothing listed anywhere; otherwise groups on that platform.
+              if (listingsPlatform === 'none') groups = groups.filter(g => !groupIsListed(g))
+              else if (listingsPlatform) groups = groups.filter(g => groupPlatforms(g).includes(listingsPlatform))
+              // Sort.
+              groups.sort((a, b) => {
+                switch (listingsSort) {
+                  case 'name_desc': return itemLabel(b[0], b.length > 1).localeCompare(itemLabel(a[0], a.length > 1))
+                  case 'qty_high': return b.length - a.length
+                  case 'qty_low': return a.length - b.length
+                  case 'platforms_high': return groupPlatforms(b).length - groupPlatforms(a).length
+                  case 'platforms_low': return groupPlatforms(a).length - groupPlatforms(b).length
+                  case 'name_asc':
+                  default: return itemLabel(a[0], a.length > 1).localeCompare(itemLabel(b[0], b.length > 1))
+                }
+              })
               async function toggleGroupPlatform(group, p) {
                 const turnOn = !groupPlatformOn(group, p)
                 const updates = group.map(i => {
@@ -2813,13 +2836,38 @@ ${expInMonth.length>0?`
               return (
                 <div>
                   {/* Summary bar */}
-                  <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap',alignItems:'center'}}>
+                  <div style={{display:'flex',gap:12,marginBottom:12,flexWrap:'wrap',alignItems:'center'}}>
                     <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                       <button className={`type-btn ${listingsFilter==='all'?'active':''}`} onClick={()=>setListingsFilter('all')}>All <span className="tab-count">{inStock.length}</span></button>
                       <button className={`type-btn ${listingsFilter==='listed'?'active':''}`} onClick={()=>setListingsFilter('listed')}>Listed <span className="tab-count">{listedCount}</span></button>
                       <button className={`type-btn ${listingsFilter==='unlisted'?'active':''}`} onClick={()=>setListingsFilter('unlisted')}>Not listed <span className="tab-count">{unlistedCount}</span></button>
                     </div>
                     <input className="filter-input" placeholder="Search items…" value={listingsSearch} onChange={e=>setListingsSearch(e.target.value)} style={{flex:1,minWidth:160,maxWidth:300}}/>
+                  </div>
+                  {/* Filters & sort */}
+                  <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap',alignItems:'center'}}>
+                    {listingsCategories.length > 1 && (
+                      <select className="filter-select" value={listingsCategory} onChange={e=>setListingsCategory(e.target.value)}>
+                        <option value="">All categories</option>
+                        {listingsCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    )}
+                    <select className="filter-select" value={listingsPlatform} onChange={e=>setListingsPlatform(e.target.value)}>
+                      <option value="">Any platform</option>
+                      <option value="none">Not listed anywhere</option>
+                      {LISTING_PLATFORMS.map(p => <option key={p} value={p}>On {p}</option>)}
+                    </select>
+                    <select className="filter-select" value={listingsSort} onChange={e=>setListingsSort(e.target.value)}>
+                      <option value="name_asc">Name A–Z</option>
+                      <option value="name_desc">Name Z–A</option>
+                      <option value="qty_high">Quantity: high–low</option>
+                      <option value="qty_low">Quantity: low–high</option>
+                      <option value="platforms_high">Most platforms</option>
+                      <option value="platforms_low">Fewest platforms</option>
+                    </select>
+                    {(listingsCategory || listingsPlatform || listingsSearch || listingsFilter !== 'all' || listingsSort !== 'name_asc') && (
+                      <button className="btn sm" onClick={()=>{setListingsCategory('');setListingsPlatform('');setListingsSearch('');setListingsFilter('all');setListingsSort('name_asc')}}>Clear</button>
+                    )}
                   </div>
 
                   {groups.length === 0 ? (
