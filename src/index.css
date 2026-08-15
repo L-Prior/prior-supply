@@ -64,8 +64,9 @@ body {
   width: 220px;
   flex-shrink: 0;
   height: 100vh;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
   display: flex;
@@ -189,6 +190,7 @@ body {
 .app-body {
   flex: 1;
   min-width: 0;
+  margin-left: 220px;
   display: flex;
   flex-direction: column;
 }
@@ -1956,6 +1958,9 @@ tbody td {
 
   /* Hide sidebar on mobile */
   .sidebar { display: none; }
+
+  /* Content spans full width once sidebar is hidden */
+  .app-body { margin-left: 0; }
 
   /* Show topbar on mobile */
   .topbar {
