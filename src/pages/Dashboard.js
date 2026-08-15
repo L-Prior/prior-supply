@@ -2433,6 +2433,49 @@ ${expInMonth.length>0?`
               )}
             </div>
 
+            {!loading&&items.length>0&&(()=>{
+              const inStock=items.filter(i=>i.status==='in_stock')
+              const now=Date.now()
+              const sugg=[]
+              const stale=inStock.filter(i=>!i.long_term&&i.purchase_date&&((now-new Date(i.purchase_date))/86400000)>STALE_DAYS)
+              if(stale.length>0)sugg.push({icon:'⏳',tone:'red',title:`${stale.length} item${stale.length!==1?'s':''} sitting for ${STALE_DAYS}+ days`,desc:'Consider dropping the price, promoting, or marking them as long-term holds.',action:'Review stale stock',fn:()=>{setPage('stock');setStockTab('inventory');setFilterStatus('stale');window.scrollTo(0,0)}})
+              const unlisted=inStock.filter(i=>!i.listed_on||i.listed_on.length===0)
+              if(unlisted.length>0)sugg.push({icon:'🏷️',tone:'amber',title:`${unlisted.length} item${unlisted.length!==1?'s':''} not listed anywhere`,desc:'Get them in front of buyers by adding listing platforms.',action:'Go to Listings',fn:()=>{setPage('stock');setStockTab('listings');window.scrollTo(0,0)}})
+              const singlePlat=inStock.filter(i=>i.listed_on&&i.listed_on.length===1)
+              if(singlePlat.length>0)sugg.push({icon:'📈',tone:'blue',title:`${singlePlat.length} item${singlePlat.length!==1?'s':''} on only one platform`,desc:'Cross-listing to more marketplaces can help them sell faster.',action:'Go to Listings',fn:()=>{setPage('stock');setStockTab('listings');window.scrollTo(0,0)}})
+              const pending=items.filter(i=>i.status==='sold'&&i.payout_status==='pending')
+              if(pending.length>0)sugg.push({icon:'💷',tone:'green',title:`${pending.length} sale${pending.length!==1?'s':''} awaiting payout`,desc:'Mark them as paid once the funds land to keep your finances accurate.',action:'View payouts',fn:()=>{setPage('finance');setFinanceTab('payouts');window.scrollTo(0,0)}})
+              const noTarget=inStock.filter(i=>i.target_price==null||i.target_price==='')
+              if(noTarget.length>0)sugg.push({icon:'🎯',tone:'purple',title:`${noTarget.length} in-stock item${noTarget.length!==1?'s':''} without a target price`,desc:'Set target prices to track your expected margins at a glance.',action:'Review inventory',fn:()=>{setPage('stock');setStockTab('inventory');setFilterStatus('in_stock');window.scrollTo(0,0)}})
+              const tones={amber:{bg:'#fffbeb',border:'#fcd34d',color:'#d97706'},red:{bg:'#fef2f2',border:'#fecaca',color:'#dc2626'},blue:{bg:'#eff6ff',border:'#bfdbfe',color:'#2563eb'},purple:{bg:'#f5f3ff',border:'#ddd6fe',color:'#7c3aed'},green:{bg:'#f0fdf4',border:'#bbf7d0',color:'#16a34a'}}
+              return(
+                <div className="chart-card">
+                  <div className="chart-header" style={{marginBottom:sugg.length?16:0}}>
+                    <div><div className="chart-title">💡 Smart Suggestions</div><div className="chart-subtitle">Recommended next actions for your stock</div></div>
+                  </div>
+                  {sugg.length===0?(
+                    <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'var(--radius)',fontSize:14,color:'#166534',fontWeight:600}}><span style={{fontSize:20}}>✅</span>You're all caught up — nothing needs attention right now.</div>
+                  ):(
+                    <div style={{display:'grid',gap:10}}>
+                      {sugg.slice(0,5).map((s,idx)=>{
+                        const t=tones[s.tone]||tones.blue
+                        return(
+                          <div key={idx} style={{display:'flex',alignItems:'center',gap:14,padding:'12px 16px',background:t.bg,border:`1px solid ${t.border}`,borderRadius:'var(--radius)',flexWrap:'wrap'}}>
+                            <div style={{fontSize:22,flexShrink:0}}>{s.icon}</div>
+                            <div style={{flex:1,minWidth:140}}>
+                              <div style={{fontWeight:700,fontSize:14,color:'#1e293b'}}>{s.title}</div>
+                              <div style={{fontSize:12.5,color:'#64748b',marginTop:2}}>{s.desc}</div>
+                            </div>
+                            <button className="btn sm" style={{flexShrink:0,borderColor:t.border,color:t.color}} onClick={s.fn}>{s.action} →</button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             <div className="chart-card">
               <div className="chart-header">
                 <div><div className="chart-title">Monthly Profit & Loss</div><div className="chart-subtitle">Net profit per month</div></div>
