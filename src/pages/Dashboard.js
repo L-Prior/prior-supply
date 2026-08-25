@@ -1697,7 +1697,10 @@ export default function Dashboard({ session }) {
   }
 
   const breakStats = useMemo(() => {
-    const totalPL = breaks.reduce((s, b) => s + breakPL(b), 0)
+    // Only count P&L for breaks that have made sales, so the summary reconciles
+    // with the cards — each card shows "—" (not a loss) until it has revenue.
+    const revenueOf = b => b.type === 'break' ? (b.spots_sold||0)*(b.spot_price||0) : (b.packs_sold||0)*(b.pack_price||0)
+    const totalPL = breaks.reduce((s, b) => s + (revenueOf(b) > 0 ? breakPL(b) : 0), 0)
     const completed = breaks.filter(b => b.status === 'completed').length
     const active = breaks.filter(b => b.status === 'active' || b.status === 'upcoming').length
     return { totalPL, completed, active, total: breaks.length }
