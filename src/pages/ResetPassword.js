@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Icon from '../components/Icon'
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('')
@@ -59,7 +60,7 @@ export default function ResetPassword() {
             <img src="/logo-dark.svg" alt="ITS VAULTED" className="auth-logo" />
           </Link>
           <div className="auth-success" style={{ fontSize: 14, textAlign: 'center', padding: 20 }}>
-            ✓ Password updated. Redirecting to your dashboard…
+            <Icon name="check" size={15} strokeWidth={2.5} style={{marginRight:6,verticalAlign:'-2px'}} />Password updated. Redirecting to your dashboard…
           </div>
         </div>
       </div>

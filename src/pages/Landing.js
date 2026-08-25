@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import SvgIcon from '../components/Icon'
 
 /* ── Stroke SVG icons ─────────────────────────────────────────────── */
 const Icon = ({ children }) => (
@@ -222,7 +223,7 @@ export default function Landing({ session }) {
 
         <div className="lp-hero-grid">
           <div className="lp-hero-content">
-            <div className="lp-badge lp-reveal">✦ Built for resellers &amp; collectors</div>
+            <div className="lp-badge lp-reveal"><SvgIcon name="sparkle" size={14} style={{marginRight:6,verticalAlign:'-2px'}} />Built for resellers &amp; collectors</div>
 
             <h1 className="lp-hero-title lp-reveal">
               Track your stock.<br />
@@ -314,13 +315,13 @@ export default function Landing({ session }) {
       <section className="lp-trust">
         <div className="lp-container lp-trust-inner">
           {[
-            { icon: '🔒', text: 'Encrypted data, per-account isolation' },
-            { icon: '🇬🇧', text: 'Built in the UK for UK resellers' },
-            { icon: '⚡', text: 'Real-time sync, no refresh needed' },
-            { icon: '🚫', text: 'We never sell your data' },
+            { icon: 'lock', text: 'Encrypted data, per-account isolation' },
+            { icon: 'flag', text: 'Built in the UK for UK resellers' },
+            { icon: 'zap', text: 'Real-time sync, no refresh needed' },
+            { icon: 'ban', text: 'We never sell your data' },
           ].map(t => (
             <div className="lp-trust-item lp-reveal" key={t.text}>
-              <span className="lp-trust-icon">{t.icon}</span>
+              <span className="lp-trust-icon"><SvgIcon name={t.icon} size={22} /></span>
               <span>{t.text}</span>
             </div>
           ))}
@@ -444,7 +445,7 @@ export default function Landing({ session }) {
                 <ul className="lp-pricing-list">
                   {plan.features.map(f => (
                     <li key={f} className="lp-pricing-item">
-                      <span style={{ color: plan.accent, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                      <span style={{ color: plan.accent, fontWeight: 700, flexShrink: 0, display: 'inline-flex' }}><SvgIcon name="check" size={16} strokeWidth={2.5} /></span>
                       {f}
                     </li>
                   ))}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
+import Icon from '../components/Icon'
 
 // ── Change this to your Supabase service role key env var or keep checking email ──
 const ADMIN_EMAIL = 'prior.luke.04@gmail.com'
@@ -81,7 +82,7 @@ export default function Admin({ session }) {
     return (
       <div className="suspended-wrap">
         <div className="suspended-card">
-          <div className="suspended-icon">⛔</div>
+          <div className="suspended-icon"><Icon name="ban" size={48} /></div>
           <h1 className="suspended-title">Access denied</h1>
           <p className="suspended-body">You don't have permission to view this page.</p>
           <a href="/" className="suspended-cta">← Back to home</a>

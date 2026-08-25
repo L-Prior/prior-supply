@@ -5,6 +5,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
+import Icon from '../components/Icon'
 
 const CATEGORIES = ['Sneakers', 'Pokémon', 'Topps', 'Lego', 'Clothing', 'Miscellaneous']
 const COLORS = ['#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0','#f59e0b','#3b82f6']
@@ -140,7 +141,7 @@ function UnitSection({ form, editItem, updateUnit, addUnit, removeUnit, label = 
                   <option value="10+">10+</option>
                 </select>
                 {unit.quantity === '10+' && <input className="form-input" type="number" min="11" placeholder="Qty" value={unit.custom_qty || ''} onChange={e => updateUnit(i, 'custom_qty', e.target.value)} style={{ flex: '0 0 70px' }} />}
-                {form.units.length > 1 && <button className="btn sm danger" onClick={() => removeUnit(i)}>✕</button>}
+                {form.units.length > 1 && <button className="btn sm danger" onClick={() => removeUnit(i)}><Icon name="x" size={13} /></button>}
               </div>
               {perUnit && (
                 <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--muted)', paddingTop: 2 }}>
@@ -193,7 +194,7 @@ function CategoryForm({ form, setForm, editItem, updateUnit, addUnit, removeUnit
                 <option value="10+">10+</option>
               </select>
               {unit.quantity==='10+'&&<input className="form-input" type="number" min="11" placeholder="Qty" value={unit.custom_qty||''} onChange={e=>updateUnit(i,'custom_qty',e.target.value)} style={{flex:'0 0 70px'}}/>}
-              {form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}>✕</button>}
+              {form.units.length>1&&<button className="btn sm danger" onClick={()=>removeUnit(i)}><Icon name="x" size={13} /></button>}
             </div>
             {perUnit&&(
               <div style={{display:'flex',gap:16,fontSize:12,color:'var(--muted)',paddingTop:2}}>
@@ -495,7 +496,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:16}}>
               <div className="chart-title" style={{margin:0}}>Stock Checklist</div>
               <div style={{display:'flex',gap:8}}>
-                <button className="btn sm danger" onClick={clearAll}>🗑 Reset</button>
+                <button className="btn sm danger" onClick={clearAll}><Icon name="trash" size={13} style={{marginRight:5,verticalAlign:'-2px'}} />Reset</button>
                 <button className="btn sm" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>setShowFlagForm(true)}>+ Flag unlisted item</button>
               </div>
             </div>
@@ -517,17 +518,17 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
               <div style={{display:'flex',gap:16,fontSize:13}}>
                 <span style={{color:'var(--muted)'}}>{allRows.length} items</span>
-                {correctCount>0&&<span style={{color:'var(--green)'}}>✓ {correctCount} correct</span>}
-                {incorrectCount>0&&<span style={{color:'var(--red)',cursor:'pointer'}} onClick={()=>setChecklistTab('discrepancies')}>✗ {incorrectCount} incorrect</span>}
-                {uncheckedCount>0&&<span style={{color:'var(--muted)'}}>◯ {uncheckedCount} unchecked</span>}
-                {unlisted.length>0&&<span style={{color:'#d97706',cursor:'pointer'}} onClick={()=>setChecklistTab('unlisted')}>⚠ {unlisted.length} unlisted</span>}
+                {correctCount>0&&<span style={{color:'var(--green)',display:'inline-flex',alignItems:'center',gap:4}}><Icon name="check" size={13} strokeWidth={2.5} /> {correctCount} correct</span>}
+                {incorrectCount>0&&<span style={{color:'var(--red)',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4}} onClick={()=>setChecklistTab('discrepancies')}><Icon name="x" size={13} strokeWidth={2.5} /> {incorrectCount} incorrect</span>}
+                {uncheckedCount>0&&<span style={{color:'var(--muted)'}}>{uncheckedCount} unchecked</span>}
+                {unlisted.length>0&&<span style={{color:'#d97706',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4}} onClick={()=>setChecklistTab('unlisted')}><Icon name="alert-triangle" size={13} /> {unlisted.length} unlisted</span>}
               </div>
-              <button className="btn primary sm" onClick={()=>window.print()}>🖨️ Print</button>
+              <button className="btn primary sm" onClick={()=>window.print()}><Icon name="printer" size={13} style={{marginRight:5,verticalAlign:'-2px'}} />Print</button>
             </div>
           </div>
 
           {allRows.length===0?(
-            <div className="empty"><div className="empty-icon">📋</div><div className="empty-title">No stock found</div><div style={{marginTop:6}}>Select at least one category above</div></div>
+            <div className="empty"><div className="empty-icon"><Icon name="clipboard" size={40} /></div><div className="empty-title">No stock found</div><div style={{marginTop:6}}>Select at least one category above</div></div>
           ):(
             <div className="chart-card checklist-card" id="checklist-print">
               <div className="checklist-header">
@@ -544,8 +545,8 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
                 <div key={row.id} className={`checklist-row ${status[row.id]==='correct'?'row-correct':status[row.id]==='incorrect'?'row-incorrect':''} ${i%2===0?'alt':''}`}>
                   <div className="checklist-col actions">
                     <div style={{display:'flex',gap:4}}>
-                      <button className={`check-btn correct ${status[row.id]==='correct'?'active':''}`} onClick={()=>setRowStatus(row.id,'correct',row)} title="Correct">✓</button>
-                      <button className={`check-btn incorrect ${status[row.id]==='incorrect'?'active':''}`} onClick={()=>setRowStatus(row.id,'incorrect',row)} title="Incorrect">✗</button>
+                      <button className={`check-btn correct ${status[row.id]==='correct'?'active':''}`} onClick={()=>setRowStatus(row.id,'correct',row)} title="Correct"><Icon name="check" size={14} strokeWidth={2.5} /></button>
+                      <button className={`check-btn incorrect ${status[row.id]==='incorrect'?'active':''}`} onClick={()=>setRowStatus(row.id,'incorrect',row)} title="Incorrect"><Icon name="x" size={14} strokeWidth={2.5} /></button>
                       {row.category!=='Breaker'&&row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="check-btn sell" title="Sell" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>£</button>:null})()}
                     </div>
                   </div>
@@ -578,7 +579,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
             <div style={{fontSize:13,color:'var(--muted)'}}>Items marked as incorrect during the checklist. Edit them to fix the issues.</div>
           </div>
           {incorrectCount===0?(
-            <div className="empty"><div className="empty-icon">✅</div><div className="empty-title">No discrepancies</div><div style={{marginTop:6}}>Mark items as incorrect in the Checklist tab to see them here</div></div>
+            <div className="empty"><div className="empty-icon"><Icon name="check-circle" size={40} /></div><div className="empty-title">No discrepancies</div><div style={{marginTop:6}}>Mark items as incorrect in the Checklist tab to see them here</div></div>
           ):(
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
               {Object.entries(status).filter(([,v])=>v==='incorrect').map(([id])=>{
@@ -590,7 +591,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
                       <div style={{flex:1}}>
                         <div style={{fontWeight:600,fontSize:14,color:'var(--text)'}}>{row.brand} {row.style}</div>
                         <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{[row.colourway,row.sizeDisplay!=='—'?row.sizeDisplay:null,row.sku].filter(Boolean).join(' · ')}</div>
-                        {notes[id]&&<div style={{marginTop:8,fontSize:13,color:'var(--red)',background:'var(--red-bg)',padding:'6px 10px',borderRadius:6,border:'1px solid var(--red-border)'}}>📝 {notes[id]}</div>}
+                        {notes[id]&&<div style={{marginTop:8,fontSize:13,color:'var(--red)',background:'var(--red-bg)',padding:'6px 10px',borderRadius:6,border:'1px solid var(--red-border)'}}><Icon name="edit" size={13} /> {notes[id]}</div>}
                       </div>
                       <div style={{display:'flex',gap:8,flexShrink:0}}>
                         {row.itemId&&<button className="btn sm primary" onClick={()=>{const item=items.find(i=>i.id===row.itemId);if(item)onEditItem(item)}}>Edit item</button>}
@@ -619,7 +620,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
             </div>
           </div>
           {unlisted.length===0?(
-            <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">No unlisted items</div><div style={{marginTop:6}}>Use the "Flag unlisted item" button in the Checklist tab</div></div>
+            <div className="empty"><div className="empty-icon"><Icon name="package" size={40} /></div><div className="empty-title">No unlisted items</div><div style={{marginTop:6}}>Use the "Flag unlisted item" button in the Checklist tab</div></div>
           ):(
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
               {unlisted.map(u=>(
@@ -797,7 +798,7 @@ function UpgradeWall({ tier, price, feature, desc, onUpgrade }) {
   const border = isCore ? '#bfdbfe' : '#ddd6fe'
   return (
     <div style={{textAlign:'center',padding:'48px 24px',background:bg,border:`1px solid ${border}`,borderRadius:'var(--radius-lg)',marginTop:8}}>
-      <div style={{fontSize:32,marginBottom:12}}>{isCore ? '⚡' : '🚀'}</div>
+      <div style={{marginBottom:12}}><Icon name={isCore ? 'zap' : 'rocket'} size={32} /></div>
       <div style={{fontWeight:700,fontSize:18,color:'var(--text)',marginBottom:6}}>{feature} is a {tier} feature</div>
       <div style={{fontSize:13,color:'var(--muted)',maxWidth:380,margin:'0 auto 20px'}}>{desc}</div>
       <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'white',border:`1px solid ${border}`,borderRadius:'var(--radius-lg)',padding:'12px 20px',marginBottom:20}}>
@@ -1848,7 +1849,7 @@ export default function Dashboard({ session }) {
     if (autoPrint) setTimeout(()=>win.print(), 400)
   }
   function openTaxReportPrint({ year, resellerProfit, breakerProfit, totalExpenses, grossProfit, taxableProfit, estimatedTax, estimatedNI, totalLiability, utr }) {
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tax Summary ${year}/${year+1}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:700px;margin:0 auto}h1{font-size:24px;font-weight:800;color:#16a34a;margin-bottom:4px}.subtitle{font-size:14px;color:#666;margin-bottom:32px}.section{margin-bottom:28px}.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}.row{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid #f0f4f8}.row:last-child{border-bottom:none}.row-label{color:#555}.row-value{font-weight:500}.total-row{display:flex;justify-content:space-between;padding:12px 0;font-size:16px;font-weight:700;border-top:2px solid #1a2332;margin-top:4px}.pos{color:#16a34a}.neg{color:#dc2626}.disclaimer{margin-top:32px;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#92400e;line-height:1.6}@media print{body{padding:20px}}</style></head><body><h1>UK Self-Assessment Summary</h1><div class="subtitle">Tax Year ${year}/${String(year+1).slice(2)} &nbsp;(6 Apr ${year} – 5 Apr ${year+1})${utr?`&nbsp; &nbsp; UTR: ${utr}`:''}</div><div class="section"><div class="section-title">Income</div><div class="row"><span class="row-label">Reseller profit</span><span class="row-value ${resellerProfit>=0?'pos':'neg'}">£${resellerProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Breaker profit</span><span class="row-value ${breakerProfit>=0?'pos':'neg'}">£${breakerProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Gross profit</span><span class="row-value">£${grossProfit.toFixed(2)}</span></div></div><div class="section"><div class="section-title">Deductions</div><div class="row"><span class="row-label">Business expenses</span><span class="row-value neg">−£${totalExpenses.toFixed(2)}</span></div></div><div class="section"><div class="section-title">Tax Calculation</div><div class="row"><span class="row-label">Taxable profit</span><span class="row-value">£${taxableProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Income Tax (estimate)</span><span class="row-value ${estimatedTax>0?'neg':''}">£${estimatedTax.toFixed(2)}</span></div><div class="row"><span class="row-label">Class 4 NI (estimate)</span><span class="row-value ${estimatedNI>0?'neg':''}">£${estimatedNI.toFixed(2)}</span></div><div class="total-row"><span>Total estimated liability</span><span class="${totalLiability>0?'neg':''}">£${totalLiability.toFixed(2)}</span></div></div><div class="disclaimer">⚠ Estimate only, based on sole trader rates for ${year}/${year+1}. Does not account for other income, trading allowance, or other reliefs. Always confirm with a qualified accountant before submitting your Self Assessment.</div></body></html>`
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tax Summary ${year}/${year+1}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2332;padding:40px;max-width:700px;margin:0 auto}h1{font-size:24px;font-weight:800;color:#16a34a;margin-bottom:4px}.subtitle{font-size:14px;color:#666;margin-bottom:32px}.section{margin-bottom:28px}.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}.row{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid #f0f4f8}.row:last-child{border-bottom:none}.row-label{color:#555}.row-value{font-weight:500}.total-row{display:flex;justify-content:space-between;padding:12px 0;font-size:16px;font-weight:700;border-top:2px solid #1a2332;margin-top:4px}.pos{color:#16a34a}.neg{color:#dc2626}.disclaimer{margin-top:32px;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#92400e;line-height:1.6}@media print{body{padding:20px}}</style></head><body><h1>UK Self-Assessment Summary</h1><div class="subtitle">Tax Year ${year}/${String(year+1).slice(2)} &nbsp;(6 Apr ${year} – 5 Apr ${year+1})${utr?`&nbsp; &nbsp; UTR: ${utr}`:''}</div><div class="section"><div class="section-title">Income</div><div class="row"><span class="row-label">Reseller profit</span><span class="row-value ${resellerProfit>=0?'pos':'neg'}">£${resellerProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Breaker profit</span><span class="row-value ${breakerProfit>=0?'pos':'neg'}">£${breakerProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Gross profit</span><span class="row-value">£${grossProfit.toFixed(2)}</span></div></div><div class="section"><div class="section-title">Deductions</div><div class="row"><span class="row-label">Business expenses</span><span class="row-value neg">−£${totalExpenses.toFixed(2)}</span></div></div><div class="section"><div class="section-title">Tax Calculation</div><div class="row"><span class="row-label">Taxable profit</span><span class="row-value">£${taxableProfit.toFixed(2)}</span></div><div class="row"><span class="row-label">Income Tax (estimate)</span><span class="row-value ${estimatedTax>0?'neg':''}">£${estimatedTax.toFixed(2)}</span></div><div class="row"><span class="row-label">Class 4 NI (estimate)</span><span class="row-value ${estimatedNI>0?'neg':''}">£${estimatedNI.toFixed(2)}</span></div><div class="total-row"><span>Total estimated liability</span><span class="${totalLiability>0?'neg':''}">£${totalLiability.toFixed(2)}</span></div></div><div class="disclaimer">Estimate only, based on sole trader rates for ${year}/${year+1}. Does not account for other income, trading allowance, or other reliefs. Always confirm with a qualified accountant before submitting your Self Assessment.</div></body></html>`
     const win = window.open('', '_blank', 'width=900,height=700')
     win.document.write(html); win.document.close(); win.focus()
     setTimeout(() => win.print(), 400)
@@ -1914,7 +1915,7 @@ export default function Dashboard({ session }) {
         const itemNetPL = (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
         const saleDate  = i.sold_at ? new Date(i.sold_at).toLocaleDateString('en-GB') : '—'
         const variant   = [i.colourway, i.size?`UK ${i.size}`:null].filter(Boolean).join(' · ') || '—'
-        const payout    = i.payout_status==='paid' ? '✓ Paid' : 'Pending'
+        const payout    = i.payout_status==='paid' ? 'Paid' : 'Pending'
         const vatCol    = showVat ? `<td class="right muted">${i.sale_vat_rate>0?`${i.sale_vat_rate}%`:'—'}</td>` : ''
         return `<tr>
           <td>${saleDate}</td>
@@ -2010,7 +2011,7 @@ ${expInMonth.length>0?`
 <table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th class="right">Amount</th>${expVatHeader}</tr></thead>
 <tbody>${expRows}</tbody></table>`:''}
 
-<div class="disclaimer">✓ ITS VAULTED Pro Monthly Report · Figures are for reference only and should be reviewed by a qualified accountant before submission to HMRC.</div>
+<div class="disclaimer">ITS VAULTED Pro Monthly Report · Figures are for reference only and should be reviewed by a qualified accountant before submission to HMRC.</div>
 </body></html>`
 
     const win = window.open('', '_blank', 'width=1000,height=750')
@@ -2323,7 +2324,7 @@ ${expInMonth.length>0?`
       <div className="suspended-wrap">
         <div className="suspended-card">
           <img src="/logo-dark.svg" alt="ITS VAULTED" className="suspended-logo" />
-          <div className="suspended-icon">🔒</div>
+          <div className="suspended-icon"><Icon name="lock" size={48} /></div>
           <h1 className="suspended-title">Account temporarily suspended</h1>
           <p className="suspended-body">
             Access to your account has been temporarily restricted while we investigate
@@ -2368,7 +2369,7 @@ ${expInMonth.length>0?`
             <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('iv_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
   ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
   : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</button>
-            <button className="btn sm" title="Account settings" onClick={()=>{setShowSettings(true);setSettingsTab('profile')}}>⚙️</button>
+            <button className="btn sm" title="Account settings" onClick={()=>{setShowSettings(true);setSettingsTab('profile')}}><Icon name="settings" size={14} /></button>
             <button className="btn sm" onClick={signOut}>Sign out</button>
           </div>
         </div>
@@ -2389,7 +2390,7 @@ ${expInMonth.length>0?`
               <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('iv_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode
   ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
   : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</button>
-              <button className="btn sm" title="Account settings" onClick={()=>{setShowSettings(true);setSettingsTab('profile')}}>⚙️</button>
+              <button className="btn sm" title="Account settings" onClick={()=>{setShowSettings(true);setSettingsTab('profile')}}><Icon name="settings" size={14} /></button>
               <button className="btn sm" onClick={signOut}>Sign out</button>
             </div>
           </div>
@@ -2399,19 +2400,19 @@ ${expInMonth.length>0?`
         {fetchError&&(
           <div style={{margin:'0 0 16px 0',padding:'12px 16px',background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:'var(--radius)',color:'#dc2626',fontSize:13,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span>{fetchError}</span>
-            <button style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontWeight:700,padding:'0 4px'}} onClick={()=>setFetchError('')}>✕</button>
+            <button style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontWeight:700,padding:'0 4px'}} onClick={()=>setFetchError('')}><Icon name="x" size={14} /></button>
           </div>
         )}
 
         {page==='home'&&(
           <div>
             <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-              <div><h1 className="page-title">Welcome back, {username} 👋</h1><p className="page-subtitle">Here's how your stock is performing</p></div>
+              <div><h1 className="page-title">Welcome back, {username}</h1><p className="page-subtitle">Here's how your stock is performing</p></div>
               <button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>
             </div>
             {showOnboarding&&!loading&&items.length===0&&(
               <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',border:'1px solid #86efac',borderRadius:'var(--radius-lg)',padding:'20px 24px',marginBottom:24,display:'flex',gap:16,alignItems:'flex-start'}}>
-                <div style={{fontSize:28,flexShrink:0}}>👋</div>
+                <div style={{fontSize:28,flexShrink:0}}><Icon name="hand" size={26} /></div>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:16,color:'#14532d',marginBottom:4}}>Welcome to ITS VAULTED!</div>
                   <div style={{fontSize:13,color:'#166534',marginBottom:14}}>You're all set. Add your first item to start tracking your inventory and profit. It takes about 30 seconds.</div>
@@ -2473,28 +2474,28 @@ ${expInMonth.length>0?`
               const stale=inStock.filter(i=>!i.long_term&&i.purchase_date&&((now-new Date(i.purchase_date))/86400000)>STALE_DAYS)
               if(stale.length>0)sugg.push({icon:'⏳',tone:'red',title:`${stale.length} item${stale.length!==1?'s':''} sitting for ${STALE_DAYS}+ days`,desc:'Consider dropping the price, promoting, or marking them as long-term holds.',action:'Review stale stock',fn:()=>{setPage('stock');setStockTab('inventory');setFilterStatus('stale');window.scrollTo(0,0)}})
               const unlisted=inStock.filter(i=>!i.listed_on||i.listed_on.length===0)
-              if(unlisted.length>0)sugg.push({icon:'🏷️',tone:'amber',title:`${unlisted.length} item${unlisted.length!==1?'s':''} not listed anywhere`,desc:'Get them in front of buyers by adding listing platforms.',action:'Go to Listings',fn:()=>{setPage('stock');setStockTab('listings');window.scrollTo(0,0)}})
+              if(unlisted.length>0)sugg.push({icon:'tag',tone:'amber',title:`${unlisted.length} item${unlisted.length!==1?'s':''} not listed anywhere`,desc:'Get them in front of buyers by adding listing platforms.',action:'Go to Listings',fn:()=>{setPage('stock');setStockTab('listings');window.scrollTo(0,0)}})
               const singlePlat=inStock.filter(i=>i.listed_on&&i.listed_on.length===1)
-              if(singlePlat.length>0)sugg.push({icon:'📈',tone:'blue',title:`${singlePlat.length} item${singlePlat.length!==1?'s':''} on only one platform`,desc:'Cross-listing to more marketplaces can help them sell faster.',action:'Go to Listings',fn:()=>{setPage('stock');setStockTab('listings');window.scrollTo(0,0)}})
+              if(singlePlat.length>0)sugg.push({icon:'trending-up',tone:'blue',title:`${singlePlat.length} item${singlePlat.length!==1?'s':''} on only one platform`,desc:'Cross-listing to more marketplaces can help them sell faster.',action:'Go to Listings',fn:()=>{setPage('stock');setStockTab('listings');window.scrollTo(0,0)}})
               const pending=items.filter(i=>i.status==='sold'&&i.payout_status==='pending')
-              if(pending.length>0)sugg.push({icon:'💷',tone:'green',title:`${pending.length} sale${pending.length!==1?'s':''} awaiting payout`,desc:'Mark them as paid once the funds land to keep your finances accurate.',action:'View payouts',fn:()=>{setPage('finance');setFinanceTab('payouts');window.scrollTo(0,0)}})
+              if(pending.length>0)sugg.push({icon:'pound',tone:'green',title:`${pending.length} sale${pending.length!==1?'s':''} awaiting payout`,desc:'Mark them as paid once the funds land to keep your finances accurate.',action:'View payouts',fn:()=>{setPage('finance');setFinanceTab('payouts');window.scrollTo(0,0)}})
               const noTarget=inStock.filter(i=>i.target_price==null||i.target_price==='')
-              if(noTarget.length>0)sugg.push({icon:'🎯',tone:'purple',title:`${noTarget.length} in-stock item${noTarget.length!==1?'s':''} without a target price`,desc:'Set target prices to track your expected margins at a glance.',action:'Review inventory',fn:()=>{setPage('stock');setStockTab('inventory');setFilterStatus('in_stock');window.scrollTo(0,0)}})
+              if(noTarget.length>0)sugg.push({icon:'target',tone:'purple',title:`${noTarget.length} in-stock item${noTarget.length!==1?'s':''} without a target price`,desc:'Set target prices to track your expected margins at a glance.',action:'Review inventory',fn:()=>{setPage('stock');setStockTab('inventory');setFilterStatus('in_stock');window.scrollTo(0,0)}})
               const tones={amber:{bg:'#fffbeb',border:'#fcd34d',color:'#d97706'},red:{bg:'#fef2f2',border:'#fecaca',color:'#dc2626'},blue:{bg:'#eff6ff',border:'#bfdbfe',color:'#2563eb'},purple:{bg:'#f5f3ff',border:'#ddd6fe',color:'#7c3aed'},green:{bg:'#f0fdf4',border:'#bbf7d0',color:'#16a34a'}}
               return(
                 <div className="chart-card">
                   <div className="chart-header" style={{marginBottom:sugg.length?16:0}}>
-                    <div><div className="chart-title">💡 Smart Suggestions</div><div className="chart-subtitle">Recommended next actions for your stock</div></div>
+                    <div><div className="chart-title"><Icon name="lightbulb" size={15} /> Smart Suggestions</div><div className="chart-subtitle">Recommended next actions for your stock</div></div>
                   </div>
                   {sugg.length===0?(
-                    <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'var(--radius)',fontSize:14,color:'#166534',fontWeight:600}}><span style={{fontSize:20}}>✅</span>You're all caught up — nothing needs attention right now.</div>
+                    <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'var(--radius)',fontSize:14,color:'#166534',fontWeight:600}}><span style={{fontSize:20}}><Icon name="check-circle" size={20} /></span>You're all caught up — nothing needs attention right now.</div>
                   ):(
                     <div style={{display:'grid',gap:10}}>
                       {sugg.slice(0,5).map((s,idx)=>{
                         const t=tones[s.tone]||tones.blue
                         return(
                           <div key={idx} style={{display:'flex',alignItems:'center',gap:14,padding:'12px 16px',background:t.bg,border:`1px solid ${t.border}`,borderRadius:'var(--radius)',flexWrap:'wrap'}}>
-                            <div style={{fontSize:22,flexShrink:0}}>{s.icon}</div>
+                            <div style={{flexShrink:0,display:'flex'}}><Icon name={s.icon} size={22} /></div>
                             <div style={{flex:1,minWidth:140}}>
                               <div style={{fontWeight:700,fontSize:14,color:'#1e293b'}}>{s.title}</div>
                               <div style={{fontSize:12.5,color:'#64748b',marginTop:2}}>{s.desc}</div>
@@ -2564,7 +2565,7 @@ ${expInMonth.length>0?`
                     : <><input className="form-input" style={{margin:0,height:30,width:120,fontSize:12}} placeholder="Tag name" value={bulkTag} onChange={e=>setBulkTag(e.target.value)} onKeyDown={e=>e.key==='Enter'&&bulkAddTag()} autoFocus/><button className="btn sm primary" onClick={bulkAddTag}>Apply</button></>
                   }
                   <button className="btn sm danger" onClick={bulkDelete}>Delete</button>
-                  <button className="btn sm" onClick={clearSelection}>✕</button>
+                  <button className="btn sm" onClick={clearSelection}><Icon name="x" size={14} /></button>
                 </div>
               )}
             </div>
@@ -2575,7 +2576,7 @@ ${expInMonth.length>0?`
                   <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180}}/>
                   <select className="filter-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}><option value="">All categories</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select>
                   <select className="filter-select" value={filterBrand} onChange={e=>setFilterBrand(e.target.value)}><option value="">All brands</option>{[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=><option key={b} value={b}>{b}</option>)}</select>
-                  <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="stale">⚠ Stale ({STALE_DAYS}+ days)</option><option value="long_term">📌 Long-term holds</option></select>
+                  <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="stale">Stale ({STALE_DAYS}+ days)</option><option value="long_term">Long-term holds</option></select>
                   <select className="filter-select" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
                     <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
@@ -2602,15 +2603,15 @@ ${expInMonth.length>0?`
                 </div>
                 {orderCart.length>0&&(
                   <div style={{background:'var(--accent)',color:'#fff',padding:'10px 16px',borderRadius:'var(--radius)',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-                    <span style={{fontWeight:600,fontSize:14}}>🛒 {orderCart.length} item{orderCart.length!==1?'s':''} in order</span>
+                    <span style={{fontWeight:600,fontSize:14}}><Icon name="cart" size={15} /> {orderCart.length} item{orderCart.length!==1?'s':''} in order</span>
                     <div style={{display:'flex',gap:8}}>
                       <button style={{background:'rgba(255,255,255,0.2)',border:'1px solid rgba(255,255,255,0.5)',color:'#fff',borderRadius:'var(--radius)',padding:'4px 12px',fontSize:12,fontWeight:600,cursor:'pointer'}} onClick={()=>setShowOrderModal(true)}>View order →</button>
-                      <button style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.3)',color:'#fff',borderRadius:'var(--radius)',padding:'4px 10px',fontSize:12,cursor:'pointer'}} onClick={()=>setOrderCart([])}>✕ Clear</button>
+                      <button style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.3)',color:'#fff',borderRadius:'var(--radius)',padding:'4px 10px',fontSize:12,cursor:'pointer'}} onClick={()=>setOrderCart([])}><Icon name="x" size={12} style={{marginRight:4,verticalAlign:'-2px'}} />Clear</button>
                     </div>
                   </div>
                 )}
                 {loading?<div className="loading">Loading stock...</div>:filteredBatches.length===0?(
-                  <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">{items.length===0?'No stock yet':'No results'}</div><div style={{marginTop:6}}>{items.length===0?'Add your first item to get started':'Try adjusting your filters'}</div></div>
+                  <div className="empty"><div className="empty-icon"><Icon name="package" size={40} /></div><div className="empty-title">{items.length===0?'No stock yet':'No results'}</div><div style={{marginTop:6}}>{items.length===0?'Add your first item to get started':'Try adjusting your filters'}</div></div>
                 ):viewMode==='list'?(
                   <div className="inv-list">
                     <div className="inv-list-header">
@@ -2649,7 +2650,7 @@ ${expInMonth.length>0?`
                             <div style={{fontWeight:700,fontSize:15,color:'var(--text)',lineHeight:1.25}}>{batch.brand||'—'}</div>
                             <div style={{fontSize:13,color:'var(--text2)',marginTop:2,lineHeight:1.4}}>{styleText}</div>
                             <div className="inv-list-meta">
-                              {storageLabel&&<span className="inv-list-meta-chip">📦 {storageLabel}</span>}
+                              {storageLabel&&<span className="inv-list-meta-chip"><Icon name="package" size={11} /> {storageLabel}</span>}
                               {targetLabel&&<span className="inv-list-meta-chip" style={{color:'var(--accent)',borderColor:'var(--accent)'}}>{targetLabel}</span>}
                               {tags.map(t=><span key={t} className="inv-list-meta-chip" style={{cursor:'pointer'}} onClick={e=>{e.stopPropagation();setFilterTag(t)}}>{t}</span>)}
                             </div>
@@ -2658,7 +2659,7 @@ ${expInMonth.length>0?`
                             const pill = {fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:20,display:'inline-flex',alignItems:'center',gap:4,whiteSpace:'nowrap'}
                             const chipPill = {fontSize:10,fontWeight:500,padding:'3px 9px',borderRadius:20,background:'var(--surface2)',border:'1px solid var(--border)',color:'var(--text2)',whiteSpace:'nowrap',display:'inline-block'}
                             const stalePill = isLongTerm
-                              ? <span style={{...pill,color:'#6366f1',background:'#eef2ff',border:'1px solid #c7d2fe'}}>📌 Long-term</span>
+                              ? <span style={{...pill,color:'#6366f1',background:'#eef2ff',border:'1px solid #c7d2fe'}}><Icon name="pin" size={11} /> Long-term</span>
                               : daysInStock>30
                               ? <span style={{...pill,color:'#dc2626',background:'#fee2e2',border:'1px solid #fca5a5'}}><span style={{width:5,height:5,borderRadius:'50%',background:'#dc2626',flexShrink:0,display:'inline-block'}}/>30+ days</span>
                               : daysInStock>STALE_DAYS
@@ -2717,7 +2718,7 @@ ${expInMonth.length>0?`
                                   const days = (now - new Date(u.purchase_date)) / 86400000
                                   return Math.max(max, days)
                                 }, 0)
-                                if (isLongTerm) return <span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 8px',borderRadius:20,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4,border:'1px solid #c7d2fe'}} onClick={e=>{e.stopPropagation();unmarkLongTerm(batch)}} title="Click to remove long-term hold">📌 Long-term</span>
+                                if (isLongTerm) return <span style={{fontSize:10,fontWeight:600,color:'#6366f1',background:'#eef2ff',padding:'2px 8px',borderRadius:20,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4,border:'1px solid #c7d2fe'}} onClick={e=>{e.stopPropagation();unmarkLongTerm(batch)}} title="Click to remove long-term hold"><Icon name="pin" size={11} />Long-term</span>
                                 if (daysInStock > 30) return <span style={{fontSize:10,fontWeight:600,color:'#dc2626',background:'#fee2e2',padding:'2px 8px',borderRadius:20,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5,border:'1px solid #fca5a5'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="30+ days — no return window. Click to mark as long-term hold"><span style={{width:6,height:6,borderRadius:'50%',background:'#dc2626',flexShrink:0,display:'inline-block'}}/>30+ days</span>
                                 if (daysInStock > STALE_DAYS) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 8px',borderRadius:20,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5,border:'1px solid #fcd34d'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="Click to mark as long-term hold"><span style={{width:6,height:6,borderRadius:'50%',background:'#f59e0b',flexShrink:0,display:'inline-block'}}/>{STALE_DAYS}+ days</span>
                                 return null
@@ -2728,8 +2729,8 @@ ${expInMonth.length>0?`
                           <div className="item-card-body">
                             <div className="item-card-brand">{batch.brand||'—'}</div>
                             <div className="item-card-style">{batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='singles'?[batch.style,batch.units[0]?.card_number,batch.colourway].filter(Boolean).join(' · '):batch.category==='Pokémon'&&batch.units[0]?.pokemon_type==='sealed'?[batch.colourway,batch.units[0]?.pokemon_sealed_type,batch.style].filter(Boolean).join(' · ')||'—':[batch.style,batch.colourway].filter(Boolean).join(' — ')||'—'}</div>
-                            {batch.units[0]?.storage_location&&<div style={{marginTop:4,fontSize:11,color:'var(--muted)'}}>📦 {batch.units[0].storage_location}</div>}
-                            {batch.units[0]?.target_price&&!allSold&&<div style={{marginTop:5,display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:700,color:'#7c3aed',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:20,padding:'2px 8px'}}>🎯 Target {fmt(batch.units[0].target_price)}</div>}
+                            {batch.units[0]?.storage_location&&<div style={{marginTop:4,fontSize:11,color:'var(--muted)'}}><Icon name="package" size={11} /> {batch.units[0].storage_location}</div>}
+                            {batch.units[0]?.target_price&&!allSold&&<div style={{marginTop:5,display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:700,color:'#7c3aed',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:20,padding:'2px 8px'}}><Icon name="target" size={11} /> Target {fmt(batch.units[0].target_price)}</div>}
                             {(()=>{const tags=(batch.units[0]?.tags||'').split(',').map(t=>t.trim()).filter(Boolean);return tags.length>0&&<div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>{tags.map(t=><span key={t} style={{fontSize:10,fontWeight:600,padding:'2px 6px',borderRadius:10,background:'var(--surface2)',border:'1px solid var(--border)',color:'var(--text2)',cursor:'pointer'}} onClick={e=>{e.stopPropagation();setFilterTag(t)}}>{t}</span>)}</div>})()}
                           </div>
                           <div className="item-card-stats">
@@ -2747,14 +2748,14 @@ ${expInMonth.length>0?`
                             </div>
                             <div className="item-card-stat"><div className="item-card-stat-label">Cost</div><div className="item-card-stat-value">{fmt(totalCost)}</div>{!isSingle&&inStockUnits.length>0&&<div className="item-card-stat-avg">avg {fmt(avgCost)}</div>}</div>
                             <div className="item-card-stat"><div className="item-card-stat-label">P&L</div><div className={`item-card-stat-value ${plColor(soldUnits.length?totalPL:null)}`}>{soldUnits.length?fmt(totalPL):'—'}</div></div>
-                            <div className="item-card-stat"><div className="item-card-stat-label">Sold</div><div className="item-card-stat-value">{batch.units.length>1?`${soldUnits.length}/${batch.units.length}`:(soldUnits.length?'✓':'—')}</div></div>
+                            <div className="item-card-stat"><div className="item-card-stat-label">Sold</div><div className="item-card-stat-value">{batch.units.length>1?`${soldUnits.length}/${batch.units.length}`:(soldUnits.length?<Icon name="check" size={13} strokeWidth={2.5} />:'—')}</div></div>
                           </div>
                           <div className="item-card-actions" onClick={e=>e.stopPropagation()}>
                             {isSingle&&batch.units[0].status==='in_stock'&&<button className="btn sm success" style={{flex:1}} onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
                             {!isSingle&&!allSold&&<button className="btn sm success" style={{flex:1}} onClick={()=>setBatchModal(batch)}>View units</button>}
                             {isSingle&&batch.units[0].status==='in_stock'&&(()=>{
                               const inCart=orderCart.some(e=>e.item.id===batch.units[0].id)
-                              return <button className={`btn sm${inCart?' primary':''}`} title={inCart?'In order — click to remove':'Add to order'} onClick={()=>inCart?removeFromOrder(orderCart.find(e=>e.item.id===batch.units[0].id)?.cartId):addToOrder(batch.units[0])}>{inCart?'✓ Order':'📋'}</button>
+                              return <button className={`btn sm${inCart?' primary':''}`} title={inCart?'In order — click to remove':'Add to order'} onClick={()=>inCart?removeFromOrder(orderCart.find(e=>e.item.id===batch.units[0].id)?.cartId):addToOrder(batch.units[0])}>{inCart?<><Icon name="check" size={12} strokeWidth={2.5} /> Order</>:<Icon name="clipboard" size={13} />}</button>
                             })()}
                             {isSingle&&<button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
                             <button className="btn sm" onClick={()=>duplicateItem(batch)}>Copy</button>
@@ -2770,7 +2771,7 @@ ${expInMonth.length>0?`
 
             {stockTab==='history'&&(()=>{
               const soldItems = items.filter(i=>i.status==='sold').sort((a,b)=>new Date(b.sold_at)-new Date(a.sold_at))
-              if (soldItems.length===0) return <div className="empty"><div className="empty-icon">📋</div><div className="empty-title">No sold items yet</div><div style={{marginTop:6}}>Sales will appear here once you mark items as sold</div></div>
+              if (soldItems.length===0) return <div className="empty"><div className="empty-icon"><Icon name="clipboard" size={40} /></div><div className="empty-title">No sold items yet</div><div style={{marginTop:6}}>Sales will appear here once you mark items as sold</div></div>
               const groups = {}
               soldItems.forEach(i => {
                 const key = getMonthKey(i.sold_at) || 'unknown'
@@ -2811,7 +2812,7 @@ ${expInMonth.length>0?`
                                 <div>{fmt(i.sale_price)}</div>
                                 <div style={{color:'var(--muted)'}}>-{fmt((i.fee_amount||0)+(i.shipping_fee||0))}</div>
                                 <div className={profit>=0?'td-pos':'td-neg'}>{profit>=0?'+':''}{fmt(profit)}</div>
-                                <div>{i.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✓ Paid</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}</div>
+                                <div>{i.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}><Icon name="check" size={11} strokeWidth={2.5} /> Paid</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}</div>
                                 <div style={{display:'flex',gap:4}}>
                                   <button className="btn sm" style={{padding:'2px 6px',fontSize:11}} onClick={()=>handleEditSold(i)}>Edit</button>
                                   <button className="btn sm" style={{padding:'2px 6px',fontSize:11,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>openReturn(i)}>Return</button>
@@ -2949,7 +2950,7 @@ ${expInMonth.length>0?`
 
                   {groups.length === 0 ? (
                     <div style={{textAlign:'center',padding:'48px 0',color:'var(--muted)',fontSize:14}}>
-                      {listingsFilter === 'unlisted' ? '✓ Everything in stock is listed somewhere.' : 'No items match.'}
+                      {listingsFilter === 'unlisted' ? 'Everything in stock is listed somewhere.' : 'No items match.'}
                     </div>
                   ) : (
                     <div style={{display:'flex',flexDirection:'column',gap:1,borderRadius:12,overflow:'hidden',border:'1px solid var(--border)'}}>
@@ -3003,10 +3004,10 @@ ${expInMonth.length>0?`
                                 {group.map((i, idx) => (
                                   <div key={i.id} style={{display:'flex',flexWrap:'wrap',gap:14,fontSize:12,color:'var(--muted)',alignItems:'center'}}>
                                     {qty > 1 && <span style={{fontWeight:700,color:'var(--text)',minWidth:18}}>{i.sku ? `#${i.sku}` : `#${idx+1}`}</span>}
-                                    {i.purchase_price != null && i.purchase_price !== '' && <span>💰 Cost £{Number(i.purchase_price).toFixed(2)}</span>}
-                                    {i.target_price != null && i.target_price !== '' && <span>🎯 Target £{Number(i.target_price).toFixed(2)}</span>}
-                                    {i.purchase_date && <span>📅 {new Date(i.purchase_date).toLocaleDateString('en-GB')}</span>}
-                                    {i.graded && (i.grading_company || i.grade) && <span>🏅 {[i.grading_company, i.grade].filter(Boolean).join(' ')}</span>}
+                                    {i.purchase_price != null && i.purchase_price !== '' && <span><Icon name="pound" size={11} /> Cost £{Number(i.purchase_price).toFixed(2)}</span>}
+                                    {i.target_price != null && i.target_price !== '' && <span><Icon name="target" size={11} /> Target £{Number(i.target_price).toFixed(2)}</span>}
+                                    {i.purchase_date && <span><Icon name="calendar" size={11} /> {new Date(i.purchase_date).toLocaleDateString('en-GB')}</span>}
+                                    {i.graded && (i.grading_company || i.grade) && <span><Icon name="medal" size={11} /> {[i.grading_company, i.grade].filter(Boolean).join(' ')}</span>}
                                     {!i.graded && i.condition && <span>{i.condition}</span>}
                                     {i.notes && <span style={{fontStyle:'italic'}}>"{i.notes}"</span>}
                                   </div>
@@ -3027,7 +3028,7 @@ ${expInMonth.length>0?`
               <div>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
                   <div style={{fontSize:13,color:'var(--muted)'}}>Items you want to restock. Hit "Purchased" when you buy one to add it straight to inventory.</div>
-                  <button className="btn primary sm" onClick={()=>setShowWishlistForm(f=>!f)}>{showWishlistForm?'✕ Cancel':'+ Add item'}</button>
+                  <button className="btn primary sm" onClick={()=>setShowWishlistForm(f=>!f)}>{showWishlistForm?<><Icon name="x" size={12} /> Cancel</>:'+ Add item'}</button>
                 </div>
                 {showWishlistForm&&(
                   <div className="chart-card" style={{marginBottom:16}}>
@@ -3043,7 +3044,7 @@ ${expInMonth.length>0?`
                   </div>
                 )}
                 {wishlist.length===0?(
-                  <div className="empty"><div className="empty-icon">🛒</div><div className="empty-title">Your wishlist is empty</div><div style={{marginTop:6}}>Add items you want to restock and track your target buy prices</div></div>
+                  <div className="empty"><div className="empty-icon"><Icon name="cart" size={40} /></div><div className="empty-title">Your wishlist is empty</div><div style={{marginTop:6}}>Add items you want to restock and track your target buy prices</div></div>
                 ):(
                   <div style={{display:'flex',flexDirection:'column',gap:10}}>
                     {wishlist.map(w=>(
@@ -3053,7 +3054,7 @@ ${expInMonth.length>0?`
                             {w.category&&<span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--muted)'}}>{w.category}</span>}
                             <span style={{fontWeight:700,fontSize:15}}>{w.brand}</span>
                             {w.style&&<span style={{fontSize:13,color:'var(--text2)'}}>{w.style}</span>}
-                            {w.targetPrice&&<span style={{fontSize:11,fontWeight:700,color:'#7c3aed',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:20,padding:'2px 8px'}}>🎯 Target £{parseFloat(w.targetPrice).toFixed(2)}</span>}
+                            {w.targetPrice&&<span style={{fontSize:11,fontWeight:700,color:'#7c3aed',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:20,padding:'2px 8px'}}><Icon name="target" size={11} /> Target £{parseFloat(w.targetPrice).toFixed(2)}</span>}
                           </div>
                           {w.notes&&<div style={{fontSize:12,color:'var(--muted)',marginTop:4}}>{w.notes}</div>}
                           <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>{new Date(w.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
@@ -3063,7 +3064,7 @@ ${expInMonth.length>0?`
                             const pf={...EMPTY_FORM,category:w.category||'',brand:w.brand||'',style:w.style||'',notes:w.notes||'',batch_total_cost:w.targetPrice||''}
                             removeWishlistItem(w.id)
                             setForm(pf);setEditItem(null);setSaveError('');setShowAdd(true)
-                          }}>✓ Purchased</button>
+                          }}><Icon name="check" size={12} strokeWidth={2.5} /> Purchased</button>
                           <button className="btn sm danger" onClick={()=>removeWishlistItem(w.id)}>Remove</button>
                         </div>
                       </div>
@@ -3145,7 +3146,7 @@ ${expInMonth.length>0?`
                 <div className="chart-header"><div><div className="chart-title">Best & Worst Performers</div><div className="chart-subtitle">Ranked by composite score: profit · ROI · sale speed</div></div></div>
                 <div className="two-col">
                   <div>
-                    <div className="perf-label green">🏆 Best performers</div>
+                    <div className="perf-label green"><Icon name="trophy" size={15} /> Best performers</div>
                     {bestWorst.best.length===0
                       ? <div className="td-muted" style={{fontSize:13}}>No sold items yet</div>
                       : bestWorst.best.map((item,i)=>(
@@ -3164,7 +3165,7 @@ ${expInMonth.length>0?`
                       ))}
                   </div>
                   <div>
-                    <div className="perf-label red">📉 Worst performers</div>
+                    <div className="perf-label red"><Icon name="trending-down" size={15} /> Worst performers</div>
                     {bestWorst.worst.length===0
                       ? <div className="td-muted" style={{fontSize:13}}>No sold items yet</div>
                       : bestWorst.worst.map((item,i)=>(
@@ -3245,7 +3246,7 @@ ${expInMonth.length>0?`
             {metricsTab==='collector'&&(
               <div>
                 {collectorItems.length===0?(
-                  <div className="empty"><div className="empty-icon">🗂️</div><div className="empty-title">No collection data yet</div><div style={{marginTop:6}}>Add items to your collection to see metrics</div></div>
+                  <div className="empty"><div className="empty-icon"><Icon name="folder" size={40} /></div><div className="empty-title">No collection data yet</div><div style={{marginTop:6}}>Add items to your collection to see metrics</div></div>
                 ):(
                   <div>
                     <div className="stats-bar" style={{marginBottom:24}}>
@@ -3369,7 +3370,7 @@ ${expInMonth.length>0?`
                   <div className="chart-card" style={{marginBottom:16}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                       <div style={{fontSize:13,fontWeight:600}}>Your UTR (Unique Taxpayer Reference)</div>
-                      {taxUTR&&<span style={{fontSize:11,color:'var(--green)'}}>✓ Saved</span>}
+                      {taxUTR&&<span style={{fontSize:11,color:'var(--green)'}}><Icon name="check" size={11} strokeWidth={2.5} /> Saved</span>}
                     </div>
                     <div style={{display:'flex',gap:8}}>
                       <input className="form-input" style={{margin:0,flex:1,fontFamily:'monospace',letterSpacing:'0.08em'}} placeholder="10-digit UTR e.g. 1234567890" value={taxUTR} onChange={e=>setTaxUTR(e.target.value)} maxLength={10}/>
@@ -3380,7 +3381,7 @@ ${expInMonth.length>0?`
                   <div className="chart-card" style={{marginBottom:16}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                       <div style={{fontSize:13,fontWeight:600}}>VAT Settings</div>
-                      <span style={{fontSize:11,color:vatRegistered?'var(--green)':'var(--muted)'}}>{vatRegistered?'✓ VAT Registered':'Not registered'}</span>
+                      <span style={{fontSize:11,color:vatRegistered?'var(--green)':'var(--muted)'}}>{vatRegistered?'VAT Registered':'Not registered'}</span>
                     </div>
                     <div className="type-toggle" style={{marginBottom:12}}>
                       <button className={`type-btn ${!vatRegistered?'active':''}`} onClick={()=>setVatRegistered(false)}>Not registered</button>
@@ -3424,7 +3425,7 @@ ${expInMonth.length>0?`
                     )}
                   </div>
                   <div style={{fontSize:12,color:'var(--muted)',background:'var(--surface2)',padding:'10px 14px',borderRadius:'var(--radius)'}}>
-                    ⚠️ Estimate only, based on sole trader rates for {selectedTaxYear}/{selectedTaxYear+1}. Does not account for other income, trading allowance, or other reliefs. Always confirm with a qualified accountant before submitting your Self Assessment.
+                    <Icon name="alert-triangle" size={13} /> Estimate only, based on sole trader rates for {selectedTaxYear}/{selectedTaxYear+1}. Does not account for other income, trading allowance, or other reliefs. Always confirm with a qualified accountant before submitting your Self Assessment.
                   </div>
                 </div>
               )
@@ -3456,7 +3457,7 @@ ${expInMonth.length>0?`
             )}
 
             {collectorLoading?<div className="loading">Loading collection...</div>:collectorItems.length===0?(
-              <div className="empty"><div className="empty-icon">🗂️</div><div className="empty-title">Nothing in your collection yet</div><div style={{marginTop:6}}>Add your first item to get started</div></div>
+              <div className="empty"><div className="empty-icon"><Icon name="folder" size={40} /></div><div className="empty-title">Nothing in your collection yet</div><div style={{marginTop:6}}>Add your first item to get started</div></div>
             ):(
               <div className="card-grid">
                 {collectorItems.map(item=>(
@@ -3579,7 +3580,7 @@ ${expInMonth.length>0?`
                             <td style={{padding:'6px 8px'}}><input className="form-input" style={{margin:0,width:'100%'}} type="number" min="1" value={l.qty} onChange={e=>updateInvLine(i,'qty',e.target.value)}/></td>
                             <td style={{padding:'6px 8px'}}><input className="form-input" style={{margin:0,width:'100%'}} type="number" step="0.01" min="0" placeholder="0.00" value={l.unitPrice} onChange={e=>updateInvLine(i,'unitPrice',e.target.value)}/></td>
                             <td style={{padding:'6px 0',textAlign:'right',fontWeight:600,fontSize:14}}>{fmt((parseFloat(l.qty)||0)*(parseFloat(l.unitPrice)||0))}</td>
-                            <td style={{padding:'6px 0',textAlign:'center'}}>{invLines.length>1&&<button onClick={()=>removeInvLine(i)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:16,lineHeight:1}}>✕</button>}</td>
+                            <td style={{padding:'6px 0',textAlign:'center'}}>{invLines.length>1&&<button onClick={()=>removeInvLine(i)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:16,lineHeight:1}}><Icon name="x" size={14} /></button>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -3599,9 +3600,9 @@ ${expInMonth.length>0?`
                   </div>
 
                   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                    <button className="btn" onClick={previewInvoice}>👁 Preview</button>
-                    <button className="btn primary" onClick={printInvoice}>🖨️ Print</button>
-                    <button className="btn success" onClick={saveInvoice}>💾 Save Invoice</button>
+                    <button className="btn" onClick={previewInvoice}><Icon name="eye" size={14} /> Preview</button>
+                    <button className="btn primary" onClick={printInvoice}><Icon name="printer" size={14} /> Print</button>
+                    <button className="btn success" onClick={saveInvoice}><Icon name="save" size={14} /> Save Invoice</button>
                     <button className="btn" onClick={()=>{setInvCustomer({name:'',address:'',email:''});setInvLines([{description:'',qty:'1',unitPrice:''}]);setInvNotes('')}}>Clear</button>
                   </div>
                   <div style={{fontSize:12,color:'var(--muted)',marginTop:8}}>Preview opens a new tab. Print opens + auto-prints. Save stores a copy on the right.</div>
@@ -3618,7 +3619,7 @@ ${expInMonth.length>0?`
                           <div key={inv.id} style={{padding:'10px 12px',background:'var(--surface2)',borderRadius:'var(--radius)',fontSize:12}}>
                             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
                               <div style={{fontWeight:700,fontSize:13}}>INV-{inv.number}</div>
-                              <button onClick={()=>deleteSavedInvoice(inv.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:14,lineHeight:1,padding:0}}>✕</button>
+                              <button onClick={()=>deleteSavedInvoice(inv.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:14,lineHeight:1,padding:0}}><Icon name="x" size={14} /></button>
                             </div>
                             <div style={{color:'var(--muted)',marginBottom:2}}>{inv.customerName||'No customer'}</div>
                             <div style={{color:'var(--muted)',marginBottom:6}}>{inv.date?new Date(inv.date).toLocaleDateString('en-GB'):''}</div>
@@ -3646,7 +3647,7 @@ ${expInMonth.length>0?`
                   <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Bulk-add stock from a spreadsheet. Download the template, fill it in, then upload it here.</div>
                   <button className="btn sm" onClick={downloadCSVTemplate} style={{marginBottom:16}}>↓ Download template CSV</button>
                   <div className="csv-drop-zone" onClick={()=>document.getElementById('csv-file-input').click()}>
-                    <div style={{fontSize:32,marginBottom:8}}>📂</div>
+                    <div style={{fontSize:32,marginBottom:8}}><Icon name="folder-open" size={32} /></div>
                     <div style={{fontWeight:600,marginBottom:4}}>Click to select a CSV file</div>
                     <div style={{fontSize:12,color:'var(--muted)'}}>Columns: Category, Brand, Style, Colourway, SKU, Size, Purchase Date, Purchase Platform, Total Cost (£), Notes</div>
                   </div>
@@ -3661,7 +3662,7 @@ ${expInMonth.length>0?`
                       <b>Tip:</b> eBay's "Download report" exports columns including <i>Order number, Item title, Quantity, Item price, Order total, Sale date</i>. We'll map these automatically.
                     </div>
                     <div className="csv-drop-zone" onClick={()=>document.getElementById('ebay-csv-input').click()}>
-                      <div style={{fontSize:32,marginBottom:8}}>📂</div>
+                      <div style={{fontSize:32,marginBottom:8}}><Icon name="folder-open" size={32} /></div>
                       <div style={{fontWeight:600,marginBottom:4}}>Click to select your eBay CSV</div>
                       <div style={{fontSize:12,color:'var(--muted)'}}>Downloaded from eBay Seller Hub → Orders → Download report</div>
                     </div>
@@ -3766,7 +3767,7 @@ ${expInMonth.length>0?`
                 )}
                 {skuResults&&skuResults.length===0&&!skuError&&(
                   <div>
-                    <div className="empty" style={{marginBottom:20}}><div className="empty-icon">🔍</div><div className="empty-title">No results found</div><div style={{marginTop:6}}>Try a different SKU or product name</div></div>
+                    <div className="empty" style={{marginBottom:20}}><div className="empty-icon"><Icon name="search" size={40} /></div><div className="empty-title">No results found</div><div style={{marginTop:6}}>Try a different SKU or product name</div></div>
                   </div>
                 )}
                 {(skuResults!==null||skuError)&&(
@@ -3883,7 +3884,7 @@ ${expInMonth.length>0?`
               </div>
             )}
             {expensesLoading?<div className="loading">Loading...</div>:expenses.length===0?(
-              <div className="empty"><div className="empty-icon">🧾</div><div className="empty-title">No expenses logged</div><div style={{marginTop:6}}>Track packaging, subscriptions, and other business costs</div></div>
+              <div className="empty"><div className="empty-icon"><Icon name="receipt" size={40} /></div><div className="empty-title">No expenses logged</div><div style={{marginTop:6}}>Track packaging, subscriptions, and other business costs</div></div>
             ):(
               <div>
                 <div className="stats-bar" style={{marginBottom:20}}>
@@ -3986,7 +3987,7 @@ ${expInMonth.length>0?`
                   )}
                 </div>
                 <div style={{fontSize:11,color:'var(--muted)',marginTop:12,padding:'10px 14px',background:'var(--surface2)',borderRadius:'var(--radius)'}}>
-                  ⚠️ Based on VAT rates you've entered per item. Verify against your actual VAT account and always confirm with your accountant before submitting a return.
+                  <Icon name="alert-triangle" size={13} /> Based on VAT rates you've entered per item. Verify against your actual VAT account and always confirm with your accountant before submitting a return.
                 </div>
               </div>
             )}
@@ -3999,7 +4000,7 @@ ${expInMonth.length>0?`
           const totalOutstanding = pending.reduce((s,i)=>s+(i.sale_price||0)-(i.fee_amount||0)-(i.shipping_fee||0),0)
           const byPlatform = {}
           pending.forEach(i=>{const p=i.selling_platform||'Unknown';if(!byPlatform[p])byPlatform[p]=[];byPlatform[p].push(i)})
-          if (pending.length===0) return <div className="empty"><div className="empty-icon">✅</div><div className="empty-title">All caught up</div><div style={{marginTop:6}}>No pending payouts</div></div>
+          if (pending.length===0) return <div className="empty"><div className="empty-icon"><Icon name="check-circle" size={40} /></div><div className="empty-title">All caught up</div><div style={{marginTop:6}}>No pending payouts</div></div>
           return (
             <div style={{maxWidth:700}}>
               <div className="chart-card" style={{marginBottom:20}}>
@@ -4010,7 +4011,7 @@ ${expInMonth.length>0?`
                   </div>
                   <div style={{textAlign:'right'}}>
                     <div style={{fontSize:24,fontWeight:700,color:'var(--text)'}}>Net {fmt(totalOutstanding)}</div>
-                    <button className="btn sm primary" style={{marginTop:8}} onClick={()=>markPayoutPaid(pending.map(i=>i.id))}>✓ Mark all paid</button>
+                    <button className="btn sm primary" style={{marginTop:8}} onClick={()=>markPayoutPaid(pending.map(i=>i.id))}><Icon name="check" size={13} strokeWidth={2.5} /> Mark all paid</button>
                   </div>
                 </div>
               </div>
@@ -4035,7 +4036,7 @@ ${expInMonth.length>0?`
                           </div>
                           <div style={{fontSize:12,color:'var(--muted)'}}>{fmt(i.sale_price)}{i.fee_amount?` − ${fmt(i.fee_amount)} fee`:''}</div>
                           <div style={{fontSize:13,fontWeight:600}}>{fmt(net)}</div>
-                          <button className="btn sm success" onClick={()=>markPayoutPaid([i.id])}>✓ Paid</button>
+                          <button className="btn sm success" onClick={()=>markPayoutPaid([i.id])}><Icon name="check" size={13} strokeWidth={2.5} /> Paid</button>
                         </div>
                       )
                     })}
@@ -4058,7 +4059,7 @@ ${expInMonth.length>0?`
             </div>
 
             {breaksLoading ? <div className="loading">Loading...</div> : breaks.length === 0 ? (
-              <div className="empty"><div className="empty-icon">🃏</div><div className="empty-title">No breaks yet</div><div style={{marginTop:6}}>Add your first box break or mystery pack run</div></div>
+              <div className="empty"><div className="empty-icon"><Icon name="cards" size={40} /></div><div className="empty-title">No breaks yet</div><div style={{marginTop:6}}>Add your first box break or mystery pack run</div></div>
             ) : (
               <div className="card-grid">
                 {breaks.map(b => {
@@ -4068,7 +4069,7 @@ ${expInMonth.length>0?`
                   return (
                     <div key={b.id} className="item-card">
                       <div className="item-card-header">
-                        <div className="item-card-category">{isBreak ? '📦 Box Break' : '🎲 Mystery Packs'}</div>
+                        <div className="item-card-category">{isBreak ? <><Icon name="package" size={12} /> Box Break</> : <><Icon name="dice" size={12} /> Mystery Packs</>}</div>
                         <span className={`badge ${b.status==='completed'?'sold':b.status==='active'?'in_stock':'upcoming'}`}>
                           {b.status==='completed'?'Completed':b.status==='active'?'Active':'Upcoming'}
                         </span>
@@ -4281,7 +4282,7 @@ ${expInMonth.length>0?`
                       </div>
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <span style={{fontSize:11,fontWeight:600,color:spot.paid?'var(--green)':'var(--amber)'}}>{spot.paid?'✓ Paid':'Pending'}</span>
+                      <span style={{fontSize:11,fontWeight:600,color:spot.paid?'var(--green)':'var(--amber)'}}>{spot.paid?'Paid':'Pending'}</span>
                       <button className="btn sm danger" onClick={()=>deleteSpot(spot.id)}>Del</button>
                     </div>
                   </div>
@@ -4378,7 +4379,7 @@ ${expInMonth.length>0?`
             {editItem&&(
               <label className="metrics-checkbox" style={{marginTop:12,borderColor:form.long_term?'#6366f1':'var(--border)',color:form.long_term?'#6366f1':'var(--text2)'}}>
                 <input type="checkbox" checked={!!form.long_term} onChange={e=>setForm(f=>({...f,long_term:e.target.checked}))}/>
-                📌 Long-term hold — disable the 21-day stale warning for this item
+                <Icon name="pin" size={13} /> Long-term hold — disable the 21-day stale warning for this item
               </label>
             )}
             {form.category&&<div className="form-group" style={{marginTop:12}}>
@@ -4418,7 +4419,7 @@ ${expInMonth.length>0?`
               {batchModal.purchase_platform&&<span className="detail-tag"><span className="detail-tag-label">From</span>{batchModal.purchase_platform}</span>}
               {batchModal.units[0]?.target_price&&<span className="detail-tag"><span className="detail-tag-label">Target</span>{fmt(batchModal.units[0].target_price)}</span>}
             </div>
-            {batchModal.notes&&<div className="detail-notes">📝 {batchModal.notes}</div>}
+            {batchModal.notes&&<div className="detail-notes"><Icon name="edit" size={13} /> {batchModal.notes}</div>}
             {(()=>{
               const q = encodeURIComponent([batchModal.brand, batchModal.style, batchModal.colourway, batchModal.sku].filter(Boolean).join(' '))
               const cat = batchModal.category
@@ -4466,7 +4467,7 @@ ${expInMonth.length>0?`
                         )}
                         {g.inStock.length > 0 && (()=>{
                           const inCart = orderCart.some(e => e.item.id === g.inStock[0].id)
-                          return <button className={`btn sm${inCart?' primary':''}`} onClick={()=>inCart?removeFromOrder(orderCart.find(e=>e.item.id===g.inStock[0].id)?.cartId):addToOrder(g.inStock[0])}>{inCart?'✓ Order':'📋 Order'}</button>
+                          return <button className={`btn sm${inCart?' primary':''}`} onClick={()=>inCart?removeFromOrder(orderCart.find(e=>e.item.id===g.inStock[0].id)?.cartId):addToOrder(g.inStock[0])}>{inCart?<><Icon name="check" size={12} strokeWidth={2.5} /> Order</>:<><Icon name="clipboard" size={13} /> Order</>}</button>
                         })()}
                         <button className="btn sm" onClick={()=>{openEdit(g.inStock[0]||g.sold[0]);setBatchModal(null)}}>Edit</button>
                         <button className="btn sm danger" onClick={()=>{
@@ -4485,7 +4486,7 @@ ${expInMonth.length>0?`
                               {u.selling_platform&&<span style={{color:'var(--muted)'}}>{u.selling_platform}</span>}
                               <span className={profit>=0?'td-pos':'td-neg'}>{profit>=0?'+':''}{fmt(profit)} profit</span>
                               {u.payout_status==='paid'
-                                ? <span style={{fontSize:11,color:'var(--green)',fontWeight:600}}>✓ Paid</span>
+                                ? <span style={{fontSize:11,color:'var(--green)',fontWeight:600}}><Icon name="check" size={11} strokeWidth={2.5} /> Paid</span>
                                 : <span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}
                             </div>
                             {u.sold_at&&<div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{new Date(u.sold_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}{u.buyer_name&&` · ${u.buyer_name}`}</div>}
@@ -4504,9 +4505,9 @@ ${expInMonth.length>0?`
             <div className="form-actions" style={{marginTop:16}}>
               <button className="btn" onClick={()=>setBatchModal(null)}>Close</button>
               {batchModal.units.some(u=>u.long_term)?(
-                <button className="btn" style={{borderColor:'#6366f1',color:'#6366f1'}} onClick={()=>unmarkLongTerm(batchModal)}>📌 Remove long-term hold</button>
+                <button className="btn" style={{borderColor:'#6366f1',color:'#6366f1'}} onClick={()=>unmarkLongTerm(batchModal)}><Icon name="pin" size={13} /> Remove long-term hold</button>
               ):(
-                <button className="btn" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>markLongTerm(batchModal)}>📌 Mark as long-term hold</button>
+                <button className="btn" style={{borderColor:'#f59e0b',color:'#d97706'}} onClick={()=>markLongTerm(batchModal)}><Icon name="pin" size={13} /> Mark as long-term hold</button>
               )}
             </div>
           </div>
@@ -4542,7 +4543,7 @@ ${expInMonth.length>0?`
                 <label className="form-label">Payout status</label>
                 <select className="form-input" style={{margin:0}} value={orderPayoutStatus} onChange={e=>setOrderPayoutStatus(e.target.value)}>
                   <option value="pending">⏳ Pending</option>
-                  <option value="paid">✅ Paid out</option>
+                  <option value="paid">Paid out</option>
                 </select>
               </div>
             </div>
@@ -4585,7 +4586,7 @@ ${expInMonth.length>0?`
                         </td>
                         <td style={{padding:'8px',textAlign:'right',fontSize:12,color:'var(--muted)'}}>{price>0&&fee>0?`-${fmt(fee)}`:'—'}</td>
                         <td style={{padding:'8px 0',textAlign:'right',fontWeight:600}}><span className={price>0?(profit>=0?'td-pos':'td-neg'):''}>{price>0?fmt(profit):'—'}</span></td>
-                        <td style={{padding:'8px 0',textAlign:'right'}}><button onClick={()=>removeFromOrder(entry.cartId)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:16,lineHeight:1}}>✕</button></td>
+                        <td style={{padding:'8px 0',textAlign:'right'}}><button onClick={()=>removeFromOrder(entry.cartId)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:16,lineHeight:1}}><Icon name="x" size={14} /></button></td>
                       </tr>
                     )
                   })}
@@ -4693,7 +4694,7 @@ ${expInMonth.length>0?`
               <label className="form-label" style={{marginBottom:8,display:'block'}}>Payout Status</label>
               <div className="type-toggle">
                 <button className={`type-btn ${payoutStatus==='pending'?'active':''}`} onClick={()=>setPayoutStatus('pending')}>⏳ Pending</button>
-                <button className={`type-btn ${payoutStatus==='paid'?'active':''}`} onClick={()=>setPayoutStatus('paid')}>✅ Paid out</button>
+                <button className={`type-btn ${payoutStatus==='paid'?'active':''}`} onClick={()=>setPayoutStatus('paid')}><Icon name="check-circle" size={13} /> Paid out</button>
               </div>
             </div>
             {isPro&&vatRegistered&&(
@@ -4761,7 +4762,7 @@ ${expInMonth.length>0?`
                   <input className="form-input" value={session.user.email} disabled style={{background:'var(--surface2)',color:'var(--muted)'}}/>
                 </div>
                 <div className="form-actions">
-                  {settingsSaved&&<span style={{fontSize:13,color:'var(--green)',fontWeight:600}}>✓ Saved</span>}
+                  {settingsSaved&&<span style={{fontSize:13,color:'var(--green)',fontWeight:600}}><Icon name="check" size={11} strokeWidth={2.5} /> Saved</span>}
                   <button className="btn" onClick={()=>{setShowSettings(false);setSettingsSaved(false)}}>Close</button>
                   <button className="btn primary" onClick={async()=>{await saveDisplayName();setSettingsSaved(true);setTimeout(()=>setSettingsSaved(false),3000)}}>Save</button>
                 </div>
@@ -4798,7 +4799,7 @@ ${expInMonth.length>0?`
                       background:isFree?'var(--surface2)':isPro?'#dcfce7':'#eff6ff',
                       color:isFree?'var(--muted)':isPro?'#15803d':'#2563eb',
                       border:`1px solid ${isFree?'var(--border)':isPro?'#86efac':'#bfdbfe'}`
-                    }}>{isFree?'Free':isPro?'Pro ✓':'Core ✓'}</span>
+                    }}>{isFree?'Free':isPro?'Pro':'Core'}</span>
                   </div>
                 </div>
 
@@ -4814,7 +4815,7 @@ ${expInMonth.length>0?`
                         <div style={{fontWeight:700,fontSize:15,color:userPlan===t.id?t.colour:'var(--muted)'}}>{t.price}<span style={{fontSize:11,fontWeight:400}}>/mo</span></div>
                       </div>
                       <ul style={{margin:0,padding:'0 0 0 16px',listStyle:'none',display:'flex',flexDirection:'column',gap:3}}>
-                        {t.features.map(f=><li key={f} style={{fontSize:12,color:'var(--text2)',display:'flex',alignItems:'center',gap:6}}><span style={{color:t.colour,fontWeight:700}}>✓</span>{f}</li>)}
+                        {t.features.map(f=><li key={f} style={{fontSize:12,color:'var(--text2)',display:'flex',alignItems:'center',gap:6}}><span style={{color:t.colour,fontWeight:700}}><Icon name="check" size={13} strokeWidth={2.5} /></span>{f}</li>)}
                       </ul>
                       {userPlan!==t.id&&(userPlan==='free'||(userPlan==='core'&&t.id==='pro'))&&(
                         <button style={{marginTop:12,width:'100%',padding:'8px',borderRadius:'var(--radius)',background:t.colour,color:'white',border:'none',fontWeight:600,fontSize:13,cursor:'pointer'}}>
@@ -4878,7 +4879,7 @@ ${expInMonth.length>0?`
       <nav className="bottom-nav">
         {NAV_ITEMS.map(n=>(
           <button key={n.id} className={`bottom-nav-item ${page===n.id?'active':''} ${n.locked?'locked':''}`} onClick={()=>navTo(n.id)}>
-            <span className="bottom-nav-icon">{NAV_ICONS[n.id]}{n.locked&&<span className="bottom-nav-lock">🔒</span>}</span>
+            <span className="bottom-nav-icon">{NAV_ICONS[n.id]}{n.locked&&<span className="bottom-nav-lock"><Icon name="lock" size={10} /></span>}</span>
             <span>{n.label}</span>
           </button>
         ))}
