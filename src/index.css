@@ -133,6 +133,20 @@ body {
   letter-spacing: 0.03em;
 }
 
+.nav-beta {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid rgba(245,158,11,0.3);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.sidebar-nav-feedback { margin-top: 4px; }
+
 /* Locked tool tabs */
 .locked-tab { opacity: 0.7; }
 .tab-lock {
@@ -3962,6 +3976,78 @@ tbody td {
 .admin-email { color: #c8cce0; font-size: 13px; }
 .admin-date { color: #4a5070; }
 .admin-empty { color: #4a5070; text-align: center; padding: 32px; }
+
+/* Admin tabs */
+.admin-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.admin-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #8890b5;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.admin-tab:hover { color: #c8cce0; }
+.admin-tab.active { color: #f59e0b; border-bottom-color: #f59e0b; }
+.admin-tab-count {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background: rgba(245,158,11,0.15);
+  color: #f59e0b;
+}
+
+/* Admin feedback list */
+.admin-feedback-list { display: flex; flex-direction: column; gap: 12px; }
+.admin-feedback-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.admin-feedback-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.admin-feedback-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: #c8cce0;
+}
+.admin-feedback-bug { background: rgba(239,68,68,0.15); color: #f87171; }
+.admin-feedback-idea { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.admin-feedback-other { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+.admin-feedback-email { font-size: 13px; color: #c8cce0; font-weight: 600; }
+.admin-feedback-page { font-size: 12px; color: #4a5070; }
+.admin-feedback-date { font-size: 12px; color: #4a5070; margin-left: auto; }
+.admin-feedback-message {
+  font-size: 14px;
+  color: #e8eaf2;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 .admin-plan-badge {
   display: inline-block;

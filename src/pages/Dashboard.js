@@ -899,6 +899,25 @@ export default function Dashboard({ session }) {
 
   async function signOut() { await supabase.auth.signOut(); navigate('/') }
 
+  async function saveFeedback(e) {
+    e.preventDefault()
+    if (!feedbackForm.message.trim()) return
+    setFeedbackSaving(true)
+    const { error } = await supabase.from('feedback').insert({
+      user_id: session.user.id,
+      email: session.user.email,
+      category: feedbackForm.category,
+      message: feedbackForm.message.trim(),
+      page,
+    })
+    setFeedbackSaving(false)
+    if (!error) {
+      setFeedbackSent(true)
+      setFeedbackForm({ category: 'Bug', message: '' })
+      setTimeout(() => setShowFeedback(false), 2000)
+    }
+  }
+
   function updateUnit(i, field, value) {
     setForm(f => { const units = [...f.units]; units[i] = { ...units[i], [field]: value }; return { ...f, units } })
   }
@@ -1784,6 +1803,10 @@ export default function Dashboard({ session }) {
   const [showSettings, setShowSettings] = useState(false)
   const [settingsTab, setSettingsTab] = useState('profile')
   const [displayName, setDisplayName] = useState('')
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackForm, setFeedbackForm] = useState({ category: 'Bug', message: '' })
+  const [feedbackSaving, setFeedbackSaving] = useState(false)
+  const [feedbackSent, setFeedbackSent] = useState(false)
   const [showReturnModal, setShowReturnModal] = useState(false)
   const [returnItem, setReturnItem] = useState(null)
   const [returnCost, setReturnCost] = useState('')
@@ -2361,6 +2384,11 @@ ${expInMonth.length>0?`
               {n.locked&&<span className="nav-lock">Core</span>}
             </button>
           ))}
+          <button className="sidebar-nav-btn sidebar-nav-feedback" onClick={()=>{setFeedbackForm({category:'Bug',message:''});setFeedbackSent(false);setShowFeedback(true)}}>
+            <span className="sidebar-nav-icon"><Icon name="message" size={19} /></span>
+            <span>Feedback</span>
+            <span className="nav-beta">Beta</span>
+          </button>
         </nav>
         <div className="sidebar-footer">
           <a href="/" className="sidebar-footer-link">← Back to site</a>
@@ -4868,6 +4896,39 @@ ${expInMonth.length>0?`
                   <button className="btn" onClick={()=>setShowSettings(false)}>Close</button>
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showFeedback&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowFeedback(false)}>
+          <div className="modal" style={{maxWidth:460}}>
+            <div className="modal-title">Send feedback</div>
+            {feedbackSent?(
+              <div className="auth-success" style={{fontSize:14,textAlign:'center',padding:20}}>
+                <Icon name="check" size={15} strokeWidth={2.5} style={{marginRight:6,verticalAlign:'-2px'}} />Thanks! Your feedback has been sent.
+              </div>
+            ):(
+              <form onSubmit={saveFeedback}>
+                <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Found a bug or have an idea? We'd love to hear it while ITS VAULTED is in beta.</div>
+                <div className="form-group">
+                  <label className="form-label">Type</label>
+                  <select className="form-input" value={feedbackForm.category} onChange={e=>setFeedbackForm(f=>({...f,category:e.target.value}))}>
+                    <option value="Bug">Bug</option>
+                    <option value="Idea">Idea</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{marginTop:12}}>
+                  <label className="form-label">Message</label>
+                  <textarea className="form-input" rows={5} placeholder="Tell us what's on your mind…" value={feedbackForm.message} onChange={e=>setFeedbackForm(f=>({...f,message:e.target.value}))} style={{resize:'vertical',minHeight:100}} autoFocus />
+                </div>
+                <div className="form-actions">
+                  <button type="button" className="btn" onClick={()=>setShowFeedback(false)}>Cancel</button>
+                  <button type="submit" className="btn primary" disabled={feedbackSaving||!feedbackForm.message.trim()}>{feedbackSaving?'Sending…':'Send feedback'}</button>
+                </div>
+              </form>
             )}
           </div>
         </div>

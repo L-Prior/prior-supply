@@ -10,11 +10,14 @@ export default function Admin({ session }) {
   const [loading, setLoading] = useState(true)
   const [actionMsg, setActionMsg] = useState('')
   const [search, setSearch] = useState('')
+  const [tab, setTab] = useState('users')
+  const [feedback, setFeedback] = useState([])
+  const [feedbackLoading, setFeedbackLoading] = useState(true)
 
   const isAdmin = session?.user?.email === ADMIN_EMAIL
 
   useEffect(() => {
-    if (isAdmin) fetchUsers()
+    if (isAdmin) { fetchUsers(); fetchFeedback() }
   }, [isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchUsers() {
@@ -25,6 +28,16 @@ export default function Admin({ session }) {
       .order('created_at', { ascending: false })
     if (!error) setUsers(data || [])
     setLoading(false)
+  }
+
+  async function fetchFeedback() {
+    setFeedbackLoading(true)
+    const { data, error } = await supabase
+      .from('feedback')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (!error) setFeedback(data || [])
+    setFeedbackLoading(false)
   }
 
   async function toggleSuspend(userId, currentValue) {
@@ -113,6 +126,14 @@ export default function Admin({ session }) {
       )}
 
       <div className="admin-body">
+        <div className="admin-tabs">
+          <button className={`admin-tab ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Users</button>
+          <button className={`admin-tab ${tab === 'feedback' ? 'active' : ''}`} onClick={() => setTab('feedback')}>
+            Feedback{feedback.length > 0 && <span className="admin-tab-count">{feedback.length}</span>}
+          </button>
+        </div>
+
+        {tab === 'users' && (<>
         <div className="admin-toolbar">
           <input
             className="admin-search"
@@ -178,6 +199,36 @@ export default function Admin({ session }) {
             </table>
           </div>
         )}
+        </>)}
+
+        {tab === 'feedback' && (<>
+        <div className="admin-toolbar">
+          <div className="admin-count">{feedback.length} submission{feedback.length !== 1 ? 's' : ''}</div>
+          <button className="admin-refresh-btn" onClick={fetchFeedback}>↻ Refresh</button>
+        </div>
+
+        {feedbackLoading ? (
+          <div className="admin-loading">Loading feedback…</div>
+        ) : feedback.length === 0 ? (
+          <div className="admin-empty" style={{ padding: 40, textAlign: 'center' }}>No feedback yet</div>
+        ) : (
+          <div className="admin-feedback-list">
+            {feedback.map(f => (
+              <div key={f.id} className="admin-feedback-card">
+                <div className="admin-feedback-head">
+                  <span className={`admin-feedback-badge admin-feedback-${(f.category || 'other').toLowerCase()}`}>{f.category || 'Other'}</span>
+                  <span className="admin-feedback-email">{f.email}</span>
+                  {f.page && <span className="admin-feedback-page">on {f.page}</span>}
+                  <span className="admin-feedback-date">
+                    {f.created_at ? new Date(f.created_at).toLocaleString('en-GB') : '—'}
+                  </span>
+                </div>
+                <div className="admin-feedback-message">{f.message}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        </>)}
       </div>
     </div>
   )
