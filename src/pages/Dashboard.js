@@ -77,11 +77,13 @@ const EMPTY_FORM = {
 
 function fmt(n) {
   if (n == null || n === '') return '—'
-  return '£' + Number(n).toFixed(2)
+  const num = Number(n)
+  return (num < 0 ? '-£' : '£') + Math.abs(num).toFixed(2)
 }
 function fmtShort(n) {
   if (n == null) return '£0'
-  return '£' + Number(n).toFixed(0)
+  const num = Number(n)
+  return (num < 0 ? '-£' : '£') + Math.abs(num).toFixed(0)
 }
 function plColor(pl) {
   if (pl == null) return ''
@@ -1224,6 +1226,33 @@ export default function Dashboard({ session }) {
     a.click(); URL.revokeObjectURL(url)
   }
 
+  function exportLacedCSV() {
+    const sneakers = items.filter(i => i.status === 'in_stock' && i.category === 'Sneakers')
+    if (sneakers.length === 0) { alert('No in-stock sneakers to export.'); return }
+    // Group identical listings (same style code + size + price) so quantity reflects duplicates
+    const groups = {}
+    sneakers.forEach(i => {
+      const styleCode = (i.sku || '').trim()
+      const sizeNum = String(i.size || '').replace(/[^0-9.]/g, '').trim()
+      const title = [i.brand, i.style, i.colourway].filter(Boolean).join(' ').trim()
+      const price = i.target_price != null && i.target_price !== '' ? Number(i.target_price).toFixed(2) : ''
+      const key = `${styleCode}|${sizeNum}|${price}`
+      if (!groups[key]) groups[key] = { styleCode, title, sizeNum, price, quantity: 0 }
+      groups[key].quantity += 1
+    })
+    const headers = ['style_code','title','size','size_region','price','currency','quantity']
+    const rows = Object.values(groups).map(g =>
+      [g.styleCode, g.title, g.sizeNum, 'UK', g.price, 'GBP', g.quantity]
+        .map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')
+    )
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `laced-upload-${new Date().toISOString().slice(0,10)}.csv`
+    a.click(); URL.revokeObjectURL(url)
+  }
+
   const batches = useMemo(() => {
     const map = {}
     items.forEach(item => {
@@ -1468,6 +1497,7 @@ export default function Dashboard({ session }) {
 
   async function saveSpot() {
     if (!slotsBreak || !spotForm.buyer_name.trim()) return
+    if (slotsBreak.spots_total && breakSpots.length >= slotsBreak.spots_total) return
     setSpotsSaving(true)
     const nextNum = breakSpots.length > 0 ? Math.max(...breakSpots.map(s => s.spot_number || 0)) + 1 : 1
     await supabase.from('break_spots').insert([{
@@ -2559,6 +2589,7 @@ ${expInMonth.length>0?`
                     return allTags.length>0&&<select className="filter-select" value={filterTag} onChange={e=>setFilterTag(e.target.value)}><option value="">All tags</option>{allTags.map(t=><option key={t} value={t}>{t}</option>)}</select>
                   })()}
                   {(search||filterBrand||filterStatus||filterCategory||filterTag)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('');setFilterTag('')}}>Clear</button>}
+                  {items.some(i=>i.status==='in_stock'&&i.category==='Sneakers')&&<button className="btn sm" onClick={exportLacedCSV} title="Download all in-stock sneakers in Laced's bulk upload format">↓ Export for Laced</button>}
                   <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
                   <div className="view-toggle">
                     <button className={`view-toggle-btn${viewMode==='grid'?' active':''}`} title="Grid view" onClick={()=>{setViewMode('grid');try{localStorage.setItem('iv_viewmode','grid')}catch{}}}>
@@ -4038,7 +4069,7 @@ ${expInMonth.length>0?`
                     <div key={b.id} className="item-card">
                       <div className="item-card-header">
                         <div className="item-card-category">{isBreak ? '📦 Box Break' : '🎲 Mystery Packs'}</div>
-                        <span className={`badge ${b.status==='completed'?'sold':b.status==='active'?'in_stock':'in_stock'}`}>
+                        <span className={`badge ${b.status==='completed'?'sold':b.status==='active'?'in_stock':'upcoming'}`}>
                           {b.status==='completed'?'Completed':b.status==='active'?'Active':'Upcoming'}
                         </span>
                       </div>
@@ -4220,14 +4251,20 @@ ${expInMonth.length>0?`
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setSlotsBreak(null)}>
           <div className="modal" style={{maxWidth:560}}>
             <div className="modal-title">Break Spots</div>
-            <div style={{fontSize:13,color:'var(--muted)',marginTop:-12,marginBottom:16}}>{slotsBreak.name||'Box Break'} · {breakSpots.filter(s=>s.paid).length}/{breakSpots.length} paid</div>
+            <div style={{fontSize:13,color:'var(--muted)',marginTop:-12,marginBottom:16}}>{slotsBreak.name||'Box Break'} · {breakSpots.filter(s=>s.paid).length}/{breakSpots.length} paid{slotsBreak.spots_total?` · ${breakSpots.length}/${slotsBreak.spots_total} spots filled`:''}</div>
 
             {/* Add spot form */}
-            <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-              <input className="form-input" style={{flex:'1 1 140px',margin:0}} placeholder="Buyer name *" value={spotForm.buyer_name} onChange={e=>setSpotForm(f=>({...f,buyer_name:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&saveSpot()}/>
-              <input className="form-input" style={{flex:'1 1 120px',margin:0}} placeholder="Notes (optional)" value={spotForm.notes} onChange={e=>setSpotForm(f=>({...f,notes:e.target.value}))}/>
-              <button className="btn primary sm" onClick={saveSpot} disabled={spotsSaving||!spotForm.buyer_name.trim()}>+ Add spot</button>
-            </div>
+            {slotsBreak.spots_total && breakSpots.length >= slotsBreak.spots_total ? (
+              <div style={{marginBottom:16,padding:'10px 14px',background:'var(--amber-bg)',borderRadius:'var(--radius)',border:'1px solid rgba(245,158,11,0.3)',fontSize:13,color:'var(--amber)',fontWeight:500}}>
+                All {slotsBreak.spots_total} spots filled — remove a spot to add another.
+              </div>
+            ) : (
+              <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+                <input className="form-input" style={{flex:'1 1 140px',margin:0}} placeholder="Buyer name *" value={spotForm.buyer_name} onChange={e=>setSpotForm(f=>({...f,buyer_name:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&saveSpot()}/>
+                <input className="form-input" style={{flex:'1 1 120px',margin:0}} placeholder="Notes (optional)" value={spotForm.notes} onChange={e=>setSpotForm(f=>({...f,notes:e.target.value}))}/>
+                <button className="btn primary sm" onClick={saveSpot} disabled={spotsSaving||!spotForm.buyer_name.trim()}>+ Add spot</button>
+              </div>
+            )}
 
             {/* Spots list */}
             {breakSpots.length===0?(

@@ -419,6 +419,11 @@ tbody td {
   color: var(--blue);
   border: 1px solid var(--blue-border);
 }
+.badge.upcoming {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border: 1px solid rgba(245,158,11,0.3);
+}
 
 /* Modal */
 .modal-overlay {
@@ -2627,6 +2632,11 @@ tbody td {
   background: var(--blue-bg);
   color: var(--blue);
   border-color: var(--blue-border);
+}
+.dark-mode .badge.upcoming {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border-color: rgba(245,158,11,0.35);
 }
 
 /* Miscellaneous */
