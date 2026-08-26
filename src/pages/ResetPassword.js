@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Icon from '../components/Icon'
+import PasswordChecklist, { validatePassword } from '../components/PasswordChecklist'
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('')
@@ -29,7 +30,7 @@ export default function ResetPassword() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return }
+    if (!validatePassword(password).valid) { setError('Please choose a stronger password (see requirements below)'); return }
     if (password !== confirm) { setError('Passwords do not match'); return }
     setLoading(true)
     const { error } = await supabase.auth.updateUser({ password })
@@ -78,6 +79,7 @@ export default function ResetPassword() {
           <div className="form-group">
             <label className="form-label">New password</label>
             <input className="form-input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required autoFocus />
+            <PasswordChecklist password={password} />
           </div>
           <div className="form-group">
             <label className="form-label">Confirm new password</label>

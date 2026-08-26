@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
+import PasswordChecklist, { validatePassword } from '../components/PasswordChecklist'
 
 export default function Login() {
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'forgot'
@@ -35,8 +36,10 @@ export default function Login() {
     if (mode === 'signup') {
       if (password !== confirm) { setError('Passwords do not match'); return }
       if (!username.trim()) { setError('Username is required'); return }
+      if (!validatePassword(password).valid) {
+        setError('Please choose a stronger password (see requirements below)'); return
+      }
     }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return }
 
     setLoading(true)
     if (mode === 'login') {
@@ -75,6 +78,7 @@ export default function Login() {
             <div className="form-group">
               <label className="form-label">Password</label>
               <input className="form-input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+              {mode === 'signup' && <PasswordChecklist password={password} />}
             </div>
           )}
 
