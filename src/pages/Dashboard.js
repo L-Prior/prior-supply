@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 import Icon from '../components/Icon'
+import { isAdminEmail } from '../admins'
 
 const CATEGORIES = ['Sneakers', 'Pokémon', 'Topps', 'Lego', 'Clothing', 'Miscellaneous']
 const COLORS = ['#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0','#f59e0b','#3b82f6']
@@ -2392,6 +2393,7 @@ ${expInMonth.length>0?`
         </nav>
         <div className="sidebar-footer">
           <a href="/" className="sidebar-footer-link">← Back to site</a>
+          {isAdminEmail(session.user.email) && <a href="/admin" className="sidebar-footer-link"><Icon name="lock" size={12} style={{verticalAlign:'-2px',marginRight:4}} />Admin panel</a>}
           <div className="sidebar-footer-email">{displayName || session.user.email}</div>
           <div className="sidebar-footer-actions">
             <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('iv_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode

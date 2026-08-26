@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import Icon from '../components/Icon'
-
-// ── Change this to your Supabase service role key env var or keep checking email ──
-const ADMIN_EMAIL = 'prior.luke.04@gmail.com'
+import { isAdminEmail } from '../admins'
 
 export default function Admin({ session }) {
   const [users, setUsers] = useState([])
@@ -14,7 +12,7 @@ export default function Admin({ session }) {
   const [feedback, setFeedback] = useState([])
   const [feedbackLoading, setFeedbackLoading] = useState(true)
 
-  const isAdmin = session?.user?.email === ADMIN_EMAIL
+  const isAdmin = isAdminEmail(session?.user?.email)
 
   useEffect(() => {
     if (isAdmin) { fetchUsers(); fetchFeedback() }
