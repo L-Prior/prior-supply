@@ -2394,6 +2394,7 @@ ${expInMonth.length>0?`
         <div className="sidebar-footer">
           <a href="/" className="sidebar-footer-link">← Back to site</a>
           {isAdminEmail(session.user.email) && <a href="/admin" className="sidebar-footer-link"><Icon name="lock" size={12} style={{verticalAlign:'-2px',marginRight:4}} />Admin panel</a>}
+          {isAdminEmail(session.user.email) && <a href="/admin/feedback" className="sidebar-footer-link"><Icon name="message" size={12} style={{verticalAlign:'-2px',marginRight:4}} />Feedback</a>}
           <div className="sidebar-footer-email">{displayName || session.user.email}</div>
           <div className="sidebar-footer-actions">
             <button className="btn sm" onClick={()=>{ const nd=!darkMode; setDarkMode(nd); try { localStorage.setItem('iv_dark', nd ? 'true' : 'false') } catch {} }} title="Toggle dark mode">{darkMode

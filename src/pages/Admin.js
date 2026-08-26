@@ -202,6 +202,7 @@ export default function Admin({ session }) {
         {tab === 'feedback' && (<>
         <div className="admin-toolbar">
           <div className="admin-count">{feedback.length} submission{feedback.length !== 1 ? 's' : ''}</div>
+          <a href="/admin/feedback" className="admin-refresh-btn" style={{ textDecoration: 'none' }}>Open full page →</a>
           <button className="admin-refresh-btn" onClick={fetchFeedback}>↻ Refresh</button>
         </div>
 
