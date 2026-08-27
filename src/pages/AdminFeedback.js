@@ -3,10 +3,14 @@ import { supabase } from '../supabase'
 import { isAdminEmail } from '../admins'
 import Icon from '../components/Icon'
 
+const STATUSES = ['New', 'In progress', 'Resolved', 'Dismissed']
+const statusClass = s => (s || 'New').toLowerCase().replace(/\s+/g, '-')
+
 export default function AdminFeedback({ session }) {
   const [feedback, setFeedback] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const isAdmin = isAdminEmail(session?.user?.email)
 
@@ -24,6 +28,13 @@ export default function AdminFeedback({ session }) {
     setLoading(false)
   }
 
+  async function updateStatus(id, status) {
+    const prev = feedback
+    setFeedback(fb => fb.map(f => (f.id === id ? { ...f, status } : f)))
+    const { error } = await supabase.from('feedback').update({ status }).eq('id', id)
+    if (error) setFeedback(prev) // revert on failure
+  }
+
   if (!isAdmin) {
     return (
       <div className="suspended-wrap">
@@ -38,7 +49,8 @@ export default function AdminFeedback({ session }) {
   }
 
   const filtered = feedback.filter(f =>
-    filter === 'all' || (f.category || 'Other').toLowerCase() === filter
+    (filter === 'all' || (f.category || 'Other').toLowerCase() === filter) &&
+    (statusFilter === 'all' || (f.status || 'New') === statusFilter)
   )
 
   return (
@@ -68,6 +80,10 @@ export default function AdminFeedback({ session }) {
               </button>
             ))}
           </div>
+          <select className="admin-status-filter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="all">All statuses</option>
+            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
           <div className="admin-count">{filtered.length} submission{filtered.length !== 1 ? 's' : ''}</div>
           <button className="admin-refresh-btn" onClick={fetchFeedback}>↻ Refresh</button>
         </div>
@@ -87,6 +103,13 @@ export default function AdminFeedback({ session }) {
                   <span className="admin-feedback-date">
                     {f.created_at ? new Date(f.created_at).toLocaleString('en-GB') : '—'}
                   </span>
+                  <select
+                    className={`admin-feedback-status admin-feedback-status-${statusClass(f.status)}`}
+                    value={f.status || 'New'}
+                    onChange={e => updateStatus(f.id, e.target.value)}
+                  >
+                    {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div className="admin-feedback-message">{f.message}</div>
               </div>

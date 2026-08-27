@@ -4067,6 +4067,38 @@ tbody td {
   word-break: break-word;
 }
 
+/* Per-card status control */
+.admin-feedback-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.06);
+  color: #c8cce0;
+  cursor: pointer;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+.admin-feedback-status-new { background: rgba(59,130,246,0.15); color: #93c5fd; border-color: rgba(59,130,246,0.3); }
+.admin-feedback-status-in-progress { background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.3); }
+.admin-feedback-status-resolved { background: rgba(52,211,153,0.15); color: #34d399; border-color: rgba(52,211,153,0.3); }
+.admin-feedback-status-dismissed { background: rgba(255,255,255,0.06); color: #8890b5; border-color: rgba(255,255,255,0.12); }
+
+/* Status filter dropdown in the toolbar */
+.admin-status-filter {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #8890b5;
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.admin-status-filter:focus { border-color: rgba(245,158,11,0.4); }
+
 .admin-plan-badge {
   display: inline-block;
   font-size: 10px;
