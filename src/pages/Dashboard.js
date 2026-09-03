@@ -2621,7 +2621,6 @@ ${expInMonth.length>0?`
                     return allTags.length>0&&<select className="filter-select" value={filterTag} onChange={e=>setFilterTag(e.target.value)}><option value="">All tags</option>{allTags.map(t=><option key={t} value={t}>{t}</option>)}</select>
                   })()}
                   {(search||filterBrand||filterStatus||filterCategory||filterTag)&&<button className="btn sm" onClick={()=>{setSearch('');setFilterBrand('');setFilterStatus('');setFilterCategory('');setFilterTag('')}}>Clear</button>}
-                  {items.some(i=>i.status==='in_stock'&&i.category==='Sneakers')&&<button className="btn sm" onClick={exportLacedCSV} title="Download all in-stock sneakers in Laced's bulk upload format">↓ Export for Laced</button>}
                   <span style={{color:'var(--muted)',fontSize:12}}>{filteredBatches.length} item{filteredBatches.length!==1?'s':''}</span>
                   <div className="view-toggle">
                     <button className={`view-toggle-btn${viewMode==='grid'?' active':''}`} title="Grid view" onClick={()=>{setViewMode('grid');try{localStorage.setItem('iv_viewmode','grid')}catch{}}}>
@@ -2977,6 +2976,7 @@ ${expInMonth.length>0?`
                     {(listingsCategory || listingsPlatform || listingsSearch || listingsFilter !== 'all' || listingsSort !== 'name_asc') && (
                       <button className="btn sm" onClick={()=>{setListingsCategory('');setListingsPlatform('');setListingsSearch('');setListingsFilter('all');setListingsSort('name_asc')}}>Clear</button>
                     )}
+                    {inStock.some(i=>i.category==='Sneakers')&&<button className="btn sm" style={{marginLeft:'auto'}} onClick={exportLacedCSV} title="Download all in-stock sneakers in Laced's bulk upload format">↓ Export for Laced</button>}
                   </div>
 
                   {groups.length === 0 ? (
