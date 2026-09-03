@@ -843,7 +843,12 @@ export default function Dashboard({ session }) {
   const [saveError, setSaveError] = useState('')
   const [fetchError, setFetchError] = useState('')
   const [settingsSaved, setSettingsSaved] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(() => { try { return !localStorage.getItem('iv_onboarded') } catch { return false } })
+  // Onboarding v2: welcome modal + guided tour + getting-started checklist
+  const ONBOARD_KEY = 'iv_onboard_v2'
+  const [onboard, setOnboard] = useState(() => { try { return JSON.parse(localStorage.getItem(ONBOARD_KEY) || '{}') } catch { return {} } })
+  const patchOnboard = (patch) => setOnboard(s => { const n = { ...s, ...patch }; try { localStorage.setItem(ONBOARD_KEY, JSON.stringify(n)) } catch {}; return n })
+  const [tourStep, setTourStep] = useState(null)
+  const [tourRect, setTourRect] = useState(null)
   // Wishlist (localStorage — no DB needed)
   const WISHLIST_KEY = 'iv_wishlist'
   const [wishlist, setWishlist] = useState(() => { try { return JSON.parse(localStorage.getItem('iv_wishlist')||'[]') } catch { return [] } })
@@ -879,7 +884,8 @@ export default function Dashboard({ session }) {
     }))
     clearSelection(); fetchItems()
   }
-  function dismissOnboarding() { try { localStorage.setItem('iv_onboarded','1') } catch {}; setShowOnboarding(false) }
+  function startTour() { patchOnboard({ welcomed: true }); setTourStep(0) }
+  function endTour() { patchOnboard({ welcomed: true, tourDone: true }); setTourStep(null); setPage('home'); window.scrollTo(0, 0) }
   const [chartMonths, setChartMonths] = useState(6)
   const [metricsSources, setMetricsSources] = useState({ reseller: true, breaker: true, collector: false })
   const [reportMonth, setReportMonth] = useState(() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` })
@@ -2340,7 +2346,40 @@ ${expInMonth.length>0?`
     {id:'tools',     label:'Tools'                       },
   ]
 
-  function navTo(id) { setPage(id); window.scrollTo(0,0) }
+  function navTo(id) { setPage(id); window.scrollTo(0,0); if (id === 'tools' && !onboard.visitedTools) patchOnboard({ visitedTools: true }) }
+
+  // ── Guided tour steps (one per main section) ───────────────────────────
+  const TOUR = [
+    { id:'home',      label:'Home',      desc:'Your dashboard at a glance — stock value, profit this month, your goal progress and smart suggestions for what to do next.' },
+    { id:'stock',     label:'Inventory', desc:'Everything you buy to resell lives here. Track cost, fees, storage and live profit on each item — one at a time or in bulk.' },
+    { id:'breaks',    label:'Breaker',   desc:'Running box breaks or mystery packs? Log each break, split it into slots and track the profit on every spot.' },
+    { id:'collector', label:'Collector', desc:'Keep your personal collection separate from resale stock — track what you own and what it’s worth over time.' },
+    { id:'finance',   label:'Finance',   desc:'Your P&L, expenses, VAT summary and payouts in one place, so you always know how the business is really doing.' },
+    { id:'tools',     label:'Tools',     desc:'Handy calculators and CSV import — work out fees and profit before you buy, and bulk-load your existing stock.' },
+  ]
+
+  // Existing users with data shouldn't get the welcome/checklist nags
+  useEffect(() => {
+    if (loading) return
+    if (onboard.welcomed === undefined && items.length > 0) patchOnboard({ welcomed: true, tourDone: true, checklistDismissed: true })
+  }, [loading, items.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Measure the highlighted nav item as the tour advances
+  useEffect(() => {
+    if (tourStep == null) return
+    const step = TOUR[tourStep]
+    navTo(step.id)
+    const measure = () => {
+      const el = document.getElementById('navbtn-' + step.id)
+      if (el) { const r = el.getBoundingClientRect(); setTourRect(r.width > 0 ? r : null) }
+      else setTourRect(null)
+    }
+    const t = setTimeout(measure, 40)
+    window.addEventListener('resize', measure)
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure) }
+  }, [tourStep]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const showWelcome = onboard.welcomed !== true && tourStep == null && !loading && items.length === 0
 
   // ── Account suspension screen ──────────────────────────────────────────
   if (isSuspended) {
@@ -2375,11 +2414,11 @@ ${expInMonth.length>0?`
     <div className={darkMode ? 'app dark-mode' : 'app'}>
 
       {/* ── Sidebar (desktop only) ─────────────────────────────────────────── */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${tourStep!=null?'tour-lift':''}`}>
         <div className="sidebar-brand"><img src={darkMode?'/logo-dark.svg':'/logo-light.svg'} alt="ITS VAULTED" className="sidebar-logo" /></div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map(n=>(
-            <button key={n.id} className={`sidebar-nav-btn ${page===n.id?'active':''} ${n.locked?'locked':''}`} onClick={()=>navTo(n.id)}>
+            <button key={n.id} id={`navbtn-${n.id}`} className={`sidebar-nav-btn ${page===n.id?'active':''} ${n.locked?'locked':''}`} onClick={()=>navTo(n.id)}>
               <span className="sidebar-nav-icon">{NAV_ICONS[n.id]}</span>
               <span>{n.label}</span>
               {n.locked&&<span className="nav-lock">Core</span>}
@@ -2441,19 +2480,41 @@ ${expInMonth.length>0?`
               <div><h1 className="page-title">Welcome back, {username}</h1><p className="page-subtitle">Here's how your stock is performing</p></div>
               <button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>
             </div>
-            {showOnboarding&&!loading&&items.length===0&&(
-              <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',border:'1px solid #86efac',borderRadius:'var(--radius-lg)',padding:'20px 24px',marginBottom:24,display:'flex',gap:16,alignItems:'flex-start'}}>
-                <div style={{fontSize:28,flexShrink:0}}><Icon name="hand" size={26} /></div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:16,color:'#14532d',marginBottom:4}}>Welcome to ITS VAULTED!</div>
-                  <div style={{fontSize:13,color:'#166534',marginBottom:14}}>You're all set. Add your first item to start tracking your inventory and profit. It takes about 30 seconds.</div>
-                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                    <button className="btn primary sm" onClick={()=>{dismissOnboarding();setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add first item</button>
-                    <button className="btn sm" onClick={dismissOnboarding}>Dismiss</button>
+            {!loading&&!onboard.checklistDismissed&&(()=>{
+              const steps=[
+                {key:'account',label:'Create your account',done:true},
+                {key:'item',label:'Add your first item',done:items.length>0,cta:'Add item',action:()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}},
+                {key:'sold',label:'Mark an item as sold',done:items.some(i=>i.status==='sold'),cta:'Go to Inventory',action:()=>{navTo('stock');setStockTab('inventory')}},
+                {key:'goal',label:'Set a monthly profit goal',done:monthlyGoal>0,cta:'Set goal',action:()=>{navTo('home');setGoalInput(monthlyGoal>0?String(monthlyGoal):'');setEditingGoal(true)}},
+                {key:'tools',label:'Explore the Tools calculators',done:!!onboard.visitedTools,cta:'Open Tools',action:()=>navTo('tools')},
+              ]
+              const doneCount=steps.filter(s=>s.done).length
+              const allDone=doneCount===steps.length
+              if(allDone)return null
+              return(
+                <div className="onboard-checklist">
+                  <div className="onboard-checklist-head">
+                    <div>
+                      <div className="onboard-checklist-title">Getting started</div>
+                      <div className="onboard-checklist-sub">A few quick steps to get the most out of ITS VAULTED</div>
+                    </div>
+                    <div className="onboard-checklist-count">{doneCount} of {steps.length} complete</div>
                   </div>
+                  <div className="onboard-progress-track"><div className="onboard-progress-fill" style={{width:`${(doneCount/steps.length)*100}%`}}/></div>
+                  <div className="onboard-steps">
+                    {steps.map(s=>(
+                      <div key={s.key} className={`onboard-step ${s.done?'done':''}`}>
+                        <span className="onboard-step-check">{s.done?<Icon name="check" size={13}/>:null}</span>
+                        <span className="onboard-step-label">{s.label}</span>
+                        {!s.done&&s.action&&<button className="onboard-step-cta" onClick={s.action}>{s.cta} →</button>}
+                        {s.done&&<span className="onboard-step-doneword">Done</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <button className="onboard-checklist-dismiss" onClick={()=>patchOnboard({checklistDismissed:true})}>Dismiss</button>
                 </div>
-              </div>
-            )}
+              )
+            })()}
             <div className="stats-bar">
               <div className="stat-card"><div className="stat-label">Units in stock</div><div className="stat-value amber">{stats.inStock}</div></div>
               <div className="stat-card"><div className="stat-label">Stock value</div><div className="stat-value">{fmt(stats.stockValue)}</div></div>
@@ -2641,7 +2702,7 @@ ${expInMonth.length>0?`
                   </div>
                 )}
                 {loading?<div className="loading">Loading stock...</div>:filteredBatches.length===0?(
-                  <div className="empty"><div className="empty-icon"><Icon name="package" size={40} /></div><div className="empty-title">{items.length===0?'No stock yet':'No results'}</div><div style={{marginTop:6}}>{items.length===0?'Add your first item to get started':'Try adjusting your filters'}</div></div>
+                  <div className="empty"><div className="empty-icon"><Icon name="package" size={40} /></div><div className="empty-title">{items.length===0?'No items yet':'No results'}</div><div style={{marginTop:6}}>{items.length===0?"Add your first piece of stock and we'll track cost, fees and profit for you automatically.":'Try adjusting your filters'}</div>{items.length===0&&(<div className="empty-actions"><button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add your first item</button><button className="empty-secondary" onClick={()=>{navTo('tools');switchToolTab('csv')}}>or import from a CSV</button></div>)}</div>
                 ):viewMode==='list'?(
                   <div className="inv-list">
                     <div className="inv-list-header">
@@ -3488,7 +3549,7 @@ ${expInMonth.length>0?`
             )}
 
             {collectorLoading?<div className="loading">Loading collection...</div>:collectorItems.length===0?(
-              <div className="empty"><div className="empty-icon"><Icon name="folder" size={40} /></div><div className="empty-title">Nothing in your collection yet</div><div style={{marginTop:6}}>Add your first item to get started</div></div>
+              <div className="empty"><div className="empty-icon"><Icon name="folder" size={40} /></div><div className="empty-title">Nothing in your collection yet</div><div style={{marginTop:6}}>Track the pieces you're keeping — separate from your resale stock.</div><div className="empty-actions"><button className="btn primary" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={userPlan==='free'&&collectorItems.length>=FREE_LIMIT}>+ Add your first item</button></div></div>
             ):(
               <div className="card-grid">
                 {collectorItems.map(item=>(
@@ -4090,7 +4151,7 @@ ${expInMonth.length>0?`
             </div>
 
             {breaksLoading ? <div className="loading">Loading...</div> : breaks.length === 0 ? (
-              <div className="empty"><div className="empty-icon"><Icon name="cards" size={40} /></div><div className="empty-title">No breaks yet</div><div style={{marginTop:6}}>Add your first box break or mystery pack run</div></div>
+              <div className="empty"><div className="empty-icon"><Icon name="cards" size={40} /></div><div className="empty-title">No breaks yet</div><div style={{marginTop:6}}>Log a box break or mystery pack run and track the profit on every slot.</div><div className="empty-actions"><button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add your first break</button></div></div>
             ) : (
               <div className="card-grid">
                 {breaks.map(b => {
@@ -4948,6 +5009,49 @@ ${expInMonth.length>0?`
           </button>
         ))}
       </nav>
+
+      {/* ── Welcome modal (first login) ──────────────────────────────────── */}
+      {showWelcome&&(
+        <div className="modal-overlay onboard-welcome-overlay">
+          <div className="modal onboard-welcome">
+            <div className="onboard-welcome-mark"><img src="/logo-mark.svg" alt="" width={44} height={44} /></div>
+            <h2 className="onboard-welcome-title">Welcome to ITS VAULTED</h2>
+            <p className="onboard-welcome-sub">Your reselling command centre. Let's set it up — the quick tour only takes about two minutes.</p>
+            <button className="btn primary onboard-welcome-cta" onClick={startTour}>Take the quick tour →</button>
+            <button className="onboard-welcome-skip" onClick={()=>patchOnboard({welcomed:true,tourDone:true})}>I'll look around myself</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Guided tour ──────────────────────────────────────────────────── */}
+      {tourStep!=null&&(()=>{
+        const step=TOUR[tourStep]
+        const total=TOUR.length
+        const hasRect=tourRect&&window.innerWidth>900
+        const ringStyle=hasRect?{left:tourRect.left-4,top:tourRect.top-4,width:tourRect.width+8,height:tourRect.height+8}:null
+        const tipStyle=hasRect?{left:Math.min(tourRect.right+18,window.innerWidth-460),top:Math.max(16,tourRect.top-30)}:null
+        return(
+          <>
+            <div className="tour-overlay"/>
+            {ringStyle&&<div className="tour-ring" style={ringStyle}/>}
+            <div className={`tour-tooltip ${hasRect?'':'centered'}`} style={tipStyle||undefined}>
+              <div className="tour-step-num">STEP {tourStep+1} OF {total}</div>
+              <div className="tour-tooltip-title">{step.label}</div>
+              <div className="tour-tooltip-desc">{step.desc}</div>
+              <div className="tour-dots">{TOUR.map((_,i)=><span key={i} className={i===tourStep?'active':''}/>)}</div>
+              <div className="tour-tooltip-actions">
+                <button className="tour-skip" onClick={endTour}>Skip tour</button>
+                <div className="tour-nav-btns">
+                  {tourStep>0&&<button className="btn sm" onClick={()=>setTourStep(s=>s-1)}>← Back</button>}
+                  {tourStep<total-1
+                    ? <button className="btn primary sm" onClick={()=>setTourStep(s=>s+1)}>Next →</button>
+                    : <button className="btn primary sm" onClick={endTour}>Finish ✓</button>}
+                </div>
+              </div>
+            </div>
+          </>
+        )
+      })()}
 
     </div>
   )

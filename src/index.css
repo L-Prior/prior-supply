@@ -4152,3 +4152,106 @@ tbody td {
 .admin-btn-suspend   { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.2);  color: #f87171; }
 .admin-btn-reinstate { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.2); color: #34d399; }
 .admin-btn-export    { background: rgba(245,158,11,0.1);  border-color: rgba(245,158,11,0.2); color: #f59e0b; }
+
+/* ── Onboarding: empty-state CTAs ─────────────────────────────────────── */
+.empty-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 22px; }
+.empty-actions .btn.primary { padding: 12px 22px; font-size: 15px; }
+.empty-secondary {
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--muted); transition: color 0.15s;
+}
+.empty-secondary:hover { color: var(--accent); }
+
+/* ── Onboarding: welcome modal ────────────────────────────────────────── */
+.onboard-welcome-overlay { z-index: 400; }
+.onboard-welcome { max-width: 460px; text-align: center; padding: 36px 32px 28px; }
+.onboard-welcome-mark {
+  width: 72px; height: 72px; margin: 4px auto 18px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.onboard-welcome-title { font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; margin-bottom: 10px; }
+.onboard-welcome-sub { font-size: 14.5px; line-height: 1.5; color: var(--muted); margin: 0 auto 26px; max-width: 360px; }
+.onboard-welcome-cta { width: 100%; justify-content: center; padding: 13px; font-size: 15px; }
+.onboard-welcome-skip {
+  display: block; width: 100%; margin-top: 14px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--muted); transition: color 0.15s;
+}
+.onboard-welcome-skip:hover { color: var(--text2); }
+
+/* ── Onboarding: getting-started checklist ────────────────────────────── */
+.onboard-checklist {
+  position: relative;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+  padding: 22px 24px; margin-bottom: 24px;
+}
+.onboard-checklist-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.onboard-checklist-title { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+.onboard-checklist-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.onboard-checklist-count { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.onboard-progress-track { height: 8px; border-radius: 4px; background: var(--surface2); margin: 14px 0 6px; overflow: hidden; }
+.onboard-progress-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width 0.3s ease; }
+.onboard-steps { margin-top: 10px; }
+.onboard-step {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 2px; border-bottom: 1px solid var(--border);
+}
+.onboard-step:last-child { border-bottom: none; }
+.onboard-step-check {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--border2); color: #fff; background: transparent;
+}
+.onboard-step.done .onboard-step-check { background: var(--green); border-color: var(--green); }
+.onboard-step-label { flex: 1; font-size: 14.5px; font-weight: 600; color: var(--text); }
+.onboard-step.done .onboard-step-label { color: var(--muted); font-weight: 500; text-decoration: line-through; }
+.onboard-step-cta {
+  flex-shrink: 0; background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 700; color: var(--accent);
+  transition: opacity 0.15s;
+}
+.onboard-step-cta:hover { opacity: 0.75; }
+.onboard-step-doneword { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.onboard-checklist-dismiss {
+  position: absolute; top: 18px; right: 20px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 600; color: var(--faint);
+  transition: color 0.15s;
+}
+.onboard-checklist-dismiss:hover { color: var(--muted); }
+.onboard-checklist-head .onboard-checklist-count { margin-right: 64px; }
+
+/* ── Onboarding: guided tour ──────────────────────────────────────────── */
+.tour-overlay { position: fixed; inset: 0; background: rgba(6,9,26,0.62); z-index: 500; }
+.sidebar.tour-lift { z-index: 501; }
+.tour-ring {
+  position: fixed; z-index: 502; border: 2px solid var(--accent); border-radius: 11px;
+  box-shadow: 0 0 0 4px rgba(245,158,11,0.25); pointer-events: none;
+  transition: all 0.25s ease;
+}
+.tour-tooltip {
+  position: fixed; z-index: 503; width: 440px; max-width: calc(100vw - 32px);
+  background: var(--surface); border: 1.5px solid var(--accent);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+  padding: 22px 24px;
+}
+.tour-tooltip.centered { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.tour-step-num { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 8px; }
+.tour-tooltip-title { font-size: 21px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; margin-bottom: 8px; }
+.tour-tooltip-desc { font-size: 14px; line-height: 1.55; color: var(--text2); margin-bottom: 16px; }
+.tour-dots { display: flex; gap: 7px; margin-bottom: 18px; }
+.tour-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--border2); transition: background 0.2s; }
+.tour-dots span.active { background: var(--accent); }
+.tour-tooltip-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.tour-skip {
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600; color: var(--muted);
+  transition: color 0.15s;
+}
+.tour-skip:hover { color: var(--text2); }
+.tour-nav-btns { display: flex; gap: 8px; }
