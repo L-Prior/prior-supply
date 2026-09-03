@@ -50,6 +50,19 @@ export default function Admin({ session }) {
     }
   }
 
+  async function updatePlan(userId, plan) {
+    const prev = users
+    setUsers(u => u.map(x => x.id === userId ? { ...x, plan } : x))
+    const { error } = await supabase.from('profiles').update({ plan }).eq('id', userId)
+    if (error) {
+      setUsers(prev) // revert on failure
+      setActionMsg('Could not update plan — check the profiles admin-update RLS policy.')
+    } else {
+      setActionMsg(`Plan set to ${plan}.`)
+    }
+    setTimeout(() => setActionMsg(''), 3000)
+  }
+
   async function exportUserData(userId, userEmail) {
     // Fetch all tables for this user
     const [stock, collector, expenses, breaks] = await Promise.all([
@@ -162,9 +175,16 @@ export default function Admin({ session }) {
                   <tr key={u.id} className={u.suspended ? 'admin-row-suspended' : ''}>
                     <td className="admin-email">{u.email}</td>
                     <td>
-                      <span className={`admin-plan-badge admin-plan-${u.plan || 'free'}`}>
-                        {u.plan || 'free'}
-                      </span>
+                      <select
+                        className={`admin-plan-select admin-plan-${u.plan || 'free'}`}
+                        value={u.plan || 'free'}
+                        onChange={e => updatePlan(u.id, e.target.value)}
+                        title="Change this user's plan"
+                      >
+                        <option value="free">free</option>
+                        <option value="core">core</option>
+                        <option value="pro">pro</option>
+                      </select>
                     </td>
                     <td className="admin-date">
                       {u.created_at ? new Date(u.created_at).toLocaleDateString('en-GB') : '—'}
