@@ -11,11 +11,13 @@ export default function Admin({ session }) {
   const [tab, setTab] = useState('users')
   const [feedback, setFeedback] = useState([])
   const [feedbackLoading, setFeedbackLoading] = useState(true)
+  const [waitlist, setWaitlist] = useState([])
+  const [waitlistLoading, setWaitlistLoading] = useState(true)
 
   const isAdmin = isAdminEmail(session?.user?.email)
 
   useEffect(() => {
-    if (isAdmin) { fetchUsers(); fetchFeedback() }
+    if (isAdmin) { fetchUsers(); fetchFeedback(); fetchWaitlist() }
   }, [isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchUsers() {
@@ -36,6 +38,33 @@ export default function Admin({ session }) {
       .order('created_at', { ascending: false })
     if (!error) setFeedback(data || [])
     setFeedbackLoading(false)
+  }
+
+  async function fetchWaitlist() {
+    setWaitlistLoading(true)
+    const { data, error } = await supabase
+      .from('waitlist')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (!error) setWaitlist(data || [])
+    setWaitlistLoading(false)
+  }
+
+  function exportWaitlistCsv() {
+    const escape = v => {
+      if (v === null || v === undefined) return ''
+      const s = String(v)
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const keys = ['created_at', 'name', 'email', 'interest']
+    const rows = [keys.join(','), ...waitlist.map(w => keys.map(k => escape(w[k])).join(','))].join('\n')
+    const blob = new Blob([rows], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `itsvaulted-waitlist-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   async function toggleSuspend(userId, currentValue) {
@@ -142,6 +171,9 @@ export default function Admin({ session }) {
           <button className={`admin-tab ${tab === 'feedback' ? 'active' : ''}`} onClick={() => setTab('feedback')}>
             Feedback{feedback.length > 0 && <span className="admin-tab-count">{feedback.length}</span>}
           </button>
+          <button className={`admin-tab ${tab === 'waitlist' ? 'active' : ''}`} onClick={() => setTab('waitlist')}>
+            Waitlist{waitlist.length > 0 && <span className="admin-tab-count">{waitlist.length}</span>}
+          </button>
         </div>
 
         {tab === 'users' && (<>
@@ -245,6 +277,45 @@ export default function Admin({ session }) {
                 <div className="admin-feedback-message">{f.message}</div>
               </div>
             ))}
+          </div>
+        )}
+        </>)}
+
+        {tab === 'waitlist' && (<>
+        <div className="admin-toolbar">
+          <div className="admin-count">{waitlist.length} registration{waitlist.length !== 1 ? 's' : ''}</div>
+          <button className="admin-refresh-btn" onClick={exportWaitlistCsv} disabled={!waitlist.length}>↓ Export CSV</button>
+          <button className="admin-refresh-btn" onClick={fetchWaitlist}>↻ Refresh</button>
+        </div>
+
+        {waitlistLoading ? (
+          <div className="admin-loading">Loading waitlist…</div>
+        ) : waitlist.length === 0 ? (
+          <div className="admin-empty" style={{ padding: 40, textAlign: 'center' }}>No registrations yet</div>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Interest</th>
+                  <th>Registered</th>
+                </tr>
+              </thead>
+              <tbody>
+                {waitlist.map(w => (
+                  <tr key={w.id}>
+                    <td>{w.name || '—'}</td>
+                    <td className="admin-email">{w.email}</td>
+                    <td>{w.interest || '—'}</td>
+                    <td className="admin-date">
+                      {w.created_at ? new Date(w.created_at).toLocaleString('en-GB') : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
         </>)}

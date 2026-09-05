@@ -207,7 +207,7 @@ export default function Landing({ session }) {
               ? <Link to="/dashboard" className="lp-btn-gold">Dashboard →</Link>
               : <>
                   <Link to="/login" className="lp-nav-link">Sign in</Link>
-                  <Link to="/login" className="lp-btn-gold">Get started →</Link>
+                  <Link to="/login?join=1" className="lp-btn-gold">Join the beta →</Link>
                 </>
             }
           </div>
@@ -235,7 +235,7 @@ export default function Landing({ session }) {
             </p>
 
             <div className="lp-hero-ctas lp-reveal">
-              <Link to="/login" className="lp-btn-gold lp-btn-lg">Get started free →</Link>
+              <Link to="/login?join=1" className="lp-btn-gold lp-btn-lg">Join the beta →</Link>
               <a href="#features" className="lp-btn-ghost lp-btn-lg">See how it works</a>
             </div>
 
@@ -451,7 +451,7 @@ export default function Landing({ session }) {
                   ))}
                 </ul>
                 <Link
-                  to="/login"
+                  to="/login?join=1"
                   className="lp-pricing-cta"
                   style={plan.highlight
                     ? { background: `linear-gradient(135deg, #f7b731, ${plan.accent}, #d97706)`, color: '#0d0d0d', boxShadow: `0 2px 16px rgba(245,158,11,0.35)` }
@@ -511,8 +511,8 @@ export default function Landing({ session }) {
           <div className="lp-final-cta lp-reveal">
             <div className="lp-final-cta-glow" />
             <h2 className="lp-final-cta-title">Ready to know your numbers?</h2>
-            <p className="lp-final-cta-sub">Set up your first item in under a minute. No card required.</p>
-            <Link to="/login" className="lp-btn-gold lp-btn-lg">Get started free →</Link>
+            <p className="lp-final-cta-sub">We're in private beta — register your interest and we'll invite you soon.</p>
+            <Link to="/login?join=1" className="lp-btn-gold lp-btn-lg">Join the beta →</Link>
           </div>
         </div>
       </section>
