@@ -4863,6 +4863,7 @@ ${expInMonth.length>0?`
                   <div style={{fontSize:12,color:'var(--muted)',marginBottom:12}}>Permanently delete your account and all data. This cannot be undone.</div>
                   <button className="btn danger sm" onClick={async()=>{
                     if (!window.confirm('This will permanently delete your account and ALL your data. Are you absolutely sure?\n\nThis cannot be undone.')) return
+                    if (items.length>0 && window.confirm('Before you go — would you like to download a CSV backup of your stock data first?\n\nOK = download backup now\nCancel = skip and continue')) { exportCSV() }
                     if (!window.confirm('Last chance — are you sure you want to delete everything?')) return
                     try {
                       const { data: { session: s } } = await supabase.auth.getSession()

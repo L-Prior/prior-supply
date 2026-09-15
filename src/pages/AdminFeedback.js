@@ -13,6 +13,7 @@ export default function AdminFeedback({ session }) {
   const [statusFilter, setStatusFilter] = useState('all')
 
   const isAdmin = isAdminEmail(session?.user?.email)
+  const lightTheme = (() => { try { return localStorage.getItem('iv_dark') === 'false' } catch { return false } })()
 
   useEffect(() => {
     if (isAdmin) fetchFeedback()
@@ -54,7 +55,7 @@ export default function AdminFeedback({ session }) {
   )
 
   return (
-    <div className="admin-wrap">
+    <div className={`admin-wrap ${lightTheme ? 'admin-light' : ''}`}>
       <div className="admin-header">
         <div className="admin-header-left">
           <img src="/logo-dark.svg" alt="ITS VAULTED" className="admin-logo" />

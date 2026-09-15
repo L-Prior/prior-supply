@@ -15,6 +15,7 @@ export default function Admin({ session }) {
   const [waitlistLoading, setWaitlistLoading] = useState(true)
 
   const isAdmin = isAdminEmail(session?.user?.email)
+  const lightTheme = (() => { try { return localStorage.getItem('iv_dark') === 'false' } catch { return false } })()
 
   useEffect(() => {
     if (isAdmin) { fetchUsers(); fetchFeedback(); fetchWaitlist() }
@@ -149,7 +150,7 @@ export default function Admin({ session }) {
   )
 
   return (
-    <div className="admin-wrap">
+    <div className={`admin-wrap ${lightTheme ? 'admin-light' : ''}`}>
       <div className="admin-header">
         <div className="admin-header-left">
           <img src="/logo-dark.svg" alt="ITS VAULTED" className="admin-logo" />

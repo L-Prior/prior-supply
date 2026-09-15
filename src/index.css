@@ -800,7 +800,7 @@ tbody td {
 .auth-card .form-input::placeholder { color: #4a5070; }
 
 .auth-card .type-toggle { border-color: rgba(255,255,255,0.1); }
-.auth-card .type-btn { background: rgba(255,255,255,0.03); color: #6670a0; border-right-color: rgba(255,255,255,0.08); }
+.auth-card .type-btn { background: rgba(255,255,255,0.03); color: #9aa3c9; border-right-color: rgba(255,255,255,0.08); }
 .auth-card .type-btn:hover { background: rgba(255,255,255,0.06); color: #c8cce0; }
 .auth-card .type-btn.active { background: linear-gradient(135deg, #f7b731, #f59e0b, #d97706); color: #0d0d0d; }
 
@@ -851,7 +851,7 @@ tbody td {
   margin-top: 20px;
   text-align: center;
   font-size: 13px;
-  color: #5a6080;
+  color: #8e96b8;
 }
 
 .auth-link {
@@ -869,7 +869,7 @@ tbody td {
 .auth-sub {
   font-size: 13.5px;
   line-height: 1.5;
-  color: #8890b5;
+  color: #a0a9c8;
   margin: -12px 0 22px;
 }
 
@@ -879,7 +879,28 @@ tbody td {
   border-top: 1px solid rgba(255,255,255,0.06);
   text-align: center;
   font-size: 12.5px;
-  color: #5a6080;
+  color: #8e96b8;
+}
+
+/* Multi-select interest chips (waitlist) */
+.interest-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.interest-chip {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #c8cce0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.interest-chip:hover { border-color: rgba(245,158,11,0.5); color: #fff; }
+.interest-chip.active {
+  background: linear-gradient(135deg, #f7b731, #f59e0b, #d97706);
+  border-color: #f59e0b;
+  color: #0d0d0d;
 }
 
 /* User pill in topbar */
@@ -4271,3 +4292,39 @@ tbody td {
 }
 .tour-skip:hover { color: var(--text2); }
 .tour-nav-btns { display: flex; gap: 8px; }
+
+/* ── Admin panel: light theme (follows the user's account setting) ────── */
+.admin-wrap.admin-light { background: #f5f6fa; color: #0d1117; }
+.admin-light .admin-header { background: #ffffff; border-bottom-color: #e2e6ef; }
+.admin-light .admin-title { color: #0d1117; }
+.admin-light .admin-subtitle { color: #8792a2; }
+.admin-light .admin-back-btn { color: #3c4257; border-color: #e2e6ef; }
+.admin-light .admin-back-btn:hover { color: #0d1117; border-color: #cdd3de; }
+.admin-light .admin-search { background: #ffffff; border-color: #cdd3de; color: #0d1117; }
+.admin-light .admin-count { color: #8792a2; }
+.admin-light .admin-refresh-btn { background: #ffffff; border-color: #cdd3de; color: #3c4257; }
+.admin-light .admin-refresh-btn:hover { background: #eef0f4; }
+.admin-light .admin-loading { color: #8792a2; }
+.admin-light .admin-table-wrap { background: #ffffff; border-color: #e2e6ef; }
+.admin-light .admin-table th { background: #f5f6fa; color: #8792a2; border-bottom-color: #e2e6ef; }
+.admin-light .admin-table td { border-bottom-color: #eef0f4; }
+.admin-light .admin-email { color: #0d1117; }
+.admin-light .admin-date { color: #8792a2; }
+.admin-light .admin-empty { color: #8792a2; }
+.admin-light .admin-tabs { border-bottom-color: #e2e6ef; }
+.admin-light .admin-tab { color: #8792a2; }
+.admin-light .admin-tab:hover { color: #0d1117; }
+.admin-light .admin-feedback-card { background: #ffffff; border-color: #e2e6ef; }
+.admin-light .admin-feedback-badge { background: #eef0f4; color: #3c4257; }
+.admin-light .admin-feedback-email { color: #0d1117; }
+.admin-light .admin-feedback-page,
+.admin-light .admin-feedback-date { color: #8792a2; }
+.admin-light .admin-feedback-message { color: #0d1117; }
+.admin-light .admin-feedback-status { background: #eef0f4; color: #3c4257; border-color: #cdd3de; }
+.admin-light .admin-feedback-status-new { background: rgba(37,99,235,0.1); color: #2563eb; border-color: rgba(37,99,235,0.25); }
+.admin-light .admin-feedback-status-in-progress { background: rgba(217,119,6,0.12); color: #b45309; border-color: rgba(217,119,6,0.25); }
+.admin-light .admin-feedback-status-resolved { background: rgba(5,150,105,0.12); color: #059669; border-color: rgba(5,150,105,0.25); }
+.admin-light .admin-feedback-status-dismissed { background: #eef0f4; color: #8792a2; border-color: #cdd3de; }
+.admin-light .admin-status-filter { background: #ffffff; border-color: #cdd3de; color: #3c4257; }
+.admin-light .admin-plan-select { border-color: #cdd3de; }
+.admin-light .admin-plan-select option { background: #ffffff; color: #0d1117; }

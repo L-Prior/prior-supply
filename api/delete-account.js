@@ -43,7 +43,7 @@ module.exports = async function handler(req, res) {
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId)
   if (deleteError) {
     console.error('deleteUser error:', deleteError)
-    return res.status(500).json({ error: 'Failed to delete account. Please contact hello@stocktrack.app.' })
+    return res.status(500).json({ error: 'Failed to delete account. Please contact hello@its-vaulted.com.' })
   }
 
   return res.status(200).json({ success: true })

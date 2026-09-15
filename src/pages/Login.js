@@ -15,7 +15,8 @@ export default function Login() {
   const [username, setUsername] = useState('')
   const [role, setRole] = useState('Reseller')
   const [name, setName] = useState('')
-  const [interest, setInterest] = useState('Sneakers')
+  const [interests, setInterests] = useState([])
+  const toggleInterest = (i) => setInterests(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])
   const [betaCode, setBetaCode] = useState('')
   const [betaUnlocked, setBetaUnlocked] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -44,9 +45,10 @@ export default function Login() {
     if (mode === 'waitlist') {
       if (!email.trim()) { setError('Please enter your email address'); return }
       if (!name.trim()) { setError('Please enter your name'); return }
+      if (interests.length === 0) { setError('Please pick at least one thing you sell or collect'); return }
       setLoading(true)
       const { error } = await supabase.from('waitlist').insert({
-        email: email.trim(), name: name.trim(), interest
+        email: email.trim(), name: name.trim(), interest: interests.join(', ')
       })
       setLoading(false)
       if (error) setError('Something went wrong — please try again.')
@@ -141,10 +143,10 @@ export default function Login() {
                   <input className="form-input" placeholder="Your name" value={name} onChange={e => setName(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">What do you sell or collect?</label>
-                  <div className="type-toggle" style={{ flexWrap: 'wrap' }}>
+                  <label className="form-label">What do you sell or collect? <span style={{ color: '#6670a0', fontWeight: 500 }}>(select all that apply)</span></label>
+                  <div className="interest-chips">
                     {INTERESTS.map(i => (
-                      <button key={i} type="button" className={`type-btn ${interest === i ? 'active' : ''}`} onClick={() => setInterest(i)}>{i}</button>
+                      <button key={i} type="button" className={`interest-chip ${interests.includes(i) ? 'active' : ''}`} onClick={() => toggleInterest(i)}>{i}</button>
                     ))}
                   </div>
                 </div>
