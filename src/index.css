@@ -4328,3 +4328,22 @@ tbody td {
 .admin-light .admin-status-filter { background: #ffffff; border-color: #cdd3de; color: #3c4257; }
 .admin-light .admin-plan-select { border-color: #cdd3de; }
 .admin-light .admin-plan-select option { background: #ffffff; color: #0d1117; }
+
+/* Feedback resolution notes */
+.admin-resolution { margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08); }
+.admin-resolution-label {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #8890b5; margin-bottom: 6px;
+}
+.admin-resolution-input {
+  width: 100%; min-height: 56px; resize: vertical;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; color: #e8eaf2; font-family: 'Inter', sans-serif;
+  font-size: 13px; line-height: 1.5; padding: 8px 11px; outline: none;
+}
+.admin-resolution-input:focus { border-color: rgba(245,158,11,0.4); }
+.admin-resolution-input::placeholder { color: #4a5070; }
+.admin-light .admin-resolution { border-top-color: #e2e6ef; }
+.admin-light .admin-resolution-label { color: #8792a2; }
+.admin-light .admin-resolution-input { background: #ffffff; border-color: #cdd3de; color: #0d1117; }
+.admin-light .admin-resolution-input::placeholder { color: #b0b7c3; }

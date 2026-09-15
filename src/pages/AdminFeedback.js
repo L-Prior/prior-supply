@@ -4,13 +4,15 @@ import { isAdminEmail } from '../admins'
 import Icon from '../components/Icon'
 
 const STATUSES = ['New', 'In progress', 'Resolved', 'Dismissed']
+const OPEN_STATUSES = ['New', 'In progress']
 const statusClass = s => (s || 'New').toLowerCase().replace(/\s+/g, '-')
+const isOpen = f => OPEN_STATUSES.includes(f.status || 'New')
 
 export default function AdminFeedback({ session }) {
   const [feedback, setFeedback] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [view, setView] = useState('open') // 'open' | 'resolved'
 
   const isAdmin = isAdminEmail(session?.user?.email)
   const lightTheme = (() => { try { return localStorage.getItem('iv_dark') === 'false' } catch { return false } })()
@@ -36,6 +38,11 @@ export default function AdminFeedback({ session }) {
     if (error) setFeedback(prev) // revert on failure
   }
 
+  async function updateResolution(id, resolution) {
+    const { error } = await supabase.from('feedback').update({ resolution }).eq('id', id)
+    if (error) fetchFeedback() // reload on failure to avoid a stale local value
+  }
+
   if (!isAdmin) {
     return (
       <div className="suspended-wrap">
@@ -49,9 +56,11 @@ export default function AdminFeedback({ session }) {
     )
   }
 
+  const openCount = feedback.filter(isOpen).length
+  const resolvedCount = feedback.length - openCount
   const filtered = feedback.filter(f =>
     (filter === 'all' || (f.category || 'Other').toLowerCase() === filter) &&
-    (statusFilter === 'all' || (f.status || 'New') === statusFilter)
+    (view === 'open' ? isOpen(f) : !isOpen(f))
   )
 
   return (
@@ -68,6 +77,15 @@ export default function AdminFeedback({ session }) {
       </div>
 
       <div className="admin-body">
+        <div className="admin-tabs">
+          <button className={`admin-tab ${view === 'open' ? 'active' : ''}`} onClick={() => setView('open')}>
+            Open{openCount > 0 && <span className="admin-tab-count">{openCount}</span>}
+          </button>
+          <button className={`admin-tab ${view === 'resolved' ? 'active' : ''}`} onClick={() => setView('resolved')}>
+            Resolved / Closed{resolvedCount > 0 && <span className="admin-tab-count">{resolvedCount}</span>}
+          </button>
+        </div>
+
         <div className="admin-toolbar">
           <div style={{ display: 'flex', gap: 6 }}>
             {['all', 'bug', 'idea', 'other'].map(c => (
@@ -81,10 +99,6 @@ export default function AdminFeedback({ session }) {
               </button>
             ))}
           </div>
-          <select className="admin-status-filter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-            <option value="all">All statuses</option>
-            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
           <div className="admin-count">{filtered.length} submission{filtered.length !== 1 ? 's' : ''}</div>
           <button className="admin-refresh-btn" onClick={fetchFeedback}>↻ Refresh</button>
         </div>
@@ -92,7 +106,9 @@ export default function AdminFeedback({ session }) {
         {loading ? (
           <div className="admin-loading">Loading feedback…</div>
         ) : filtered.length === 0 ? (
-          <div className="admin-empty" style={{ padding: 40, textAlign: 'center' }}>No feedback yet</div>
+          <div className="admin-empty" style={{ padding: 40, textAlign: 'center' }}>
+            {view === 'open' ? 'Nothing open — all caught up' : 'Nothing resolved yet'}
+          </div>
         ) : (
           <div className="admin-feedback-list">
             {filtered.map(f => (
@@ -113,6 +129,18 @@ export default function AdminFeedback({ session }) {
                   </select>
                 </div>
                 <div className="admin-feedback-message">{f.message}</div>
+                {!isOpen(f) && (
+                  <div className="admin-resolution">
+                    <label className="admin-resolution-label">Resolution notes</label>
+                    <textarea
+                      className="admin-resolution-input"
+                      placeholder="What was the fix or outcome? (saved when you click away)"
+                      value={f.resolution || ''}
+                      onChange={e => setFeedback(fb => fb.map(x => (x.id === f.id ? { ...x, resolution: e.target.value } : x)))}
+                      onBlur={e => updateResolution(f.id, e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
