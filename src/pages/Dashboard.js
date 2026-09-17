@@ -1809,6 +1809,20 @@ export default function Dashboard({ session }) {
   const [toolTab, setToolTab] = useState('fee')
   const [metricsTab, setMetricsTab] = useState('reseller')
   const [showSettings, setShowSettings] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteAck, setDeleteAck] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  async function confirmDeleteAccount() {
+    setDeleting(true); setDeleteError('')
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession()
+      const res = await fetch('/api/delete-account', { method: 'POST', headers: { Authorization: `Bearer ${s.access_token}`, 'Content-Type': 'application/json' } })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setDeleteError(d.error || 'Deletion failed. Please contact hello@its-vaulted.com'); setDeleting(false); return }
+      await supabase.auth.signOut()
+      navigate('/')
+    } catch (e) { setDeleteError('Something went wrong. Please contact hello@its-vaulted.com'); setDeleting(false) }
+  }
   const [settingsTab, setSettingsTab] = useState('profile')
   const [displayName, setDisplayName] = useState('')
   const [showFeedback, setShowFeedback] = useState(false)
@@ -2192,6 +2206,17 @@ ${expInMonth.length>0?`
   const [isSuspended, setIsSuspended] = useState(false)
 
   useEffect(() => { if (session) fetchProfile() }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Heartbeat: record that this user is active (for the admin "last active / online" view)
+  useEffect(() => {
+    if (!session) return
+    const ping = () => { supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then(() => {}, () => {}) }
+    ping()
+    const id = setInterval(ping, 60000)
+    const onFocus = () => ping()
+    window.addEventListener('focus', onFocus)
+    return () => { clearInterval(id); window.removeEventListener('focus', onFocus) }
+  }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
   async function fetchProfile() {
     const { data } = await supabase.from('profiles').select('plan, vat_registered, vat_number, display_name, suspended, business_type, company_number, registered_address, vat_scheme, vat_flat_rate_pct').eq('id', session.user.id).single()
     if (data) {
@@ -4862,18 +4887,7 @@ ${expInMonth.length>0?`
                 <div style={{marginTop:24,paddingTop:20,borderTop:'1px solid var(--border)'}}>
                   <div style={{fontSize:13,fontWeight:600,color:'var(--text)',marginBottom:4}}>Danger zone</div>
                   <div style={{fontSize:12,color:'var(--muted)',marginBottom:12}}>Permanently delete your account and all data. This cannot be undone.</div>
-                  <button className="btn danger sm" onClick={async()=>{
-                    if (!window.confirm('This will permanently delete your account and ALL your data. Are you absolutely sure?\n\nThis cannot be undone.')) return
-                    if (items.length>0 && window.confirm('Before you go — would you like to download a CSV backup of your stock data first?\n\nOK = download backup now\nCancel = skip and continue')) { exportCSV() }
-                    if (!window.confirm('Last chance — are you sure you want to delete everything?')) return
-                    try {
-                      const { data: { session: s } } = await supabase.auth.getSession()
-                      const res = await fetch('/api/delete-account', { method:'POST', headers:{ Authorization:`Bearer ${s.access_token}`, 'Content-Type':'application/json' } })
-                      if (!res.ok) { const d=await res.json(); alert(d.error||'Deletion failed. Please contact hello@its-vaulted.com'); return }
-                      await supabase.auth.signOut()
-                      navigate('/')
-                    } catch(e) { alert('Something went wrong. Please contact hello@its-vaulted.com') }
-                  }}>Delete my account</button>
+                  <button className="btn danger sm" onClick={()=>{setDeleteError('');setDeleteAck(false);setShowDeleteModal(true)}}>Delete my account</button>
                 </div>
               </div>
             )}
@@ -5011,6 +5025,28 @@ ${expInMonth.length>0?`
           </button>
         ))}
       </nav>
+
+      {/* ── Delete account modal ─────────────────────────────────────────── */}
+      {showDeleteModal&&(
+        <div className="modal-overlay" onClick={()=>!deleting&&setShowDeleteModal(false)}>
+          <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-title">Delete your account?</div>
+            <p style={{fontSize:13.5,color:'var(--muted)',lineHeight:1.55,marginTop:-10,marginBottom:16}}>This permanently deletes your account and <b>all</b> your data — stock, sales, collection, expenses and breaks. This cannot be undone.</p>
+            {items.length>0&&(
+              <button className="btn sm" style={{width:'100%',marginBottom:16}} onClick={exportCSV} disabled={deleting}>↓ Download a CSV backup of my stock first</button>
+            )}
+            <label style={{display:'flex',gap:9,alignItems:'flex-start',fontSize:13,color:'var(--text)',marginBottom:16,cursor:'pointer'}}>
+              <input type="checkbox" checked={deleteAck} onChange={e=>setDeleteAck(e.target.checked)} disabled={deleting} style={{marginTop:2,flexShrink:0}} />
+              <span>I understand this is permanent and cannot be undone.</span>
+            </label>
+            {deleteError&&<div className="auth-error" style={{marginBottom:14}}>{deleteError}</div>}
+            <div className="form-actions">
+              <button className="btn" onClick={()=>setShowDeleteModal(false)} disabled={deleting}>Cancel</button>
+              <button className="btn danger" onClick={confirmDeleteAccount} disabled={!deleteAck||deleting}>{deleting?'Deleting…':'Delete my account'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Welcome modal (first login) ──────────────────────────────────── */}
       {showWelcome&&(

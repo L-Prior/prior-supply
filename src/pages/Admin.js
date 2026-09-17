@@ -17,6 +17,19 @@ export default function Admin({ session }) {
   const isAdmin = isAdminEmail(session?.user?.email)
   const lightTheme = (() => { try { return localStorage.getItem('iv_dark') !== 'true' } catch { return true } })()
 
+  const ONLINE_MS = 3 * 60 * 1000
+  function lastActive(ts) {
+    if (!ts) return { online: false, label: 'Never' }
+    const diff = Date.now() - new Date(ts).getTime()
+    const mins = Math.floor(diff / 60000)
+    let label
+    if (mins < 1) label = 'Just now'
+    else if (mins < 60) label = `${mins} min ago`
+    else if (mins < 1440) label = `${Math.floor(mins / 60)}h ago`
+    else label = `${Math.floor(mins / 1440)}d ago`
+    return { online: diff < ONLINE_MS, label }
+  }
+
   useEffect(() => {
     if (isAdmin) { fetchUsers(); fetchFeedback(); fetchWaitlist() }
   }, [isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -206,6 +219,7 @@ export default function Admin({ session }) {
                   <th>Email</th>
                   <th>Plan</th>
                   <th>Joined</th>
+                  <th>Last active</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -230,6 +244,13 @@ export default function Admin({ session }) {
                       {u.created_at ? new Date(u.created_at).toLocaleDateString('en-GB') : '—'}
                     </td>
                     <td>
+                      {(() => { const la = lastActive(u.last_seen); return (
+                        <span className="admin-lastseen" title={u.last_seen ? new Date(u.last_seen).toLocaleString('en-GB') : 'No activity yet'}>
+                          <span className={`admin-dot ${la.online ? 'online' : 'offline'}`}></span>{la.label}
+                        </span>
+                      ) })()}
+                    </td>
+                    <td>
                       <span className={`admin-status ${u.suspended ? 'admin-status-suspended' : 'admin-status-active'}`}>
                         {u.suspended ? 'Suspended' : 'Active'}
                       </span>
@@ -251,7 +272,7 @@ export default function Admin({ session }) {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={5} className="admin-empty">No users found</td></tr>
+                  <tr><td colSpan={6} className="admin-empty">No users found</td></tr>
                 )}
               </tbody>
             </table>

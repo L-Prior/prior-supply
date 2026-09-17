@@ -4030,6 +4030,12 @@ tbody td {
 .admin-row-suspended { background: rgba(239,68,68,0.03); }
 .admin-email { color: #c8cce0; font-size: 13px; }
 .admin-date { color: #4a5070; }
+.admin-lastseen { display: inline-flex; align-items: center; gap: 7px; color: #8890b5; font-size: 12.5px; white-space: nowrap; }
+.admin-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.admin-dot.online { background: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,0.2); }
+.admin-dot.offline { background: #4a5070; }
+.admin-light .admin-lastseen { color: #64748b; }
+.admin-light .admin-dot.offline { background: #cbd2dd; }
 .admin-empty { color: #4a5070; text-align: center; padding: 32px; }
 
 /* Admin tabs */

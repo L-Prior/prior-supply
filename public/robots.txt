@@ -1,0 +1,10 @@
+# Allow all search engines to index the site
+User-agent: *
+Allow: /
+
+# Keep private/app areas out of search results
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /reset-password
+
+Sitemap: https://www.its-vaulted.com/sitemap.xml
