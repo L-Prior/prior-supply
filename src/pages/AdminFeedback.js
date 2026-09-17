@@ -15,7 +15,7 @@ export default function AdminFeedback({ session }) {
   const [view, setView] = useState('open') // 'open' | 'resolved'
 
   const isAdmin = isAdminEmail(session?.user?.email)
-  const lightTheme = (() => { try { return localStorage.getItem('iv_dark') === 'false' } catch { return false } })()
+  const lightTheme = (() => { try { return localStorage.getItem('iv_dark') !== 'true' } catch { return true } })()
 
   useEffect(() => {
     if (isAdmin) fetchFeedback()

@@ -15,7 +15,7 @@ export default function Admin({ session }) {
   const [waitlistLoading, setWaitlistLoading] = useState(true)
 
   const isAdmin = isAdminEmail(session?.user?.email)
-  const lightTheme = (() => { try { return localStorage.getItem('iv_dark') === 'false' } catch { return false } })()
+  const lightTheme = (() => { try { return localStorage.getItem('iv_dark') !== 'true' } catch { return true } })()
 
   useEffect(() => {
     if (isAdmin) { fetchUsers(); fetchFeedback(); fetchWaitlist() }
@@ -23,11 +23,18 @@ export default function Admin({ session }) {
 
   async function fetchUsers() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('admin_users_view')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (!error) setUsers(data || [])
+    // Primary: SECURITY DEFINER function (reliable admin-gated read over auth.users).
+    let { data, error } = await supabase.rpc('get_admin_users')
+    // Fallback to the older view if the function isn't created yet.
+    if (error) {
+      const viewRes = await supabase.from('admin_users_view').select('*').order('created_at', { ascending: false })
+      if (!viewRes.error) { data = viewRes.data; error = null }
+    }
+    if (error) {
+      setActionMsg(`Couldn't load users: ${error.message || 'unknown error'}`)
+    } else {
+      setUsers(data || [])
+    }
     setLoading(false)
   }
 

@@ -843,8 +843,9 @@ export default function Dashboard({ session }) {
   const [saveError, setSaveError] = useState('')
   const [fetchError, setFetchError] = useState('')
   const [settingsSaved, setSettingsSaved] = useState(false)
-  // Onboarding v2: welcome modal + guided tour + getting-started checklist
-  const ONBOARD_KEY = 'iv_onboard_v2'
+  // Onboarding v2: welcome modal + guided tour + getting-started checklist.
+  // Keyed per-user so onboarding state never leaks between accounts on the same browser.
+  const ONBOARD_KEY = `iv_onboard_v2_${session.user.id}`
   const [onboard, setOnboard] = useState(() => { try { return JSON.parse(localStorage.getItem(ONBOARD_KEY) || '{}') } catch { return {} } })
   const patchOnboard = (patch) => setOnboard(s => { const n = { ...s, ...patch }; try { localStorage.setItem(ONBOARD_KEY, JSON.stringify(n)) } catch {}; return n })
   const [tourStep, setTourStep] = useState(null)
@@ -1763,7 +1764,7 @@ export default function Dashboard({ session }) {
     return { totalPL, completed, active, total: breaks.length }
   }, [breaks])
 
-  const [darkMode, setDarkMode] = useState(() => { try { const stored = localStorage.getItem('iv_dark'); return stored === null ? true : stored === 'true' } catch { return true } })
+  const [darkMode, setDarkMode] = useState(() => { try { const stored = localStorage.getItem('iv_dark'); return stored === null ? false : stored === 'true' } catch { return false } })
   // Keep <body> in sync with dashboard theme — otherwise body's background stays
   // the light default, and any sliver of it revealed by mobile Safari's elastic
   // overscroll (or a safe-area/viewport resize) shows up as a jarring white strip.
