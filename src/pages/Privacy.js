@@ -74,8 +74,8 @@ export default function Privacy() {
         <h2>9. Security</h2>
         <p>All data is transmitted over HTTPS. Passwords are hashed and never stored in plain text. Your data is logically isolated — no other user can access your inventory or financial records.</p>
 
-        <h2>10. Children</h2>
-        <p>ITS VAULTED is not directed at children under 13. We do not knowingly collect data from anyone under 13. If you believe a child has created an account, contact us and we will delete it.</p>
+        <h2>10. Age requirement</h2>
+        <p>ITS VAULTED is intended for adults aged 18 and over and is not directed at anyone under 18. We do not knowingly collect data from anyone under 18. If you believe someone under 18 has created an account, contact us and we will delete it.</p>
 
         <h2>11. Changes to this policy</h2>
         <p>We may update this policy from time to time. We will notify registered users of material changes by email. Continued use of the service after notice constitutes acceptance.</p>

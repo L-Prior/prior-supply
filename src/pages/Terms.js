@@ -20,7 +20,7 @@ export default function Terms() {
         <p>ITS VAULTED is an inventory and profit-tracking tool designed for resellers and collectors. It allows you to record purchases, sales, and expenses, and visualise your financial performance. The Service is provided by ITS VAULTED, operated as a sole trader in the United Kingdom.</p>
 
         <h2>2. Eligibility</h2>
-        <p>You must be at least 13 years old to use ITS VAULTED. By creating an account you confirm you meet this requirement. If you are using the Service for business purposes, you confirm you have authority to accept these Terms on behalf of that business.</p>
+        <p>You must be at least 18 years old to use ITS VAULTED. By creating an account you confirm you meet this requirement. If you are using the Service for business purposes, you confirm you have authority to accept these Terms on behalf of that business.</p>
 
         <h2>3. Account</h2>
         <ul>
