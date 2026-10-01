@@ -2608,17 +2608,17 @@ ${expInMonth.length>0?`
                   {sugg.length===0?(
                     <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'var(--radius)',fontSize:14,color:'#166534',fontWeight:600}}><span style={{fontSize:20}}><Icon name="check-circle" size={20} /></span>You're all caught up — nothing needs attention right now.</div>
                   ):(
-                    <div style={{display:'grid',gap:10}}>
+                    <div className="suggestion-list">
                       {sugg.slice(0,5).map((s,idx)=>{
                         const t=tones[s.tone]||tones.blue
                         return(
-                          <div key={idx} style={{display:'flex',alignItems:'center',gap:14,padding:'12px 16px',background:t.bg,border:`1px solid ${t.border}`,borderRadius:'var(--radius)',flexWrap:'wrap'}}>
-                            <div style={{flexShrink:0,display:'flex'}}><Icon name={s.icon} size={22} /></div>
-                            <div style={{flex:1,minWidth:140}}>
-                              <div style={{fontWeight:700,fontSize:14,color:'#1e293b'}}>{s.title}</div>
-                              <div style={{fontSize:12.5,color:'#64748b',marginTop:2}}>{s.desc}</div>
+                          <div key={idx} className="suggestion-card" style={{background:t.bg,borderColor:t.border}}>
+                            <div className="suggestion-icon"><Icon name={s.icon} size={22} /></div>
+                            <div className="suggestion-body">
+                              <div className="suggestion-title">{s.title}</div>
+                              <div className="suggestion-desc">{s.desc}</div>
                             </div>
-                            <button className="btn sm" style={{flexShrink:0,borderColor:t.border,color:t.color}} onClick={s.fn}>{s.action} →</button>
+                            <button className="btn sm suggestion-cta" style={{borderColor:t.border,color:t.color}} onClick={s.fn}>{s.action} →</button>
                           </div>
                         )
                       })}

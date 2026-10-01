@@ -4383,3 +4383,32 @@ tbody td {
 .admin-light .ov-bar-label { color: #3c4257; }
 .admin-light .ov-bar-track { background: #eef0f4; }
 .admin-light .ov-bar-val { color: #0d1117; }
+
+/* ── Smart suggestions (home) ─────────────────────────────────────────── */
+.suggestion-list { display: grid; gap: 10px; }
+.suggestion-card { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border: 1px solid; border-radius: var(--radius); flex-wrap: wrap; }
+.suggestion-icon { flex-shrink: 0; display: flex; }
+.suggestion-body { flex: 1; min-width: 140px; }
+.suggestion-title { font-weight: 700; font-size: 14px; color: #1e293b; }
+.suggestion-desc { font-size: 12.5px; color: #64748b; margin-top: 2px; }
+.suggestion-cta { flex-shrink: 0; }
+@media (max-width: 600px) {
+  .suggestion-list { gap: 8px; }
+  .suggestion-card { gap: 10px; padding: 10px 12px; }
+  .suggestion-icon svg { width: 18px; height: 18px; }
+  .suggestion-title { font-size: 13px; line-height: 1.3; }
+  .suggestion-desc { font-size: 11.5px; line-height: 1.35; margin-top: 1px; }
+  .suggestion-body { min-width: 0; flex-basis: calc(100% - 28px); }
+  .suggestion-cta { margin-left: 28px; font-size: 12px; padding: 5px 10px; }
+}
+
+/* Compact inventory cards on phones */
+@media (max-width: 600px) {
+  .item-card-header { padding: 11px 13px 0; }
+  .item-card-body { padding: 5px 13px 10px; }
+  .item-card-brand { font-size: 16px; margin-top: 4px; }
+  .item-card-style { font-size: 12.5px; }
+  .item-card-stats { padding: 9px 13px 8px; gap: 3px; }
+  .item-card-stat-value { font-size: 12.5px; }
+  .item-card-actions { padding: 8px 13px; gap: 5px; flex-wrap: wrap; }
+}
