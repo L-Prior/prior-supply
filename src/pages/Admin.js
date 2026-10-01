@@ -8,11 +8,12 @@ export default function Admin({ session }) {
   const [loading, setLoading] = useState(true)
   const [actionMsg, setActionMsg] = useState('')
   const [search, setSearch] = useState('')
-  const [tab, setTab] = useState('users')
+  const [tab, setTab] = useState('overview')
   const [feedback, setFeedback] = useState([])
   const [feedbackLoading, setFeedbackLoading] = useState(true)
   const [waitlist, setWaitlist] = useState([])
   const [waitlistLoading, setWaitlistLoading] = useState(true)
+  const [stats, setStats] = useState(null)
 
   const isAdmin = isAdminEmail(session?.user?.email)
   const lightTheme = (() => { try { return localStorage.getItem('iv_dark') !== 'true' } catch { return true } })()
@@ -31,8 +32,13 @@ export default function Admin({ session }) {
   }
 
   useEffect(() => {
-    if (isAdmin) { fetchUsers(); fetchFeedback(); fetchWaitlist() }
+    if (isAdmin) { fetchUsers(); fetchFeedback(); fetchWaitlist(); fetchStats() }
   }, [isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchStats() {
+    const { data } = await supabase.rpc('get_admin_stats')
+    if (data) setStats(data)
+  }
 
   async function fetchUsers() {
     setLoading(true)
@@ -169,6 +175,24 @@ export default function Admin({ session }) {
     !search || u.email?.toLowerCase().includes(search.toLowerCase())
   )
 
+  // ── Overview metrics (computed from loaded data) ──────────────────────
+  const WEEK = 7 * 24 * 60 * 60 * 1000
+  const within = (ts, ms) => ts && (Date.now() - new Date(ts).getTime()) < ms
+  const newUsersWeek = users.filter(u => within(u.created_at, WEEK)).length
+  const onlineNow = users.filter(u => within(u.last_seen, ONLINE_MS)).length
+  const active7d = users.filter(u => within(u.last_seen, WEEK)).length
+  const planCounts = users.reduce((a, u) => { const p = u.plan || 'free'; a[p] = (a[p] || 0) + 1; return a }, {})
+  const waitlistWeek = waitlist.filter(w => within(w.created_at, WEEK)).length
+  const interestCounts = {}
+  waitlist.forEach(w => (w.interest || '').split(',').map(s => s.trim()).filter(Boolean).forEach(i => { interestCounts[i] = (interestCounts[i] || 0) + 1 }))
+  const openFeedback = feedback.filter(f => !['Resolved', 'Dismissed'].includes(f.status || 'New')).length
+  const pct = (n, d) => d > 0 ? Math.round((n / d) * 100) : 0
+  const fmtGBP = n => '£' + Number(n || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })
+  const catEntries = stats?.by_category ? Object.entries(stats.by_category).sort((a, b) => b[1] - a[1]) : []
+  const catMax = catEntries.reduce((m, [, c]) => Math.max(m, c), 0)
+  const interestEntries = Object.entries(interestCounts).sort((a, b) => b[1] - a[1])
+  const interestMax = interestEntries.reduce((m, [, c]) => Math.max(m, c), 0)
+
   return (
     <div className={`admin-wrap ${lightTheme ? 'admin-light' : ''}`}>
       <div className="admin-header">
@@ -188,6 +212,7 @@ export default function Admin({ session }) {
 
       <div className="admin-body">
         <div className="admin-tabs">
+          <button className={`admin-tab ${tab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>Overview</button>
           <button className={`admin-tab ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Users</button>
           <button className={`admin-tab ${tab === 'feedback' ? 'active' : ''}`} onClick={() => setTab('feedback')}>
             Feedback{feedback.length > 0 && <span className="admin-tab-count">{feedback.length}</span>}
@@ -196,6 +221,68 @@ export default function Admin({ session }) {
             Waitlist{waitlist.length > 0 && <span className="admin-tab-count">{waitlist.length}</span>}
           </button>
         </div>
+
+        {tab === 'overview' && (<>
+          <div className="ov-section-title">Growth</div>
+          <div className="ov-grid">
+            <div className="ov-card"><div className="ov-label">Registered accounts</div><div className="ov-value">{users.length}</div><div className="ov-sub">+{newUsersWeek} this week</div></div>
+            <div className="ov-card"><div className="ov-label">Waitlist signups</div><div className="ov-value">{waitlist.length}</div><div className="ov-sub">+{waitlistWeek} this week</div></div>
+            <div className="ov-card"><div className="ov-label">Online now</div><div className="ov-value">{onlineNow}</div><div className="ov-sub">{active7d} active in last 7d</div></div>
+            <div className="ov-card"><div className="ov-label">Open feedback</div><div className="ov-value">{openFeedback}</div><div className="ov-sub">{feedback.length} total</div></div>
+          </div>
+
+          <div className="ov-section-title">Plans</div>
+          <div className="ov-grid">
+            <div className="ov-card"><div className="ov-label">Free</div><div className="ov-value">{planCounts.free || 0}</div></div>
+            <div className="ov-card"><div className="ov-label">Core</div><div className="ov-value">{planCounts.core || 0}</div></div>
+            <div className="ov-card"><div className="ov-label">Pro</div><div className="ov-value">{planCounts.pro || 0}</div></div>
+          </div>
+
+          <div className="ov-section-title">Activation</div>
+          {stats ? (
+            <div className="ov-grid">
+              <div className="ov-card"><div className="ov-label">Added an item</div><div className="ov-value">{pct(stats.users_with_items, users.length)}%</div><div className="ov-sub">{stats.users_with_items} of {users.length} users</div></div>
+              <div className="ov-card"><div className="ov-label">Made a sale</div><div className="ov-value">{pct(stats.users_with_sale, users.length)}%</div><div className="ov-sub">{stats.users_with_sale} of {users.length} users</div></div>
+            </div>
+          ) : <div className="ov-note">Run the <code>get_admin_stats()</code> SQL to populate product metrics.</div>}
+
+          {stats && (<>
+            <div className="ov-section-title">Inventory &amp; activity (all users)</div>
+            <div className="ov-grid">
+              <div className="ov-card"><div className="ov-label">Items tracked</div><div className="ov-value">{stats.total_items}</div><div className="ov-sub">{stats.in_stock} in stock · {stats.sold} sold</div></div>
+              <div className="ov-card"><div className="ov-label">Sales revenue (GMV)</div><div className="ov-value">{fmtGBP(stats.gmv)}</div><div className="ov-sub">across {stats.sold} sold items</div></div>
+              <div className="ov-card"><div className="ov-label">Breaks logged</div><div className="ov-value">{stats.breaks}</div></div>
+              <div className="ov-card"><div className="ov-label">Collector items</div><div className="ov-value">{stats.collector_items}</div></div>
+              <div className="ov-card"><div className="ov-label">Expenses logged</div><div className="ov-value">{stats.expenses}</div></div>
+            </div>
+          </>)}
+
+          {catEntries.length > 0 && (<>
+            <div className="ov-section-title">Items by category</div>
+            <div className="ov-bars">
+              {catEntries.map(([cat, c]) => (
+                <div key={cat} className="ov-bar-row">
+                  <div className="ov-bar-label">{cat}</div>
+                  <div className="ov-bar-track"><div className="ov-bar-fill" style={{ width: `${pct(c, catMax)}%` }} /></div>
+                  <div className="ov-bar-val">{c}</div>
+                </div>
+              ))}
+            </div>
+          </>)}
+
+          {interestEntries.length > 0 && (<>
+            <div className="ov-section-title">Waitlist interests</div>
+            <div className="ov-bars">
+              {interestEntries.map(([i, c]) => (
+                <div key={i} className="ov-bar-row">
+                  <div className="ov-bar-label">{i}</div>
+                  <div className="ov-bar-track"><div className="ov-bar-fill" style={{ width: `${pct(c, interestMax)}%` }} /></div>
+                  <div className="ov-bar-val">{c}</div>
+                </div>
+              ))}
+            </div>
+          </>)}
+        </>)}
 
         {tab === 'users' && (<>
         <div className="admin-toolbar">

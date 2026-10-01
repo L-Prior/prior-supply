@@ -4355,3 +4355,31 @@ tbody td {
 .admin-light .admin-resolution-label { color: #8792a2; }
 .admin-light .admin-resolution-input { background: #ffffff; border-color: #cdd3de; color: #0d1117; }
 .admin-light .admin-resolution-input::placeholder { color: #b0b7c3; }
+
+/* ── Admin overview / analytics ───────────────────────────────────────── */
+.ov-section-title { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #8893b8; margin: 26px 0 12px; }
+.ov-section-title:first-child { margin-top: 4px; }
+.ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.ov-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 16px 18px; }
+.ov-label { font-size: 12px; font-weight: 600; color: #8893b8; margin-bottom: 8px; }
+.ov-value { font-size: 26px; font-weight: 800; color: #eaecf8; letter-spacing: -0.02em; }
+.ov-sub { font-size: 12px; color: #7c86ad; margin-top: 4px; }
+.ov-note { font-size: 13px; color: #8893b8; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 14px 16px; }
+.ov-note code { background: rgba(245,158,11,0.12); color: #f59e0b; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+.ov-bars { display: flex; flex-direction: column; gap: 9px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 16px 18px; }
+.ov-bar-row { display: flex; align-items: center; gap: 12px; }
+.ov-bar-label { width: 110px; flex-shrink: 0; font-size: 13px; color: #c8cce0; }
+.ov-bar-track { flex: 1; height: 10px; border-radius: 5px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.ov-bar-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #f7b731, #f59e0b); }
+.ov-bar-val { width: 36px; text-align: right; flex-shrink: 0; font-size: 13px; font-weight: 700; color: #eaecf8; }
+/* light theme */
+.admin-light .ov-section-title { color: #6b7384; }
+.admin-light .ov-card { background: #ffffff; border-color: #e2e6ef; }
+.admin-light .ov-label { color: #6b7384; }
+.admin-light .ov-value { color: #0d1117; }
+.admin-light .ov-sub { color: #8792a2; }
+.admin-light .ov-note { background: #ffffff; border-color: #e2e6ef; color: #6b7384; }
+.admin-light .ov-bars { background: #ffffff; border-color: #e2e6ef; }
+.admin-light .ov-bar-label { color: #3c4257; }
+.admin-light .ov-bar-track { background: #eef0f4; }
+.admin-light .ov-bar-val { color: #0d1117; }
