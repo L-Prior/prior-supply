@@ -2077,9 +2077,15 @@ tbody td {
     margin-bottom: 16px;
   }
 
+  .stat-card { padding: 12px 13px; }
+  .stat-label { margin-bottom: 3px; }
+
   .stat-value {
     font-size: 18px;
   }
+
+  /* Hide page-header add buttons that the mobile topbar already duplicates */
+  .pg-add { display: none; }
 
   /* Cards */
   .card-grid {

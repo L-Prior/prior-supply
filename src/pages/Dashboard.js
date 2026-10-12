@@ -2650,7 +2650,7 @@ ${expInMonth.length>0?`
           <div>
             <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
               <div><h1 className="page-title">Inventory</h1><p className="page-subtitle">Manage your reseller stock</p></div>
-              <button className="btn primary" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>
+              <button className="btn primary pg-add" onClick={()=>{setForm(EMPTY_FORM);setEditItem(null);setSaveError('');setShowAdd(true)}}>+ Add item</button>
             </div>
             <div className="stats-bar" style={{gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))'}}>
               <div className="stat-card"><div className="stat-label">In stock</div><div className="stat-value amber">{stats.inStock}</div></div>
@@ -3199,7 +3199,7 @@ ${expInMonth.length>0?`
           <div>
             <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
               <div><h1 className="page-title">Finance</h1><p className="page-subtitle">Performance metrics, expenses &amp; payouts</p></div>
-              {isCore&&financeTab==='expenses'&&<button className="btn primary" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add expense</button>}
+              {isCore&&financeTab==='expenses'&&<button className="btn primary pg-add" onClick={()=>{setShowExpenseForm(true);setExpenseForm({date:new Date().toISOString().slice(0,10),amount:'',category:'Packaging',description:''})}}>+ Add expense</button>}
             </div>
             {isFree?(
               <div>
@@ -3553,7 +3553,7 @@ ${expInMonth.length>0?`
 
         {page==='collector'&&(
           <div>
-            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">{isFree ? 'My Items' : 'Collector'}</h1><p className="page-subtitle">{isFree ? 'Your items — up to 30 free' : 'Your personal collection'}</p></div><button className="btn primary" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={isFree&&collectorItems.length>=FREE_LIMIT}>+ Add item</button></div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">{isFree ? 'My Items' : 'Collector'}</h1><p className="page-subtitle">{isFree ? 'Your items — up to 30 free' : 'Your personal collection'}</p></div><button className="btn primary pg-add" onClick={()=>{setCollectorForm({...EMPTY_FORM});setEditCollectorItem(null);setCollectorError('');setShowCollectorAdd(true)}} disabled={isFree&&collectorItems.length>=FREE_LIMIT}>+ Add item</button></div>
 
             {/* Free tier limit warning */}
             {userPlan==='free'&&(
@@ -4167,7 +4167,7 @@ ${expInMonth.length>0?`
 
         {page==='breaks'&&(
           <div>
-            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">Breaker</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div>{isCore&&<button className="btn primary" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button>}</div>
+            <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div><h1 className="page-title">Breaker</h1><p className="page-subtitle">Track your box breaks and mystery pack runs</p></div>{isCore&&<button className="btn primary pg-add" onClick={()=>{setBreakForm(EMPTY_BREAK);setEditBreak(null);setShowBreakForm(true)}}>+ Add break</button>}</div>
             {isFree&&<UpgradeWall tier="Core" price="£12/mo" feature="Break tracking" desc="Track box breaks, spot sales, pack runs and the P&L for each one." onUpgrade={()=>{setShowSettings(true);setSettingsTab('plan')}}/>}
             <div className="stats-bar">
               <div className="stat-card"><div className="stat-label">Total entries</div><div className="stat-value">{breakStats.total}</div></div>
