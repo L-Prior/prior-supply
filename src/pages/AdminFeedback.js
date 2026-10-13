@@ -67,7 +67,7 @@ export default function AdminFeedback({ session }) {
     <div className={`admin-wrap ${lightTheme ? 'admin-light' : ''}`}>
       <div className="admin-header">
         <div className="admin-header-left">
-          <img src="/logo-dark.svg" alt="ITS VAULTED" className="admin-logo" />
+          <img src={lightTheme ? '/logo-light.svg' : '/logo-dark.svg'} alt="ITS VAULTED" className="admin-logo" />
           <div>
             <div className="admin-title">Feedback</div>
             <div className="admin-subtitle">Beta tester submissions</div>
