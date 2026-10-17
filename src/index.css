@@ -4044,6 +4044,13 @@ tbody td {
 .admin-dot.offline { background: #5c668a; }
 .admin-light .admin-lastseen { color: #64748b; }
 .admin-light .admin-dot.offline { background: #cbd2dd; }
+.admin-beta-badge {
+  display: inline-block; margin-left: 8px; vertical-align: 1px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  padding: 2px 7px; border-radius: 8px;
+  background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3);
+}
+.admin-light .admin-beta-badge { background: rgba(245,158,11,0.12); color: #b45309; border-color: rgba(245,158,11,0.3); }
 .admin-empty { color: #7c86ad; text-align: center; padding: 32px; }
 
 /* Admin tabs */

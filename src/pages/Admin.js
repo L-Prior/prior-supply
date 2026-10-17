@@ -314,7 +314,7 @@ export default function Admin({ session }) {
               <tbody>
                 {filtered.map(u => (
                   <tr key={u.id} className={u.suspended ? 'admin-row-suspended' : ''}>
-                    <td className="admin-email">{u.email}</td>
+                    <td className="admin-email">{u.email}{u.beta && <span className="admin-beta-badge">Beta</span>}</td>
                     <td>
                       <select
                         className={`admin-plan-select admin-plan-${u.plan || 'free'}`}

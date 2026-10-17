@@ -84,7 +84,11 @@ export default function Login() {
       const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) { setError(error.message); setLoading(false); return }
       if (data?.user) {
-        await supabase.from('profiles').upsert({ id: data.user.id, username: username.trim(), role, plan: 'free' })
+        // Beta testers (signed up via invite code) get Pro and are flagged as beta.
+        const plan = betaUnlocked ? 'pro' : 'free'
+        await supabase.from('profiles').upsert({ id: data.user.id, username: username.trim(), role, plan })
+        // Best-effort beta flag — ignored if the column isn't there yet (won't block signup).
+        if (betaUnlocked) await supabase.from('profiles').update({ beta: true }).eq('id', data.user.id)
       }
       setSuccess('Account created! Check your email to confirm, then log in.')
       setLoading(false)
