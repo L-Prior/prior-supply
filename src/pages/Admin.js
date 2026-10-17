@@ -185,7 +185,8 @@ export default function Admin({ session }) {
   const waitlistWeek = waitlist.filter(w => within(w.created_at, WEEK)).length
   const interestCounts = {}
   waitlist.forEach(w => (w.interest || '').split(',').map(s => s.trim()).filter(Boolean).forEach(i => { interestCounts[i] = (interestCounts[i] || 0) + 1 }))
-  const openFeedback = feedback.filter(f => !['Resolved', 'Dismissed'].includes(f.status || 'New')).length
+  const outstandingFeedback = feedback.filter(f => !['Resolved', 'Dismissed'].includes(f.status || 'New'))
+  const openFeedback = outstandingFeedback.length
   const pct = (n, d) => d > 0 ? Math.round((n / d) * 100) : 0
   const fmtGBP = n => '£' + Number(n || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })
   const catEntries = stats?.by_category ? Object.entries(stats.by_category).sort((a, b) => b[1] - a[1]) : []
@@ -215,7 +216,7 @@ export default function Admin({ session }) {
           <button className={`admin-tab ${tab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>Overview</button>
           <button className={`admin-tab ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Users</button>
           <button className={`admin-tab ${tab === 'feedback' ? 'active' : ''}`} onClick={() => setTab('feedback')}>
-            Feedback{feedback.length > 0 && <span className="admin-tab-count">{feedback.length}</span>}
+            Feedback{openFeedback > 0 && <span className="admin-tab-count">{openFeedback}</span>}
           </button>
           <button className={`admin-tab ${tab === 'waitlist' ? 'active' : ''}`} onClick={() => setTab('waitlist')}>
             Waitlist{waitlist.length > 0 && <span className="admin-tab-count">{waitlist.length}</span>}
@@ -369,18 +370,18 @@ export default function Admin({ session }) {
 
         {tab === 'feedback' && (<>
         <div className="admin-toolbar">
-          <div className="admin-count">{feedback.length} submission{feedback.length !== 1 ? 's' : ''}</div>
+          <div className="admin-count">{outstandingFeedback.length} outstanding{feedback.length !== outstandingFeedback.length ? ` · ${feedback.length - outstandingFeedback.length} resolved/dismissed` : ''}</div>
           <a href="/admin/feedback" className="admin-refresh-btn" style={{ textDecoration: 'none' }}>Open full page →</a>
           <button className="admin-refresh-btn" onClick={fetchFeedback}>↻ Refresh</button>
         </div>
 
         {feedbackLoading ? (
           <div className="admin-loading">Loading feedback…</div>
-        ) : feedback.length === 0 ? (
-          <div className="admin-empty" style={{ padding: 40, textAlign: 'center' }}>No feedback yet</div>
+        ) : outstandingFeedback.length === 0 ? (
+          <div className="admin-empty" style={{ padding: 40, textAlign: 'center' }}>{feedback.length === 0 ? 'No feedback yet' : 'No outstanding feedback — all caught up'}</div>
         ) : (
           <div className="admin-feedback-list">
-            {feedback.map(f => (
+            {outstandingFeedback.map(f => (
               <div key={f.id} className="admin-feedback-card">
                 <div className="admin-feedback-head">
                   <span className={`admin-feedback-badge admin-feedback-${(f.category || 'other').toLowerCase()}`}>{f.category || 'Other'}</span>

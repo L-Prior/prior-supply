@@ -129,18 +129,16 @@ export default function AdminFeedback({ session }) {
                   </select>
                 </div>
                 <div className="admin-feedback-message">{f.message}</div>
-                {!isOpen(f) && (
-                  <div className="admin-resolution">
-                    <label className="admin-resolution-label">Resolution notes</label>
-                    <textarea
-                      className="admin-resolution-input"
-                      placeholder="What was the fix or outcome? (saved when you click away)"
-                      value={f.resolution || ''}
-                      onChange={e => setFeedback(fb => fb.map(x => (x.id === f.id ? { ...x, resolution: e.target.value } : x)))}
-                      onBlur={e => updateResolution(f.id, e.target.value)}
-                    />
-                  </div>
-                )}
+                <div className="admin-resolution">
+                  <label className="admin-resolution-label">{isOpen(f) ? 'Notes' : 'Resolution notes'}</label>
+                  <textarea
+                    className="admin-resolution-input"
+                    placeholder={isOpen(f) ? 'Add a note — triage, context, next step… (saved when you click away)' : 'What was the fix or outcome? (saved when you click away)'}
+                    value={f.resolution || ''}
+                    onChange={e => setFeedback(fb => fb.map(x => (x.id === f.id ? { ...x, resolution: e.target.value } : x)))}
+                    onBlur={e => updateResolution(f.id, e.target.value)}
+                  />
+                </div>
               </div>
             ))}
           </div>
