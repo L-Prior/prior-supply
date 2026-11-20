@@ -822,6 +822,10 @@ export default function Dashboard({ session }) {
   const [editItem, setEditItem] = useState(null)
   const [batchModal, setBatchModal] = useState(null)
   const [sellItem, setSellItem] = useState(null)
+  const [ripItem, setRipItem] = useState(null)
+  const [ripCards, setRipCards] = useState([])
+  const [ripForm, setRipForm] = useState({ card_name: '', set_name: '', card_number: '', target_price: '', graded: false, grading_company: '', grade: '' })
+  const [ripSaving, setRipSaving] = useState(false)
   const [salePrice, setSalePrice] = useState('')
   const [sellingPlatform, setSellingPlatform] = useState('')
   const [sellFeeplatform, setSellFeeplatform] = useState(null)
@@ -1042,6 +1046,52 @@ export default function Dashboard({ session }) {
     if (addItemSuccessCallback.current) { addItemSuccessCallback.current(); addItemSuccessCallback.current = null }
     setShowAdd(false); setEditItem(null); setForm(EMPTY_FORM); fetchItems()
   }
+
+  // ── Ripping sealed Pokémon: mark opened, log pulled cards as inventory ──
+  async function openRip(box) {
+    if (box.status !== 'ripped') {
+      await supabase.from('stock').update({ status: 'ripped', ripped_at: new Date().toISOString() }).eq('id', box.id)
+      box = { ...box, status: 'ripped' }
+      setItems(prev => prev.map(i => i.id === box.id ? { ...i, status: 'ripped' } : i))
+    }
+    setRipItem(box)
+    setRipForm({ card_name: '', set_name: '', card_number: '', target_price: '', graded: false, grading_company: '', grade: '' })
+    const { data } = await supabase.from('stock').select('*').eq('ripped_from', String(box.id)).order('created_at', { ascending: true })
+    setRipCards(data || [])
+  }
+  async function addRipCard() {
+    if (!ripItem || !ripForm.card_name.trim()) return
+    setRipSaving(true)
+    const row = {
+      category: 'Pokémon', pokemon_type: 'singles', brand: 'Pokémon',
+      style: ripForm.card_name.trim(), colourway: ripForm.set_name.trim() || null, sku: ripForm.card_number.trim() || null,
+      card_name: ripForm.card_name.trim(), set_name: ripForm.set_name.trim() || null, card_number: ripForm.card_number.trim() || null,
+      graded: ripForm.graded || false, grading_company: ripForm.graded ? (ripForm.grading_company || null) : null, grade: ripForm.graded ? (ripForm.grade || null) : null,
+      target_price: parseFloat(ripForm.target_price) || null, purchase_price: 0,
+      status: 'in_stock', item_condition: 'Brand New',
+      batch_id: crypto.randomUUID(), user_id: session.user.id,
+      ripped_from: String(ripItem.id), purchase_date: new Date().toISOString().slice(0, 10),
+    }
+    const { error } = await supabase.from('stock').insert([row])
+    setRipSaving(false)
+    if (error) { setSaveError(error.message); return }
+    setRipForm({ card_name: '', set_name: '', card_number: '', target_price: '', graded: false, grading_company: '', grade: '' })
+    const { data } = await supabase.from('stock').select('*').eq('ripped_from', String(ripItem.id)).order('created_at', { ascending: true })
+    setRipCards(data || [])
+    fetchItems()
+  }
+  async function deleteRipCard(id) {
+    await supabase.from('stock').delete().eq('id', id)
+    setRipCards(prev => prev.filter(c => c.id !== id))
+    fetchItems()
+  }
+  async function unripBox() {
+    if (!ripItem) return
+    await supabase.from('stock').update({ status: 'in_stock', ripped_at: null }).eq('id', ripItem.id)
+    setItems(prev => prev.map(i => i.id === ripItem.id ? { ...i, status: 'in_stock' } : i))
+    setRipItem(null); setRipCards([]); fetchItems()
+  }
+  function closeRip() { setRipItem(null); setRipCards([]); fetchItems() }
 
   function openEdit(item) {
     // Only count in-stock units — sold units have already realised their cost
@@ -1306,6 +1356,7 @@ export default function Dashboard({ session }) {
         const allSold = b.units.every(u => u.status === 'sold')
         if (filterStatus === 'in_stock' && !inStock) return false
         if (filterStatus === 'sold' && !allSold) return false
+        if (filterStatus === 'ripped' && !b.units.some(u => u.status === 'ripped')) return false
         if (filterStatus === 'stale') {
           const hasStale = b.units.some(u => u.status==='in_stock' && !u.long_term && u.purchase_date && ((now - new Date(u.purchase_date)) / 86400000) > STALE_DAYS)
           if (!hasStale) return false
@@ -1340,15 +1391,20 @@ export default function Dashboard({ session }) {
     const revenue = sold.reduce((s, i) => s + (i.sale_price || 0), 0)
     const soldCost = sold.reduce((s, i) => s + (i.purchase_price || 0), 0)
     const soldFees = sold.reduce((s, i) => s + (i.fee_amount || 0) + (i.shipping_fee || 0), 0)
-    const pl = revenue - soldCost - soldFees
+    // Ripped sealed product: its cost is realised when opened (pulled cards carry £0 cost, so this keeps P&L honest)
+    const ripped = items.filter(i => i.status === 'ripped')
+    const rippedCost = ripped.reduce((s, i) => s + (i.purchase_price || 0), 0)
+    const pl = revenue - soldCost - soldFees - rippedCost
     const now = new Date()
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastMonth = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`
     const monthSold = sold.filter(i => getMonthKey(i.sold_at) === thisMonth)
     const lastMonthSold = sold.filter(i => getMonthKey(i.sold_at) === lastMonth)
-    const monthPL = monthSold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0) - (i.fee_amount || 0) - (i.shipping_fee || 0)), 0)
-    const lastMonthPL = lastMonthSold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0) - (i.fee_amount || 0) - (i.shipping_fee || 0)), 0)
+    const monthRippedCost = ripped.filter(i => getMonthKey(i.ripped_at) === thisMonth).reduce((s, i) => s + (i.purchase_price || 0), 0)
+    const lastMonthRippedCost = ripped.filter(i => getMonthKey(i.ripped_at) === lastMonth).reduce((s, i) => s + (i.purchase_price || 0), 0)
+    const monthPL = monthSold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0) - (i.fee_amount || 0) - (i.shipping_fee || 0)), 0) - monthRippedCost
+    const lastMonthPL = lastMonthSold.reduce((s, i) => s + ((i.sale_price || 0) - (i.purchase_price || 0) - (i.fee_amount || 0) - (i.shipping_fee || 0)), 0) - lastMonthRippedCost
     return { total: items.length, inStock: inStock.length, sold: sold.length, stockValue, revenue, pl, monthPL, lastMonthPL }
   }, [items])
 
@@ -1389,7 +1445,8 @@ export default function Dashboard({ session }) {
     const lastMonthExp = expenses.filter(e=>e.date&&e.date.slice(0,7)===lastMonth).reduce((s,e)=>s+(e.amount||0),0)
     const ytdExp = expenses.filter(e=>e.date&&e.date.startsWith(thisYear)).reduce((s,e)=>s+(e.amount||0),0)
     const ytdSold = items.filter(i=>i.status==='sold'&&i.sold_at&&i.sold_at.startsWith(thisYear))
-    const ytdPL = ytdSold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)),0) - ytdExp
+    const ytdRippedCost = items.filter(i=>i.status==='ripped'&&i.ripped_at&&String(i.ripped_at).startsWith(thisYear)).reduce((s,i)=>s+(i.purchase_price||0),0)
+    const ytdPL = ytdSold.reduce((s,i)=>s+((i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)),0) - ytdExp - ytdRippedCost
     return { pl: stats.pl - totalExp, monthPL: stats.monthPL - monthExp, lastMonthPL: stats.lastMonthPL - lastMonthExp, ytdPL }
   }, [stats, expenses, items])
 
@@ -1401,6 +1458,8 @@ export default function Dashboard({ session }) {
       const soldRev = sold.reduce((s,i)=>s+(i.sale_price||0),0)
       const soldCost = sold.reduce((s,i)=>s+(i.purchase_price||0),0)
       pl += soldPL; revenue += soldRev; cost += soldCost
+      const rippedCostM = items.filter(i => i.status==='ripped' && getMonthKey(i.ripped_at) === key).reduce((s,i)=>s+(i.purchase_price||0),0)
+      pl -= rippedCostM; cost += rippedCostM
     }
     if (metricsSources.breaker) {
       const bks = breaks.filter(b => b.status === 'completed' && (
@@ -2694,7 +2753,7 @@ ${expInMonth.length>0?`
                   <input className="filter-input" placeholder="Search brand, style, SKU..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180}}/>
                   <select className="filter-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}><option value="">All categories</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select>
                   <select className="filter-select" value={filterBrand} onChange={e=>setFilterBrand(e.target.value)}><option value="">All brands</option>{[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=><option key={b} value={b}>{b}</option>)}</select>
-                  <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="stale">Stale ({STALE_DAYS}+ days)</option><option value="long_term">Long-term holds</option></select>
+                  <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="ripped">Ripped</option><option value="stale">Stale ({STALE_DAYS}+ days)</option><option value="long_term">Long-term holds</option></select>
                   <select className="filter-select" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
                     <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
@@ -2786,7 +2845,7 @@ ${expInMonth.length>0?`
                               <div style={{display:'flex',flexDirection:'column',gap:5}}>
                                 <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
                                   {stalePill}
-                                  <span className={`badge ${allSold?'sold':'in_stock'}`} style={{fontSize:10,padding:'3px 9px',whiteSpace:'nowrap'}}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                                  <span className={`badge ${batch.units.some(u=>u.status==='ripped')?'status-ripped':allSold?'sold':'in_stock'}`} style={{fontSize:10,padding:'3px 9px',whiteSpace:'nowrap'}}>{batch.units.some(u=>u.status==='ripped')?'Ripped':allSold?'Sold':`${inStockUnits.length} in stock`}</span>
                                 </div>
                                 {(sizeLabel||purchaseDateLabel)&&(
                                   <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
@@ -2803,7 +2862,9 @@ ${expInMonth.length>0?`
                           </div>
                           <div className={`inv-col-num ${plColor(soldUnits.length?totalPL:null)}`} style={{fontWeight:600,fontSize:14,paddingTop:14}}>{soldUnits.length?fmt(totalPL):'—'}</div>
                           <div className="inv-list-actions" style={{paddingTop:12}} onClick={e=>e.stopPropagation()}>
-                            {isSingle&&!allSold&&<button className="btn sm success" onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
+                            {isSingle&&batch.units[0].status==='in_stock'&&<button className="btn sm success" onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
+                            {isSingle&&batch.units[0].status==='in_stock'&&batch.category==='Pokémon'&&batch.units[0].pokemon_type==='sealed'&&<button className="btn sm" onClick={()=>openRip(batch.units[0])}>Rip</button>}
+                            {isSingle&&batch.units[0].status==='ripped'&&<button className="btn sm" onClick={()=>openRip(batch.units[0])}>View pulls</button>}
                             {!isSingle&&!allSold&&<button className="btn sm success" onClick={()=>setBatchModal(batch)}>Units</button>}
                             {isSingle&&<button className="btn sm" onClick={()=>openEdit(batch.units[0])}>Edit</button>}
                             {isSingle?<button className="btn sm danger" onClick={()=>deleteItem(batch.units[0].id)}>Del</button>:<button className="btn sm danger" onClick={()=>deleteBatch(batch.key)}>Del all</button>}
@@ -2840,7 +2901,7 @@ ${expInMonth.length>0?`
                                 if (daysInStock > STALE_DAYS) return <span style={{fontSize:10,fontWeight:600,color:'#d97706',background:'#fef3c7',padding:'2px 8px',borderRadius:20,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5,border:'1px solid #fcd34d'}} onClick={e=>{e.stopPropagation();markLongTerm(batch)}} title="Click to mark as long-term hold"><span style={{width:6,height:6,borderRadius:'50%',background:'#f59e0b',flexShrink:0,display:'inline-block'}}/>{STALE_DAYS}+ days</span>
                                 return null
                               })()}
-                              <span className={`badge ${allSold?'sold':'in_stock'}`}>{allSold?'Sold':`${inStockUnits.length} in stock`}</span>
+                              <span className={`badge ${batch.units.some(u=>u.status==='ripped')?'status-ripped':allSold?'sold':'in_stock'}`}>{batch.units.some(u=>u.status==='ripped')?'Ripped':allSold?'Sold':`${inStockUnits.length} in stock`}</span>
                             </div>
                           </div>
                           <div className="item-card-body">
@@ -2869,6 +2930,8 @@ ${expInMonth.length>0?`
                           </div>
                           <div className="item-card-actions" onClick={e=>e.stopPropagation()}>
                             {isSingle&&batch.units[0].status==='in_stock'&&<button className="btn sm success" style={{flex:1}} onClick={()=>{setSellItem(batch.units[0]);setSalePrice('');setSellingPlatform('')}}>Sell</button>}
+                            {isSingle&&batch.units[0].status==='in_stock'&&batch.category==='Pokémon'&&batch.units[0].pokemon_type==='sealed'&&<button className="btn sm" style={{flex:1}} onClick={()=>openRip(batch.units[0])}>Rip</button>}
+                            {isSingle&&batch.units[0].status==='ripped'&&<button className="btn sm" style={{flex:1}} onClick={()=>openRip(batch.units[0])}>View pulls</button>}
                             {!isSingle&&!allSold&&<button className="btn sm success" style={{flex:1}} onClick={()=>setBatchModal(batch)}>View units</button>}
                             {isSingle&&batch.units[0].status==='in_stock'&&(()=>{
                               const inCart=orderCart.some(e=>e.item.id===batch.units[0].id)
@@ -5047,6 +5110,67 @@ ${expInMonth.length>0?`
           </div>
         </div>
       )}
+
+      {/* ── Rip sealed Pokémon: log pulled cards ─────────────────────────── */}
+      {ripItem&&(()=>{
+        const pull=ripCards.reduce((s,c)=>s+(c.target_price||0),0)
+        const cost=ripItem.purchase_price||0
+        const result=pull-cost
+        return (
+        <div className="modal-overlay" onClick={closeRip}>
+          <div className="modal" style={{maxWidth:640}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-title">Rip — {ripItem.style||ripItem.product_name||'Sealed Pokémon'}</div>
+            <div style={{fontSize:13,color:'var(--muted)',marginTop:-14,marginBottom:16}}>
+              {[ripItem.colourway,ripItem.pokemon_sealed_type].filter(Boolean).join(' · ')||'Sealed product'} · Box cost {fmt(cost)}
+              {ripItem.ripped_at&&<> · ripped {new Date(ripItem.ripped_at).toLocaleDateString('en-GB')}</>}
+            </div>
+            <div style={{fontSize:12.5,color:'var(--text2)',marginBottom:8}}>Log the cards you pulled — each becomes a tracked single in your inventory you can price and sell.</div>
+            <div className="rip-entry">
+              <input className="form-input" placeholder="Card name *" value={ripForm.card_name} onChange={e=>setRipForm(f=>({...f,card_name:e.target.value}))} onKeyDown={e=>{if(e.key==='Enter')addRipCard()}} />
+              <input className="form-input" placeholder="Set" value={ripForm.set_name} onChange={e=>setRipForm(f=>({...f,set_name:e.target.value}))} />
+              <input className="form-input" placeholder="Card #" value={ripForm.card_number} onChange={e=>setRipForm(f=>({...f,card_number:e.target.value}))} />
+              <input className="form-input" type="number" placeholder="Est. £" value={ripForm.target_price} onChange={e=>setRipForm(f=>({...f,target_price:e.target.value}))} onKeyDown={e=>{if(e.key==='Enter')addRipCard()}} />
+              <button className="btn primary" onClick={addRipCard} disabled={ripSaving||!ripForm.card_name.trim()}>+ Add</button>
+            </div>
+            <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13,color:'var(--text2)',margin:'10px 0 2px'}}>
+              <input type="checkbox" checked={ripForm.graded} onChange={e=>setRipForm(f=>({...f,graded:e.target.checked}))} /> Graded card
+            </label>
+            {ripForm.graded&&(
+              <div style={{display:'flex',gap:8,marginBottom:4}}>
+                <input className="form-input" placeholder="Grader (PSA, BGS…)" value={ripForm.grading_company} onChange={e=>setRipForm(f=>({...f,grading_company:e.target.value}))} />
+                <input className="form-input" placeholder="Grade (10, 9.5…)" value={ripForm.grade} onChange={e=>setRipForm(f=>({...f,grade:e.target.value}))} />
+              </div>
+            )}
+            <div style={{marginTop:14,maxHeight:280,overflowY:'auto'}}>
+              {ripCards.length===0?(
+                <div style={{textAlign:'center',padding:'22px',color:'var(--muted)',fontSize:13}}>No cards logged yet.</div>
+              ):ripCards.map(c=>(
+                <div key={c.id} className="rip-card-row">
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:14}}>{c.card_name||c.style}{c.graded&&<span className="rip-grade-tag">{[c.grading_company,c.grade].filter(Boolean).join(' ')||'Graded'}</span>}</div>
+                    <div style={{fontSize:12,color:'var(--muted)'}}>{[c.set_name,c.card_number&&`#${c.card_number}`].filter(Boolean).join(' · ')||'—'}</div>
+                  </div>
+                  <div style={{fontWeight:600,fontSize:14,whiteSpace:'nowrap'}}>{c.target_price?fmt(c.target_price):'—'}</div>
+                  <button className="btn sm danger" onClick={()=>deleteRipCard(c.id)}>Del</button>
+                </div>
+              ))}
+            </div>
+            <div className="rip-totals">
+              <div><span>Cards</span><strong>{ripCards.length}</strong></div>
+              <div><span>Pull value</span><strong>{fmt(pull)}</strong></div>
+              <div><span>Box cost</span><strong>{fmt(cost)}</strong></div>
+              <div><span>Rip result</span><strong style={{color:result>=0?'var(--green)':'var(--red)'}}>{result>=0?'+':''}{fmt(result)}</strong></div>
+            </div>
+            <div className="form-actions" style={{justifyContent:'space-between'}}>
+              {ripCards.length===0
+                ? <button className="btn sm" onClick={unripBox} title="Mark this box back as sealed/in-stock">↩ Not ripped — put back in stock</button>
+                : <span />}
+              <button className="btn primary" onClick={closeRip}>Done</button>
+            </div>
+          </div>
+        </div>
+        )
+      })()}
 
       {/* ── Welcome modal (first login) ──────────────────────────────────── */}
       {showWelcome&&(
