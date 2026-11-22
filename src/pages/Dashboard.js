@@ -1266,10 +1266,11 @@ export default function Dashboard({ session }) {
           const price = parseFloat(line.price) || 0
           const plat = RESELLER_PLATFORMS.find(p => p.id === line.platformId) || null
           const fee = calcFee(line.price, plat, 0)
+          const lineSoldAt = line.date ? new Date(line.date + 'T12:00:00').toISOString() : sold_at
           await supabase.from('stock').update({
             status: 'sold', sale_price: price, selling_platform: plat ? plat.name : '',
             fee_amount: fee || null, shipping_fee: perUnitShip, payout_status: payoutStatus,
-            buyer_name: buyerName || null, sold_at, sale_vat_rate: parseFloat(saleVatRate) || 0
+            buyer_name: buyerName || null, sold_at: lineSoldAt, sale_vat_rate: parseFloat(saleVatRate) || 0
           }).eq('id', idsToSell[i])
         }
       } else {
@@ -4844,22 +4845,24 @@ ${expInMonth.length>0?`
             )}
             {sellItem._bulkIds&&(sellItem._sellQty||1)>1&&(
               <label className="perunit-toggle">
-                <input type="checkbox" checked={perUnitSell} onChange={e=>{const on=e.target.checked;setPerUnitSell(on);if(on&&sellLines.length===0)setSellLines(Array.from({length:sellItem._sellQty||1},()=>({price:'',platformId:''})))}}/>
+                <input type="checkbox" checked={perUnitSell} onChange={e=>{const on=e.target.checked;setPerUnitSell(on);if(on&&sellLines.length===0)setSellLines(Array.from({length:sellItem._sellQty||1},()=>({price:'',platformId:'',date:soldDate})))}}/>
                 <span>Sell each at a different price / platform</span>
               </label>
             )}
             {perUnitSell?(
               <div className="perunit-rows">
                 {Array.from({length:sellItem._sellQty||1}).map((_,i)=>{
-                  const line=sellLines[i]||{price:'',platformId:''}
+                  const line=sellLines[i]||{price:'',platformId:'',date:soldDate}
+                  const setLine=patch=>setSellLines(ls=>{const n=[...ls];n[i]={...(n[i]||{price:'',platformId:'',date:soldDate}),...patch};return n})
                   return (
                     <div key={i} className="perunit-row">
                       <span className="perunit-num">#{i+1}</span>
-                      <input className="form-input" type="number" step="0.01" placeholder="Price £" value={line.price} onChange={e=>setSellLines(ls=>{const n=[...ls];n[i]={...(n[i]||{price:'',platformId:''}),price:e.target.value};return n})}/>
-                      <select className="form-input" value={line.platformId} onChange={e=>setSellLines(ls=>{const n=[...ls];n[i]={...(n[i]||{price:'',platformId:''}),platformId:e.target.value};return n})}>
+                      <input className="form-input" type="number" step="0.01" placeholder="Price £" value={line.price} onChange={e=>setLine({price:e.target.value})}/>
+                      <select className="form-input" value={line.platformId} onChange={e=>setLine({platformId:e.target.value})}>
                         <option value="">Platform</option>
                         {RESELLER_PLATFORMS.filter(p=>p.id!=='custom').map(p=><option key={p.id} value={p.id}>{p.name}{p.rate>0?` (${p.rate}%)`:''}</option>)}
                       </select>
+                      <input className="form-input" type="date" value={line.date||soldDate} onChange={e=>setLine({date:e.target.value})}/>
                     </div>
                   )
                 })}
@@ -4895,10 +4898,12 @@ ${expInMonth.length>0?`
               <label className="form-label">Buyer name (optional)</label>
               <input className="form-input" placeholder="e.g. John Smith" value={buyerName} onChange={e=>setBuyerName(e.target.value)}/>
             </div>
+            {!perUnitSell&&(
             <div className="form-group" style={{marginTop:8}}>
               <label className="form-label">Date sold</label>
               <input className="form-input" type="date" value={soldDate} onChange={e=>setSoldDate(e.target.value)}/>
             </div>
+            )}
             {perUnitSell&&(()=>{
               const qty=sellItem._sellQty||1
               const lines=sellLines.slice(0,qty)

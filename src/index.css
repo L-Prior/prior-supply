@@ -4429,10 +4429,15 @@ tbody td {
 
 /* Per-unit sell (different price/platform per unit) */
 .perunit-toggle { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--text2); margin: 4px 0 12px; cursor: pointer; }
-.perunit-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
-.perunit-row { display: grid; grid-template-columns: 26px 1fr 1.2fr; gap: 8px; align-items: center; }
+.perunit-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+.perunit-row { display: grid; grid-template-columns: 24px 0.85fr 1.05fr 1.05fr; gap: 7px; align-items: center; }
 .perunit-row .form-input { margin: 0; }
 .perunit-num { font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; }
+@media (max-width: 600px) {
+  .perunit-row { grid-template-columns: 1fr 1fr; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .perunit-num { grid-column: 1 / -1; text-align: left; }
+  .perunit-row > input[type="date"] { grid-column: 1 / -1; }
+}
 @media (max-width: 600px) {
   .rip-entry { grid-template-columns: 1fr 1fr; }
   .rip-entry > button { grid-column: 1 / -1; }
