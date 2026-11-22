@@ -4426,6 +4426,13 @@ tbody td {
 .rip-totals span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
 .rip-totals strong { font-size: 18px; font-weight: 800; color: var(--text); }
 .status-ripped { background: rgba(124,58,237,0.14); color: #7c3aed; border: 1px solid rgba(124,58,237,0.28); }
+
+/* Per-unit sell (different price/platform per unit) */
+.perunit-toggle { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--text2); margin: 4px 0 12px; cursor: pointer; }
+.perunit-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.perunit-row { display: grid; grid-template-columns: 26px 1fr 1.2fr; gap: 8px; align-items: center; }
+.perunit-row .form-input { margin: 0; }
+.perunit-num { font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; }
 @media (max-width: 600px) {
   .rip-entry { grid-template-columns: 1fr 1fr; }
   .rip-entry > button { grid-column: 1 / -1; }

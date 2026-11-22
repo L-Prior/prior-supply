@@ -822,6 +822,8 @@ export default function Dashboard({ session }) {
   const [editItem, setEditItem] = useState(null)
   const [batchModal, setBatchModal] = useState(null)
   const [sellItem, setSellItem] = useState(null)
+  const [perUnitSell, setPerUnitSell] = useState(false)
+  const [sellLines, setSellLines] = useState([])
   const [ripItem, setRipItem] = useState(null)
   const [ripCards, setRipCards] = useState([])
   const [ripForm, setRipForm] = useState({ card_name: '', set_name: '', card_number: '', target_price: '', graded: false, grading_company: '', grade: '' })
@@ -1221,6 +1223,7 @@ export default function Dashboard({ session }) {
     setSellItem(null); setSalePrice(''); setSellingPlatform(''); setSellFeeplatform(null)
     setCustomFeeRate(''); setPayoutStatus('pending'); setShippingFee(''); setBuyerName('')
     setSoldDate(new Date().toISOString().slice(0, 10)); setSaleVatRate('0')
+    setPerUnitSell(false); setSellLines([])
   }
 
   function handleEditSold(item) {
@@ -1255,10 +1258,25 @@ export default function Dashboard({ session }) {
     const updatePayload = { status: 'sold', sale_price: parseFloat(salePrice), selling_platform: platformName, fee_amount: feeAmt || null, shipping_fee: shipAmt, payout_status: payoutStatus, buyer_name: buyerName || null, sold_at, sale_vat_rate: parseFloat(saleVatRate) || 0 }
     if (sellItem._bulkIds) {
       const idsToSell = sellItem._bulkIds
-      const perUnitFee = parseFloat((feeAmt / idsToSell.length).toFixed(2))
       const perUnitShip = shipAmt ? parseFloat((shipAmt / idsToSell.length).toFixed(2)) : null
-      for (const id of idsToSell) {
-        await supabase.from('stock').update({ ...updatePayload, fee_amount: perUnitFee || null, shipping_fee: perUnitShip }).eq('id', id)
+      if (perUnitSell) {
+        // Each unit sold at its own price / platform
+        for (let i = 0; i < idsToSell.length; i++) {
+          const line = sellLines[i] || {}
+          const price = parseFloat(line.price) || 0
+          const plat = RESELLER_PLATFORMS.find(p => p.id === line.platformId) || null
+          const fee = calcFee(line.price, plat, 0)
+          await supabase.from('stock').update({
+            status: 'sold', sale_price: price, selling_platform: plat ? plat.name : '',
+            fee_amount: fee || null, shipping_fee: perUnitShip, payout_status: payoutStatus,
+            buyer_name: buyerName || null, sold_at, sale_vat_rate: parseFloat(saleVatRate) || 0
+          }).eq('id', idsToSell[i])
+        }
+      } else {
+        const perUnitFee = parseFloat((feeAmt / idsToSell.length).toFixed(2))
+        for (const id of idsToSell) {
+          await supabase.from('stock').update({ ...updatePayload, fee_amount: perUnitFee || null, shipping_fee: perUnitShip }).eq('id', id)
+        }
       }
     } else {
       await supabase.from('stock').update(updatePayload).eq('id', sellItem.id)
@@ -4824,6 +4842,29 @@ ${expInMonth.length>0?`
                   onBlur={()=>setSellItem(s=>{const q=Math.max(1,Math.min(parseInt(s._sellQty,10)||1,s._maxQty));return{...s,_sellQty:q,_bulkIds:s._allIds.slice(0,q)}})}/>
               </div>
             )}
+            {sellItem._bulkIds&&(sellItem._sellQty||1)>1&&(
+              <label className="perunit-toggle">
+                <input type="checkbox" checked={perUnitSell} onChange={e=>{const on=e.target.checked;setPerUnitSell(on);if(on&&sellLines.length===0)setSellLines(Array.from({length:sellItem._sellQty||1},()=>({price:'',platformId:''})))}}/>
+                <span>Sell each at a different price / platform</span>
+              </label>
+            )}
+            {perUnitSell?(
+              <div className="perunit-rows">
+                {Array.from({length:sellItem._sellQty||1}).map((_,i)=>{
+                  const line=sellLines[i]||{price:'',platformId:''}
+                  return (
+                    <div key={i} className="perunit-row">
+                      <span className="perunit-num">#{i+1}</span>
+                      <input className="form-input" type="number" step="0.01" placeholder="Price £" value={line.price} onChange={e=>setSellLines(ls=>{const n=[...ls];n[i]={...(n[i]||{price:'',platformId:''}),price:e.target.value};return n})}/>
+                      <select className="form-input" value={line.platformId} onChange={e=>setSellLines(ls=>{const n=[...ls];n[i]={...(n[i]||{price:'',platformId:''}),platformId:e.target.value};return n})}>
+                        <option value="">Platform</option>
+                        {RESELLER_PLATFORMS.filter(p=>p.id!=='custom').map(p=><option key={p.id} value={p.id}>{p.name}{p.rate>0?` (${p.rate}%)`:''}</option>)}
+                      </select>
+                    </div>
+                  )
+                })}
+              </div>
+            ):(<>
             <div className="form-group">
               <label className="form-label">Sale price (£)</label>
               <input className="form-input" type="number" step="0.01" placeholder="0.00" value={salePrice} onChange={e=>setSalePrice(e.target.value)} autoFocus/>
@@ -4845,6 +4886,7 @@ ${expInMonth.length>0?`
                 <input className="form-input" type="number" step="0.1" placeholder="e.g. 10" value={customFeeRate} onChange={e=>setCustomFeeRate(e.target.value)}/>
               </div>
             )}
+            </>)}
             <div className="form-group" style={{marginTop:8}}>
               <label className="form-label">Postage / shipping (£)</label>
               <input className="form-input" type="number" step="0.01" placeholder="0.00 (optional)" value={shippingFee} onChange={e=>setShippingFee(e.target.value)}/>
@@ -4857,7 +4899,27 @@ ${expInMonth.length>0?`
               <label className="form-label">Date sold</label>
               <input className="form-input" type="date" value={soldDate} onChange={e=>setSoldDate(e.target.value)}/>
             </div>
-            {salePrice&&(()=>{
+            {perUnitSell&&(()=>{
+              const qty=sellItem._sellQty||1
+              const lines=sellLines.slice(0,qty)
+              const totalSale=lines.reduce((s,l)=>s+(parseFloat(l?.price)||0),0)
+              if(!totalSale) return null
+              const totalFee=lines.reduce((s,l)=>{const p=RESELLER_PLATFORMS.find(x=>x.id===l?.platformId);return s+calcFee(l?.price,p,0)},0)
+              const ship=parseFloat(shippingFee)||0
+              const cost=(sellItem.purchase_price||0)*qty
+              const net=totalSale-totalFee-ship
+              const pl=net-cost
+              return (
+                <div className="fee-breakdown" style={{marginTop:16}}>
+                  <div className="fee-row" style={{padding:'10px 16px'}}><span>Total sale ({qty} units)</span><span style={{fontWeight:500}}>{fmt(totalSale)}</span></div>
+                  {totalFee>0&&<div className="fee-row fee-deduct" style={{padding:'10px 16px'}}><span>Platform fees</span><span>−{fmt(totalFee)}</span></div>}
+                  {ship>0&&<div className="fee-row fee-deduct" style={{padding:'10px 16px'}}><span>Postage</span><span>−{fmt(ship)}</span></div>}
+                  <div className="fee-row" style={{padding:'10px 16px'}}><span>Total cost ({qty} × {fmt(sellItem.purchase_price)})</span><span>−{fmt(cost)}</span></div>
+                  <div className={`fee-row fee-total ${pl>=0?'pos':'neg'}`} style={{padding:'12px 16px',fontSize:15}}><span>Profit / Loss</span><span>{pl>=0?'+':''}{fmt(pl)}</span></div>
+                </div>
+              )
+            })()}
+            {!perUnitSell&&salePrice&&(()=>{
               const price = parseFloat(salePrice)||0
               const fee = calcFee(salePrice, sellFeeplatform, customFeeRate)
               const ship = parseFloat(shippingFee)||0
@@ -4894,7 +4956,7 @@ ${expInMonth.length>0?`
             )}
             <div className="form-actions" style={{marginTop:16}}>
               <button className="btn" onClick={resetSellModal}>Cancel</button>
-              <button className="btn primary" onClick={markSold} disabled={saving||!salePrice}>{saving?'Saving...':sellItem._editMode?'Save changes':'Confirm sale'}</button>
+              <button className="btn primary" onClick={markSold} disabled={saving||(perUnitSell?!Array.from({length:sellItem._sellQty||1}).every((_,i)=>parseFloat(sellLines[i]?.price)>0):!salePrice)}>{saving?'Saving...':sellItem._editMode?'Save changes':'Confirm sale'}</button>
             </div>
           </div>
         </div>
