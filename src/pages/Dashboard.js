@@ -979,54 +979,44 @@ export default function Dashboard({ session }) {
     if (editItem) {
       const { status: _s, sold_at: _sa, sale_price: _sp, selling_platform: _spl, fee_amount: _fa, payout_status: _ps, ...editBase } = base
 
-      // Get all in-stock units in this batch with the same size
+      // The units of the size being edited (other sizes in the batch are left alone)
       const sameSize = form.units[0]?.size || ''
-      const batchUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id && i.size === (editItem.size||'') && i.status === 'in_stock') : [editItem].filter(i => i.status === 'in_stock')
+      const editSizeUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id && i.size === (editItem.size||'') && i.status === 'in_stock') : [editItem].filter(i => i.status === 'in_stock')
       const newQty = form.units[0]?.quantity === '10+' ? (parseInt(form.units[0]?.custom_qty) || 1) : (parseInt(form.units[0]?.quantity) || 1)
-      const currentQty = batchUnits.length
-
-      // Only count in-stock units for price-per-unit recalculation
-      const allBatchUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id && i.status === 'in_stock') : [editItem].filter(i => i.status === 'in_stock')
-      const otherUnits = allBatchUnits.filter(i => i.size !== (editItem.size||''))
+      const currentQty = editSizeUnits.length
+      const addedQty = form.units.slice(1).reduce((s, u) => s + (u.quantity === '10+' ? (parseInt(u.custom_qty)||1) : (parseInt(u.quantity)||1)), 0)
+      // Total Cost now covers just the size(s) being edited/added, split evenly across them
       const batchCost = parseFloat(form.batch_total_cost) || 0
-      const newTotalUnits = otherUnits.length + newQty
-      const pricePerUnit = batchCost > 0 && newTotalUnits > 0 ? parseFloat((batchCost / newTotalUnits).toFixed(2)) : parseFloat(form.units[0]?.purchase_price) || 0
+      const formTotalUnits = newQty + addedQty
+      const pricePerUnit = batchCost > 0 && formTotalUnits > 0 ? parseFloat((batchCost / formTotalUnits).toFixed(2)) : parseFloat(form.units[0]?.purchase_price) || 0
 
-      const payload = { ...editBase, purchase_price: pricePerUnit, size: sameSize, long_term: form.long_term || false }
-
-      // Update all existing units with new metadata
+      // 1. Shared metadata across the whole batch — never overwrites other sizes' size / price / status
       if (editItem.batch_id) {
-        ;({ error } = await supabase.from('stock').update(payload).eq('batch_id', editItem.batch_id))
+        ;({ error } = await supabase.from('stock').update(editBase).eq('batch_id', editItem.batch_id))
       } else {
-        ;({ error } = await supabase.from('stock').update(payload).eq('id', editItem.id))
+        ;({ error } = await supabase.from('stock').update({ ...editBase, size: sameSize, purchase_price: pricePerUnit, long_term: form.long_term || false }).eq('id', editItem.id))
       }
       if (error) { setSaveError(error.message); setSaving(false); return }
 
-      // Handle quantity changes for the edited size
-      if (newQty > currentQty) {
-        const newRows = Array.from({ length: newQty - currentQty }, () => ({
-          ...payload, status: 'in_stock', batch_id: editItem.batch_id || editItem.id, user_id: session.user.id
-        }))
-        ;({ error } = await supabase.from('stock').insert(newRows))
-      } else if (newQty < currentQty) {
-        const toDelete = batchUnits.slice(newQty).map(u => u.id)
-        for (const id of toDelete) {
-          await supabase.from('stock').delete().eq('id', id)
-        }
+      // 2. Size + price + hold flag only for the units of the size being edited
+      for (const u of editSizeUnits) {
+        await supabase.from('stock').update({ size: sameSize, purchase_price: pricePerUnit, long_term: form.long_term || false }).eq('id', u.id)
       }
 
-      // Insert any additional new sizes added during edit
-      const additionalUnits = form.units.slice(1)
-      if (additionalUnits.length > 0) {
-        const additionalRows = additionalUnits.flatMap(u => {
-          const qty = u.quantity === '10+' ? (parseInt(u.custom_qty)||1) : (parseInt(u.quantity)||1)
-          return Array.from({ length: qty }, () => ({
-            ...payload, size: u.size, purchase_price: pricePerUnit,
-            status: 'in_stock', batch_id: editItem.batch_id || editItem.id, user_id: session.user.id
-          }))
-        })
-        await supabase.from('stock').insert(additionalRows)
+      // 3. Quantity change for the edited size
+      if (newQty > currentQty) {
+        const newRows = Array.from({ length: newQty - currentQty }, () => ({ ...editBase, size: sameSize, purchase_price: pricePerUnit, long_term: form.long_term || false, status: 'in_stock', batch_id: batchId, user_id: session.user.id }))
+        ;({ error } = await supabase.from('stock').insert(newRows))
+      } else if (newQty < currentQty) {
+        for (const id of editSizeUnits.slice(newQty).map(u => u.id)) await supabase.from('stock').delete().eq('id', id)
       }
+
+      // 4. Insert any additional new sizes added during edit
+      const additionalRows = form.units.slice(1).flatMap(u => {
+        const qty = u.quantity === '10+' ? (parseInt(u.custom_qty)||1) : (parseInt(u.quantity)||1)
+        return Array.from({ length: qty }, () => ({ ...editBase, size: u.size, purchase_price: pricePerUnit, status: 'in_stock', batch_id: batchId, user_id: session.user.id }))
+      })
+      if (additionalRows.length > 0) await supabase.from('stock').insert(additionalRows)
     } else {
       const rows = form.units.flatMap(u => {
         const qty = u.quantity === '10+' ? (parseInt(u.custom_qty) || 1) : (parseInt(u.quantity) || 1)
@@ -1098,8 +1088,9 @@ export default function Dashboard({ session }) {
   function openEdit(item) {
     // Only count in-stock units — sold units have already realised their cost
     const batchUnits = item.batch_id ? items.filter(i => i.batch_id === item.batch_id && i.status === 'in_stock') : [item].filter(i => i.status === 'in_stock')
-    const totalCost = parseFloat(batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
     const sameSize = batchUnits.filter(u => u.size === item.size)
+    // Cost of just the size being edited (not the whole multi-size batch)
+    const totalCost = parseFloat(sameSize.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
     const qty = sameSize.length > 1 ? sameSize.length : 1
     // For Topps items saved before topps_* columns were added, fall back to the
     // generic fields (style → card name/product name, colourway → set, sku → card number)
