@@ -548,7 +548,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
                     <div style={{display:'flex',gap:4}}>
                       <button className={`check-btn correct ${status[row.id]==='correct'?'active':''}`} onClick={()=>setRowStatus(row.id,'correct',row)} title="Correct"><Icon name="check" size={14} strokeWidth={2.5} /></button>
                       <button className={`check-btn incorrect ${status[row.id]==='incorrect'?'active':''}`} onClick={()=>setRowStatus(row.id,'incorrect',row)} title="Incorrect"><Icon name="x" size={14} strokeWidth={2.5} /></button>
-                      {row.category!=='Breaker'&&row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="check-btn sell" title="Sell" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>£</button>:null})()}
+                      {row.category!=='Breaker'&&row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="check-btn sell" title="Sell" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'&&(i.size||'')===(item.size||'')):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>£</button>:null})()}
                     </div>
                   </div>
                   <div className="checklist-col brand">{row.brand}</div>
@@ -596,7 +596,7 @@ function StockChecklist({ items, breaks, clearedBatch, onAddItem, onEditItem, on
                       </div>
                       <div style={{display:'flex',gap:8,flexShrink:0}}>
                         {row.itemId&&<button className="btn sm primary" onClick={()=>{const item=items.find(i=>i.id===row.itemId);if(item)onEditItem(item)}}>Edit item</button>}
-                        {row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="btn sm success" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>Sell</button>:null})()}
+                        {row.itemId&&(()=>{const item=items.find(i=>i.id===row.itemId);return item&&item.status==='in_stock'?<button className="btn sm success" onClick={()=>{const batchInStock=item.batch_id?items.filter(i=>i.batch_id===item.batch_id&&i.status==='in_stock'&&(i.size||'')===(item.size||'')):[item];const ids=batchInStock.map(u=>u.id);onSellItem({...item,_bulkIds:[ids[0]],_allIds:ids,_maxQty:ids.length,_sellQty:1})}}>Sell</button>:null})()}
                         <button className="btn sm" onClick={()=>clearDiscrepancy(id)}>Dismiss</button>
                       </div>
                     </div>
@@ -4817,7 +4817,11 @@ ${expInMonth.length>0?`
             {sellItem._bulkIds&&(
               <div className="form-group" style={{marginBottom:8}}>
                 <label className="form-label">Quantity to sell (max {sellItem._maxQty})</label>
-                <input className="form-input" type="number" min="1" max={sellItem._maxQty} value={sellItem._sellQty||1} onChange={e=>{const q=Math.min(parseInt(e.target.value)||1,sellItem._maxQty);setSellItem(s=>({...s,_bulkIds:s._allIds.slice(0,q),_sellQty:q}))}}/>
+                <input className="form-input" type="number" min="1" max={sellItem._maxQty}
+                  value={sellItem._sellQty===''?'':(sellItem._sellQty||1)}
+                  onFocus={e=>e.target.select()}
+                  onChange={e=>{const raw=e.target.value;if(raw===''){setSellItem(s=>({...s,_sellQty:''}));return}let q=parseInt(raw,10);if(isNaN(q))return;q=Math.max(1,Math.min(q,sellItem._maxQty));setSellItem(s=>({...s,_sellQty:q,_bulkIds:s._allIds.slice(0,q)}))}}
+                  onBlur={()=>setSellItem(s=>{const q=Math.max(1,Math.min(parseInt(s._sellQty,10)||1,s._maxQty));return{...s,_sellQty:q,_bulkIds:s._allIds.slice(0,q)}})}/>
               </div>
             )}
             <div className="form-group">
