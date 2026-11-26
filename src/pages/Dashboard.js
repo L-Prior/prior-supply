@@ -979,44 +979,36 @@ export default function Dashboard({ session }) {
     if (editItem) {
       const { status: _s, sold_at: _sa, sale_price: _sp, selling_platform: _spl, fee_amount: _fa, payout_status: _ps, ...editBase } = base
 
-      // The units of the size being edited (other sizes in the batch are left alone)
-      const sameSize = form.units[0]?.size || ''
-      const editSizeUnits = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id && i.size === (editItem.size||'') && i.status === 'in_stock') : [editItem].filter(i => i.status === 'in_stock')
-      const newQty = form.units[0]?.quantity === '10+' ? (parseInt(form.units[0]?.custom_qty) || 1) : (parseInt(form.units[0]?.quantity) || 1)
-      const currentQty = editSizeUnits.length
-      const addedQty = form.units.slice(1).reduce((s, u) => s + (u.quantity === '10+' ? (parseInt(u.custom_qty)||1) : (parseInt(u.quantity)||1)), 0)
-      // Total Cost now covers just the size(s) being edited/added, split evenly across them
+      // Editing a card edits the WHOLE batch: reconcile every size in the form
+      // against the existing in-stock units (update / add / remove), splitting the
+      // Total Cost evenly across all units.
+      const existing = editItem.batch_id ? items.filter(i => i.batch_id === editItem.batch_id && i.status === 'in_stock') : [editItem].filter(i => i.status === 'in_stock')
+      const rowQty = u => u.quantity === '10+' ? (parseInt(u.custom_qty) || 1) : (parseInt(u.quantity) || 1)
       const batchCost = parseFloat(form.batch_total_cost) || 0
-      const formTotalUnits = newQty + addedQty
+      const formTotalUnits = form.units.reduce((s, u) => s + rowQty(u), 0)
       const pricePerUnit = batchCost > 0 && formTotalUnits > 0 ? parseFloat((batchCost / formTotalUnits).toFixed(2)) : parseFloat(form.units[0]?.purchase_price) || 0
+      const common = { purchase_price: pricePerUnit, long_term: form.long_term || false }
 
-      // 1. Shared metadata across the whole batch — never overwrites other sizes' size / price / status
-      if (editItem.batch_id) {
-        ;({ error } = await supabase.from('stock').update(editBase).eq('batch_id', editItem.batch_id))
-      } else {
-        ;({ error } = await supabase.from('stock').update({ ...editBase, size: sameSize, purchase_price: pricePerUnit, long_term: form.long_term || false }).eq('id', editItem.id))
+      const handledIds = new Set()
+      for (const row of form.units) {
+        const qty = rowQty(row)
+        const matches = row._origSize != null ? existing.filter(u => (u.size || '') === row._origSize && !handledIds.has(u.id)) : []
+        const keep = matches.slice(0, qty)
+        for (const u of keep) {
+          handledIds.add(u.id)
+          ;({ error } = await supabase.from('stock').update({ ...editBase, ...common, size: row.size }).eq('id', u.id))
+          if (error) { setSaveError(error.message); setSaving(false); return }
+        }
+        for (const u of matches.slice(qty)) { handledIds.add(u.id); await supabase.from('stock').delete().eq('id', u.id) }
+        const shortfall = qty - keep.length
+        if (shortfall > 0) {
+          const rows = Array.from({ length: shortfall }, () => ({ ...editBase, ...common, size: row.size, status: 'in_stock', batch_id: batchId, user_id: session.user.id }))
+          ;({ error } = await supabase.from('stock').insert(rows))
+          if (error) { setSaveError(error.message); setSaving(false); return }
+        }
       }
-      if (error) { setSaveError(error.message); setSaving(false); return }
-
-      // 2. Size + price + hold flag only for the units of the size being edited
-      for (const u of editSizeUnits) {
-        await supabase.from('stock').update({ size: sameSize, purchase_price: pricePerUnit, long_term: form.long_term || false }).eq('id', u.id)
-      }
-
-      // 3. Quantity change for the edited size
-      if (newQty > currentQty) {
-        const newRows = Array.from({ length: newQty - currentQty }, () => ({ ...editBase, size: sameSize, purchase_price: pricePerUnit, long_term: form.long_term || false, status: 'in_stock', batch_id: batchId, user_id: session.user.id }))
-        ;({ error } = await supabase.from('stock').insert(newRows))
-      } else if (newQty < currentQty) {
-        for (const id of editSizeUnits.slice(newQty).map(u => u.id)) await supabase.from('stock').delete().eq('id', id)
-      }
-
-      // 4. Insert any additional new sizes added during edit
-      const additionalRows = form.units.slice(1).flatMap(u => {
-        const qty = u.quantity === '10+' ? (parseInt(u.custom_qty)||1) : (parseInt(u.quantity)||1)
-        return Array.from({ length: qty }, () => ({ ...editBase, size: u.size, purchase_price: pricePerUnit, status: 'in_stock', batch_id: batchId, user_id: session.user.id }))
-      })
-      if (additionalRows.length > 0) await supabase.from('stock').insert(additionalRows)
+      // Any existing sizes dropped from the form are removed
+      for (const u of existing) { if (!handledIds.has(u.id)) await supabase.from('stock').delete().eq('id', u.id) }
     } else {
       const rows = form.units.flatMap(u => {
         const qty = u.quantity === '10+' ? (parseInt(u.custom_qty) || 1) : (parseInt(u.quantity) || 1)
@@ -1088,10 +1080,13 @@ export default function Dashboard({ session }) {
   function openEdit(item) {
     // Only count in-stock units — sold units have already realised their cost
     const batchUnits = item.batch_id ? items.filter(i => i.batch_id === item.batch_id && i.status === 'in_stock') : [item].filter(i => i.status === 'in_stock')
-    const sameSize = batchUnits.filter(u => u.size === item.size)
-    // Cost of just the size being edited (not the whole multi-size batch)
-    const totalCost = parseFloat(sameSize.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
-    const qty = sameSize.length > 1 ? sameSize.length : 1
+    // Whole-batch cost — editing shows and adjusts every size in the batch
+    const totalCost = parseFloat(batchUnits.reduce((s, u) => s + (u.purchase_price || 0), 0).toFixed(2))
+    // Group the batch's in-stock units by size so the form can edit all sizes at once
+    const sizeOrder = []
+    const sizeGroups = {}
+    batchUnits.forEach(u => { const k = u.size || ''; if (!(k in sizeGroups)) { sizeGroups[k] = []; sizeOrder.push(k) } sizeGroups[k].push(u) })
+    const unitRows = sizeOrder.map(k => { const us = sizeGroups[k]; const q = us.length; return { size: k, _origSize: k, purchase_price: us[0].purchase_price || '', quantity: q <= 10 ? String(q) : '10+', custom_qty: q > 10 ? String(q) : '' } })
     // For Topps items saved before topps_* columns were added, fall back to the
     // generic fields (style → card name/product name, colourway → set, sku → card number)
     const isTopps = item.category === 'Topps'
@@ -1105,7 +1100,7 @@ export default function Dashboard({ session }) {
       topps_print_run: item.topps_print_run||'',
       topps_sealed_type: item.topps_sealed_type||'',
       topps_product_name: item.topps_product_name || (isTopps ? item.style : '') || '',
-      brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', tags: item.tags||'', purchase_vat_rate: item.purchase_vat_rate!=null ? String(item.purchase_vat_rate) : '0', batch_total_cost: totalCost||'', units: [{ size: item.size||'', purchase_price: item.purchase_price||'', quantity: qty <= 10 ? String(qty) : '10+', custom_qty: qty > 10 ? String(qty) : '' }] })
+      brand: item.brand||'', style: item.style||'', colourway: item.colourway||'', sku: item.sku||'', card_name: item.card_name||'', set_name: item.set_name||'', card_number: item.card_number||'', condition: item.condition||'', graded: item.graded||false, grading_company: item.grading_company||'', grade: item.grade||'', product_name: item.product_name||'', pokemon_sealed_type: item.pokemon_sealed_type||'', lego_set_name: item.lego_set_name||'', set_number: item.set_number||'', theme: item.theme||'', lego_condition: item.lego_condition||'', clothing_brand: item.clothing_brand||'', item: item.item||'', clothing_size: item.clothing_size||'', colour: item.colour||'', item_name: item.item_name||'', description: item.description||'', purchase_platform: item.purchase_platform||'', purchase_date: item.purchase_date||'', notes: item.notes||'', tags: item.tags||'', purchase_vat_rate: item.purchase_vat_rate!=null ? String(item.purchase_vat_rate) : '0', batch_total_cost: totalCost||'', units: unitRows.length ? unitRows : [{ ...EMPTY_UNIT }] })
     setEditItem(item); setShowAdd(true)
   }
 
