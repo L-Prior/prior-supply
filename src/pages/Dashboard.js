@@ -59,6 +59,7 @@ function calcFee(salePrice, platform, customRate = 0) {
 }
 
 const EMPTY_UNIT = { size: '', purchase_price: '', quantity: '1', total_cost: '', custom_qty: '' }
+const SOLD_COLS = '1fr 96px 68px 68px 68px 82px 104px 108px'
 const ITEM_CONDITIONS = ['Brand New', 'BN Defect', 'Used - Great', 'Used - Good', 'Used - Bad']
 
 const EMPTY_FORM = {
@@ -2987,14 +2988,15 @@ ${expInMonth.length>0?`
                             <span className={mPL>=0?'td-pos':'td-neg'}>{mPL>=0?'+':''}{fmt(mPL)} profit</span>
                           </div>
                         </div>
-                        <div>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 84px 58px 58px 58px 68px 82px 70px',gap:6,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600}}>
+                        <div style={{overflowX:'auto'}}>
+                         <div style={{minWidth:860}}>
+                          <div style={{display:'grid',gridTemplateColumns:SOLD_COLS,gap:12,padding:'10px 8px',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',fontWeight:600,letterSpacing:'0.03em'}}>
                             <div>Item</div><div>Platform</div><div>Cost</div><div>Sale</div><div>Fees</div><div>Profit</div><div>Payout</div><div></div>
                           </div>
                           {gItems.map(i => {
                             const profit = (i.sale_price||0)-(i.purchase_price||0)-(i.fee_amount||0)-(i.shipping_fee||0)
                             return (
-                              <div key={i.id} style={{display:'grid',gridTemplateColumns:'1fr 84px 58px 58px 58px 68px 82px 70px',gap:6,padding:'8px 0',borderBottom:'1px solid var(--surface2)',fontSize:13,alignItems:'center'}}>
+                              <div key={i.id} style={{display:'grid',gridTemplateColumns:SOLD_COLS,gap:12,padding:'13px 8px',borderBottom:'1px solid var(--surface2)',fontSize:13.5,alignItems:'center'}}>
                                 <div>
                                   <div style={{fontWeight:500}}>{i.brand} {i.style}</div>
                                   <div style={{fontSize:11,color:'var(--muted)'}}>{[i.colourway,i.size?`UK ${i.size}`:null,i.sold_at?new Date(i.sold_at).toLocaleDateString('en-GB'):null].filter(Boolean).join(' · ')}</div>
@@ -3005,13 +3007,14 @@ ${expInMonth.length>0?`
                                 <div style={{color:'var(--muted)'}}>-{fmt((i.fee_amount||0)+(i.shipping_fee||0))}</div>
                                 <div className={profit>=0?'td-pos':'td-neg'}>{profit>=0?'+':''}{fmt(profit)}</div>
                                 <div><button onClick={()=>togglePayout(i)} title={i.payout_status==='paid'?'Click to mark as pending':'Click to mark as paid out'} className="payout-toggle" style={{color:i.payout_status==='paid'?'var(--green)':'#d97706'}}>{i.payout_status==='paid'?<><Icon name="check" size={11} strokeWidth={2.5} /> Paid</>:<>⏳ Mark paid</>}</button></div>
-                                <div style={{display:'flex',gap:4}}>
-                                  <button className="btn sm" style={{padding:'2px 6px',fontSize:11}} onClick={()=>handleEditSold(i)}>Edit</button>
-                                  <button className="btn sm" style={{padding:'2px 6px',fontSize:11,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>openReturn(i)}>Return</button>
+                                <div style={{display:'flex',gap:6}}>
+                                  <button className="btn sm" style={{padding:'4px 10px',fontSize:12}} onClick={()=>handleEditSold(i)}>Edit</button>
+                                  <button className="btn sm" style={{padding:'4px 10px',fontSize:12,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>openReturn(i)}>Return</button>
                                 </div>
                               </div>
                             )
                           })}
+                         </div>
                         </div>
                       </div>
                     )
