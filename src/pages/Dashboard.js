@@ -1807,6 +1807,13 @@ export default function Dashboard({ session }) {
     fetchItems()
   }
 
+  async function togglePayout(item) {
+    const next = item.payout_status === 'paid' ? 'pending' : 'paid'
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, payout_status: next } : i))
+    const { error } = await supabase.from('stock').update({ payout_status: next }).eq('id', item.id)
+    if (error) setItems(prev => prev.map(i => i.id === item.id ? { ...i, payout_status: item.payout_status } : i))
+  }
+
   function openEditBreak(b) {
     setBreakForm({
       type: b.type||'break', name: b.name||'', cost: b.cost||'', spots_total: b.spots_total||'', spots_sold: b.spots_sold||'', spot_price: b.spot_price||'',
@@ -2997,7 +3004,7 @@ ${expInMonth.length>0?`
                                 <div>{fmt(i.sale_price)}</div>
                                 <div style={{color:'var(--muted)'}}>-{fmt((i.fee_amount||0)+(i.shipping_fee||0))}</div>
                                 <div className={profit>=0?'td-pos':'td-neg'}>{profit>=0?'+':''}{fmt(profit)}</div>
-                                <div>{i.payout_status==='paid'?<span style={{fontSize:11,color:'var(--green)',fontWeight:600}}><Icon name="check" size={11} strokeWidth={2.5} /> Paid</span>:<span style={{fontSize:11,color:'#d97706',fontWeight:600}}>⏳ Pending</span>}</div>
+                                <div><button onClick={()=>togglePayout(i)} title={i.payout_status==='paid'?'Click to mark as pending':'Click to mark as paid out'} className="payout-toggle" style={{color:i.payout_status==='paid'?'var(--green)':'#d97706'}}>{i.payout_status==='paid'?<><Icon name="check" size={11} strokeWidth={2.5} /> Paid</>:<>⏳ Mark paid</>}</button></div>
                                 <div style={{display:'flex',gap:4}}>
                                   <button className="btn sm" style={{padding:'2px 6px',fontSize:11}} onClick={()=>handleEditSold(i)}>Edit</button>
                                   <button className="btn sm" style={{padding:'2px 6px',fontSize:11,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>openReturn(i)}>Return</button>

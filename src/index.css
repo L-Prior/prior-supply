@@ -4427,6 +4427,15 @@ tbody td {
 .rip-totals strong { font-size: 18px; font-weight: 800; color: var(--text); }
 .status-ripped { background: rgba(124,58,237,0.14); color: #7c3aed; border: 1px solid rgba(124,58,237,0.28); }
 
+/* Clickable payout status on the Sold tab */
+.payout-toggle {
+  background: none; border: 1px solid transparent; cursor: pointer; padding: 3px 7px;
+  font-family: inherit; font-size: 11px; font-weight: 600; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 3px; border-radius: 7px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.payout-toggle:hover { background: var(--surface2); border-color: var(--border); }
+
 /* Per-unit sell (different price/platform per unit) */
 .perunit-toggle { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--text2); margin: 4px 0 12px; cursor: pointer; }
 .perunit-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
